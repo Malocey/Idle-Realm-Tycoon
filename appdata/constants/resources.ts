@@ -1,0 +1,70 @@
+
+import { ResourceType } from '../types';
+
+export const INITIAL_RESOURCES: Record<ResourceType, number> = {
+  [ResourceType.GOLD]: 50,
+  [ResourceType.WOOD]: 25,
+  [ResourceType.STONE]: 10,
+  [ResourceType.FOOD]: 10,
+  [ResourceType.IRON]: 0,
+  [ResourceType.CRYSTALS]: 0,
+  [ResourceType.LEATHER]: 0,
+  [ResourceType.TOWN_XP]: 0,
+  [ResourceType.HEROIC_POINTS]: 0,
+  [ResourceType.META_CURRENCY]: 0,
+  [ResourceType.GUILD_HALL_TOKEN]: 0,
+  [ResourceType.CATACOMB_KEY]: 0,
+  [ResourceType.CATACOMB_BLUEPRINT]: 0,
+  [ResourceType.AETHERIUM]: 0,
+  [ResourceType.HERB_BLOODTHISTLE]: 0,
+  [ResourceType.HERB_IRONWOOD_LEAF]: 0,
+  [ResourceType.MINIGAME_DIRT]: 0,
+  [ResourceType.MINIGAME_CLAY]: 0,
+  [ResourceType.MINIGAME_SAND]: 0,
+  [ResourceType.MINIGAME_ESSENCE]: 0,
+  [ResourceType.MINIGAME_CRYSTAL]: 0,
+  [ResourceType.MINIGAME_EMERALD]: 0,
+  [ResourceType.MINIGAME_RUBY]: 0,
+  [ResourceType.MINIGAME_SAPPHIRE]: 0,
+  [ResourceType.GOLD_ORE]: 0,
+  [ResourceType.DIAMOND_ORE]: 0,
+  [ResourceType.EMPTY]: 0,
+  [ResourceType.SKILL_POINTS_TEMP]: 0,
+  [ResourceType.DIRT]: 0, // Added
+  [ResourceType.OBSTACLE]: 0, // Added
+  [ResourceType.DEMONIC_COIN]: 0, // Initialized
+};
+
+export const RESOURCE_COLORS: Record<ResourceType, string> = {
+  [ResourceType.GOLD]: 'text-yellow-400',
+  [ResourceType.WOOD]: 'text-amber-600',
+  [ResourceType.STONE]: 'text-gray-400',
+  [ResourceType.FOOD]: 'text-lime-500',
+  [ResourceType.IRON]: 'text-slate-400',
+  [ResourceType.CRYSTALS]: 'text-cyan-400',
+  [ResourceType.LEATHER]: 'text-orange-400',
+  [ResourceType.TOWN_XP]: 'text-sky-400',
+  [ResourceType.HEROIC_POINTS]: 'text-violet-400',
+  [ResourceType.META_CURRENCY]: 'text-pink-500',
+  [ResourceType.GUILD_HALL_TOKEN]: 'text-indigo-400',
+  [ResourceType.CATACOMB_KEY]: 'text-purple-400',
+  [ResourceType.CATACOMB_BLUEPRINT]: 'text-blue-300',
+  [ResourceType.AETHERIUM]: 'text-fuchsia-400',
+  [ResourceType.HERB_BLOODTHISTLE]: 'text-red-400',
+  [ResourceType.HERB_IRONWOOD_LEAF]: 'text-teal-400',
+  [ResourceType.MINIGAME_DIRT]: 'text-amber-500',
+  [ResourceType.MINIGAME_CLAY]: 'text-stone-500',
+  [ResourceType.MINIGAME_SAND]: 'text-yellow-300',
+  [ResourceType.MINIGAME_ESSENCE]: 'text-purple-300',
+  [ResourceType.MINIGAME_CRYSTAL]: 'text-sky-300',
+  [ResourceType.MINIGAME_EMERALD]: 'text-green-400',
+  [ResourceType.MINIGAME_RUBY]: 'text-red-400',
+  [ResourceType.MINIGAME_SAPPHIRE]: 'text-blue-400',
+  [ResourceType.GOLD_ORE]: 'text-yellow-500',
+  [ResourceType.DIAMOND_ORE]: 'text-blue-200',
+  [ResourceType.EMPTY]: 'text-slate-500',
+  [ResourceType.SKILL_POINTS_TEMP]: 'text-orange-300',
+  [ResourceType.DIRT]: 'text-orange-700', // Added
+  [ResourceType.OBSTACLE]: 'text-gray-800', // Added
+  [ResourceType.DEMONIC_COIN]: 'text-rose-500', // Added color
+};

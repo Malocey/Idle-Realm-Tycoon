@@ -1,0 +1,25 @@
+
+import { TrapDefinition } from '../types';
+
+// Import individual trap definitions
+import { SPIKE_TRAP_TIER1_DEFINITION } from './traps/spikeTrapTier1';
+import { POISON_GAS_TRAP_TIER1_DEFINITION } from './traps/poisonGasTrapTier1';
+import { ALARM_TRAP_TIER1_DEFINITION } from './traps/alarmTrapTier1';
+import { RESOURCE_DRAIN_TRAP_TIER1_DEFINITION } from './traps/resourceDrainTrapTier1';
+import { SPIKE_TRAP_TIER2_DEFINITION } from './traps/spikeTrapTier2';
+import { POISON_GAS_TRAP_TIER2_DEFINITION } from './traps/poisonGasTrapTier2';
+import { ALARM_TRAP_TIER2_DEFINITION } from './traps/alarmTrapTier2';
+import { COLLAPSING_CEILING_TRAP_TIER2_DEFINITION } from './traps/collapsingCeilingTrapTier2';
+import { MANA_DRAIN_TRAP_TIER2_DEFINITION } from './traps/manaDrainTrapTier2';
+
+export const TRAP_DEFINITIONS: Record<string, TrapDefinition> = {
+  'SPIKE_TRAP_TIER1': SPIKE_TRAP_TIER1_DEFINITION,
+  'POISON_GAS_TRAP_TIER1': POISON_GAS_TRAP_TIER1_DEFINITION,
+  'ALARM_TRAP_TIER1': ALARM_TRAP_TIER1_DEFINITION,
+  'RESOURCE_DRAIN_TRAP_TIER1': RESOURCE_DRAIN_TRAP_TIER1_DEFINITION,
+  'SPIKE_TRAP_TIER2': SPIKE_TRAP_TIER2_DEFINITION,
+  'POISON_GAS_TRAP_TIER2': POISON_GAS_TRAP_TIER2_DEFINITION,
+  'ALARM_TRAP_TIER2': ALARM_TRAP_TIER2_DEFINITION,
+  'COLLAPSING_CEILING_TRAP_TIER2': COLLAPSING_CEILING_TRAP_TIER2_DEFINITION,
+  'MANA_DRAIN_TRAP_TIER2': MANA_DRAIN_TRAP_TIER2_DEFINITION,
+};

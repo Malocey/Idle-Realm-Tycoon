@@ -1,0 +1,850 @@
+html, body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden; /* Prevent html/body from scrolling */
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overscroll-behavior: none; /* Prevents pull-to-refresh on mobile */
+    }
+    .fancy-scrollbar {
+      scrollbar-width: none; /* For Firefox */
+      -ms-overflow-style: none;  /* For Internet Explorer and Edge */
+    }
+    .fancy-scrollbar::-webkit-scrollbar {
+      width: 0px; /* For Chrome, Safari, and Opera */
+      height: 0px; /* For Chrome, Safari, and Opera */
+    }
+    .fancy-scrollbar::-webkit-scrollbar-track {
+      background: transparent; /* Fallback for older WebKit, though width/height 0 should hide it */
+      border-radius: 10px;
+    }
+    .fancy-scrollbar::-webkit-scrollbar-thumb {
+      background: transparent; /* Fallback for older WebKit */
+      border-radius: 10px;
+    }
+    /* .fancy-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: transparent;
+    } */ /* Hover effect not needed if thumb is hidden */
+
+    .glass-effect {
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .debug-visible {
+      /* visibility: hidden; */
+    }
+
+    @keyframes attack-shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-6px); }
+      75% { transform: translateX(6px); }
+    }
+    .attacking {
+      animation: attack-shake 0.3s ease-in-out;
+    }
+
+    @keyframes damage-popup-animation { /* Also used for heal popups */
+      0% { transform: translate(-50%, 0); opacity: 1; }
+      100% { transform: translate(-50%, -35px); opacity: 0; }
+    }
+    .damage-popup-container { /* Main battle view damage popups */
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      overflow: visible;
+      z-index: 30; /* Raised z-index */
+    }
+    .damage-popup, .heal-popup, .shield-damage-popup { /* Shared base styles for popups */
+      position: absolute;
+      top: 10%;
+      left: 50%;
+      transform: translateX(-50%);
+      border-radius: 5px; 
+      font-size: 1em;
+      font-weight: bold;
+      pointer-events: none;
+      animation: damage-popup-animation 1.5s ease-out forwards;
+      text-shadow: 0 0 4px rgba(0,0,0,0.9), 1px 1px 5px rgba(0,0,0,0.6); 
+    }
+    .damage-popup.crit {
+      color: #f87171; /* Tailwind red-400 */
+      font-size: 1.2em; 
+    }
+    .damage-popup:not(.crit) {
+      color: #f1f5f9; /* Tailwind slate-100 - good */
+    }
+    .shield-damage-popup {
+      color: #22d3ee; /* Tailwind cyan-400 for shield damage */
+      font-size: 1em;
+    }
+    .heal-popup {
+      color: #4ade80; /* Tailwind green-400 */
+      font-size: 1.05em;
+    }
+
+    /* General FadeIn (used by NotificationArea initially, can be reused) */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fadeIn {
+      animation: fadeIn 0.3s ease-out forwards;
+    }
+
+    /* Modal Entrance Animation - Scale & Fade with Bounce */
+    @keyframes modal-content-enter {
+      0% { opacity: 0; transform: scale(0.95); }
+      70% { opacity: 1; transform: scale(1.02); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    .animate-modal-content-enter {
+      animation: modal-content-enter 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    /* Notification Entrance Animation */
+    @keyframes notification-enter {
+      0% { opacity: 0; transform: translateX(100%); }
+      70% { opacity: 1; transform: translateX(-5%); }
+      100% { opacity: 1; transform: translateX(0); }
+    }
+    .animate-notification-enter {
+      animation: notification-enter 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    /* Original Tab Content Entrance Animation (still used by Construction tab container for individual cards) */
+     @keyframes tab-content-enter {
+      0% { opacity: 0; transform: translateY(10px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    .animate-tab-content-enter { /* General fade in for tab content that doesn't slide */
+      animation: tab-content-enter 0.3s ease-out forwards;
+    }
+
+    /* Card Cascade Animation for TownView "Construct" Tab */
+    @keyframes card-cascade-enter {
+      0% { opacity: 0; transform: translateY(-15px) scale(0.98); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .animate-card-cascade-enter {
+      animation: card-cascade-enter 0.35s ease-out forwards;
+      opacity: 0; /* Initial state before animation starts */
+    }
+
+    /* Horizontal Slide & Fade Animations for Tab Content */
+    .tab-content-transition-wrapper {
+      position: absolute;
+      width: 100%;
+      height: 100%; /* Or auto, depending on content */
+      top: 0;
+      left: 0;
+    }
+    @keyframes tab-slide-out-left {
+      from { transform: translateX(0); opacity: 1; }
+      to { transform: translateX(-40px); opacity: 0; }
+    }
+    .animate-tab-slide-out-left {
+      animation: tab-slide-out-left 0.3s ease-out forwards;
+      z-index: 1;
+    }
+    @keyframes tab-slide-in-right {
+      from { transform: translateX(40px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    .animate-tab-slide-in-right {
+      animation: tab-slide-in-right 0.3s ease-out forwards;
+      z-index: 2;
+    }
+    @keyframes tab-slide-out-right {
+      from { transform: translateX(0); opacity: 1; }
+      to { transform: translateX(40px); opacity: 0; }
+    }
+    .animate-tab-slide-out-right {
+      animation: tab-slide-out-right 0.3s ease-out forwards;
+      z-index: 1;
+    }
+    @keyframes tab-slide-in-left {
+      from { transform: translateX(-40px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    .animate-tab-slide-in-left {
+      animation: tab-slide-in-left 0.3s ease-out forwards;
+      z-index: 2;
+    }
+
+
+    /* Special Attack Cooldown Display */
+    .special-attack-icon-container {
+        display: flex;
+        align-items: center;
+        gap: 4px; /* Space between icon and text */
+        font-size: 0.65rem; /* Smaller text for cooldown */
+        line-height: 1;
+        padding: 2px 4px;
+        background-color: rgba(0,0,0,0.2);
+        border-radius: 4px;
+    }
+    .special-attack-icon {
+        width: 14px;
+        height: 14px;
+    }
+    .cooldown-ready {
+        color: #22c55e; /* green-500 */
+        font-weight: bold;
+    }
+    .cooldown-charging {
+        color: #eab308; /* amber-500 */
+    }
+
+    /* Hero Death Animation */
+    @keyframes death-fade-shrink {
+      0% { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(0.8); }
+    }
+    .animate-death { /* Used for Heroes */
+      animation: death-fade-shrink 0.5s ease-out forwards;
+      pointer-events: none;
+    }
+
+    /* Enemy Card Death Animation */
+    @keyframes enemy-card-shatter-animation {
+      0% { opacity: 1; transform: scale(1) translateY(0) rotate(0deg); }
+      20% { opacity: 0.9; transform: scale(1.05) translateY(-10px) rotate(-3deg); }
+      100% { opacity: 0; transform: scale(0.3) translateY(30px) rotate(45deg); }
+    }
+    .animate-enemy-death-shatter { /* Used for Enemy Cards */
+      animation: enemy-card-shatter-animation 0.9s ease-out forwards;
+      pointer-events: none;
+    }
+
+
+    /* New class for Loot Card visibility */
+    .loot-card-active {
+      opacity: 1 !important;
+      transform: scale(1) !important;
+      pointer-events: auto !important;
+    }
+
+
+    /* Generic Cast Pulse Animation */
+    @keyframes generic-cast-pulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 var(--cast-pulse-color-start, rgba(0,0,0,0.0)); }
+      50% { transform: scale(1.02); box-shadow: 0 0 10px 4px var(--cast-pulse-color-mid, rgba(0,0,0,0.5)); }
+    }
+
+    .animate-special-cast.hero-cast-pulse {
+      --cast-pulse-color-mid: rgba(59, 130, 246, 0.5); /* blue-500 */
+      animation: generic-cast-pulse 0.6s ease-in-out;
+    }
+    .animate-special-cast.enemy-cast-pulse {
+       --cast-pulse-color-mid: rgba(239, 68, 68, 0.5); /* red-500 */
+       animation: generic-cast-pulse 0.6s ease-in-out;
+    }
+    .animate-cleric-heal-cast { /* Non-Colosseum */
+      --cast-pulse-color-mid: rgba(130, 220, 130, 0.6); /* Soft golden-green */
+      animation: generic-cast-pulse 0.6s ease-in-out;
+    }
+    .animate-cleric-heal-cast-colosseum {
+      --cast-pulse-color-mid: rgba(130, 220, 130, 0.7); /* Soft golden-green, slightly more opaque for Colosseum */
+      animation: generic-cast-pulse 0.5s ease-in-out; /* Slightly faster for Colosseum */
+    }
+
+    /* Battle Spoils Delta Popups */
+    @keyframes delta-popup-enter {
+      from { opacity: 0; transform: translateY(5px) scale(0.9); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes delta-popup-exit {
+      from { opacity: 1; transform: translateY(0) scale(1); }
+      to { opacity: 0; transform: translateY(-10px) scale(0.9); }
+    }
+    .delta-popup-item {
+      animation-duration: 0.4s;
+      animation-timing-function: ease-out;
+      animation-fill-mode: forwards;
+    }
+    .delta-popup-item-enter {
+      animation-name: delta-popup-enter;
+    }
+    .delta-popup-item-exit {
+      animation-name: delta-popup-exit;
+      animation-duration: 0.5s;
+    }
+
+    /* Building Level Up Indicator from Loot */
+    @keyframes building-level-up-ping {
+      0% { transform: scale(0.8) translate(50%, -50%); opacity: 0; }
+      10%, 90% { transform: scale(1.2) translate(50%, -50%); opacity: 1; }
+      100% { transform: scale(1) translate(50%, -50%); opacity: 0; }
+    }
+    .building-level-up-indicator {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      transform: translate(50%, -50%);
+      background-color: rgba(34, 197, 94, 0.85);
+      color: white;
+      padding: 1px 5px;
+      border-radius: 9999px;
+      font-size: 0.65rem;
+      font-weight: bold;
+      line-height: 1;
+      animation: building-level-up-ping 10s ease-out forwards;
+      z-index: 10;
+      border: 1px solid rgba(255,255,255,0.4);
+      box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+    }
+
+    /* Skill Tree Specific Styles */
+    .skill-tree-line {
+      transition: stroke 0.3s ease, stroke-width 0.3s ease, stroke-dasharray 0.3s ease;
+    }
+    .line-clamp-2 { /* Utility for node name clamping */
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    /* Skill Tree Line Animation */
+    @keyframes flow {
+      to {
+        stroke-dashoffset: -20; /* Adjust this value for speed/density of flow */
+      }
+    }
+    .line-active-flow {
+      stroke-dasharray: 10 10; /* Creates a dashed line. Adjust for pattern. */
+      animation: flow 1s linear infinite;
+    }
+    /* Pulse animation for affordable skill tree nodes */
+    @keyframes pulse-strong {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(96, 165, 250, 0.5); transform: scale(1); } /* Tailwind blue-400 base */
+        50% { box-shadow: 0 0 15px 7px rgba(96, 165, 250, 0.85); transform: scale(1.05); } /* Tailwind blue-400 stronger pulse */
+    }
+    .animate-pulse-strong {
+        animation: pulse-strong 1.5s infinite ease-in-out;
+    }
+    /* New style for maxed skill nodes */
+    .skill-node-maxed {
+      border-color: #22c55e !important; /* Tailwind green-500 */
+      box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.5), 0 0 10px rgba(34, 197, 94, 0.4) !important; /* Green ring and glow */
+    }
+
+
+    /* New Target Reaction Animations - Refactored */
+    @keyframes target-flash {
+      0%, 100% { box-shadow: inset 0 0 0 0 var(--flash-color-start, rgba(0,0,0,0)); }
+      50% { box-shadow: inset 0 0 var(--flash-blur, 10px) var(--flash-spread, 3px) var(--flash-color-mid, rgba(0,0,0,0.5)); }
+    }
+    .target-hit-flash {
+      --flash-color-start: rgba(239, 68, 68, 0); 
+      --flash-color-mid: rgba(239, 68, 68, 0.6); 
+      animation: target-flash 0.3s ease-out;
+    }
+    .target-crit-flash {
+      --flash-color-start: rgba(249, 115, 22, 0); 
+      --flash-color-mid: rgba(249, 115, 22, 0.7); 
+      --flash-blur: 12px;
+      --flash-spread: 4px;
+      animation: target-flash 0.4s ease-out;
+    }
+    .target-shield-flash { /* New for shield hits */
+      --flash-color-start: rgba(34, 211, 238, 0); /* cyan-400 transparent */
+      --flash-color-mid: rgba(34, 211, 238, 0.6); /* cyan-400 opaque */
+      --flash-blur: 8px;
+      --flash-spread: 2px;
+      animation: target-flash 0.25s ease-out;
+    }
+    .target-healed-flash {
+      --flash-color-start: rgba(34, 197, 94, 0); 
+      --flash-color-mid: rgba(34, 197, 94, 0.6); 
+      animation: target-flash 0.3s ease-out;
+    }
+
+    @keyframes status-stunned-pulse {
+      0%, 100% { border-color: inherit; box-shadow: none; }
+      50% {
+        border-color: #facc15; /* yellow-400 */
+        box-shadow: 0 0 15px 3px rgba(250, 204, 21, 0.6);
+      }
+    }
+    .status-stunned-pulse {
+      animation: status-stunned-pulse 1s infinite ease-in-out;
+    }
+
+    /* Shard Fusion Styles */
+    .shard-selected-for-fusion {
+      border-color: #f59e0b !important;
+      transform: scale(1.05);
+      box-shadow: 0 0 12px 3px rgba(245, 158, 11, 0.6);
+    }
+    .shard-valid-fusion-target {
+      border-color: #34d399 !important;
+      box-shadow: 0 0 8px 2px rgba(52, 211, 153, 0.5);
+      background-color: rgba(22, 107, 71, 0.2);
+    }
+    @keyframes shard-flash-animation {
+      0% { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0); transform: scale(1); }
+      30% { box-shadow: 0 0 25px 10px rgba(250, 204, 21, 0.75); transform: scale(1.15); }
+      70% { box-shadow: 0 0 25px 10px rgba(250, 204, 21, 0.75); transform: scale(1.15); }
+      100% { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0); transform: scale(1); }
+    }
+    .shard-fused-flash {
+      animation: shard-flash-animation 0.6s ease-out forwards;
+    }
+
+    /* Legendary and Mythic Buff Card Animations */
+    @keyframes legendary-shimmer {
+      0%, 100% { box-shadow: 0 0 5px 2px rgba(251, 191, 36, 0.3); }
+      50% { box-shadow: 0 0 12px 5px rgba(251, 191, 36, 0.6); }
+    }
+    .animate-legendary-shimmer {
+      animation: legendary-shimmer 2.5s infinite ease-in-out;
+    }
+
+    @keyframes mythic-pulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 6px 2px rgba(239, 68, 68, 0.3); }
+      50% { transform: scale(1.02); box-shadow: 0 0 15px 6px rgba(239, 68, 68, 0.7); }
+    }
+    .animate-mythic-pulse {
+      animation: mythic-pulse 2s infinite ease-in-out;
+    }
+
+    /* Battle Impact Particle Effects (Old DOM System - Phasing out for Canvas) */
+    .particle-effects-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 25;
+    }
+
+    @keyframes particle-burst-fade {
+      0% { transform: scale(0.3) translate(-50%, -50%); opacity: 0; }
+      20% { transform: scale(1) translate(-50%, -50%); opacity: 1; }
+      100% { transform: scale(0.5) translate(-50%, -50%); opacity: 0; }
+    }
+
+    .particle-effect {
+      position: absolute;
+    }
+
+    .particle-hit { /* This will be handled by Canvas */
+      width: 8px;
+      height: 8px;
+      background-color: rgba(255, 255, 220, 0.9);
+      box-shadow: 0 0 4px 1px rgba(255, 255, 220, 0.7);
+      border-radius: 50%;
+      animation: particle-burst-fade 0.6s ease-out forwards;
+    }
+
+    .particle-crit { /* This will be handled by Canvas */
+      width: 12px;
+      height: 12px;
+      background-color: rgba(255, 130, 30, 0.9);
+      box-shadow: 0 0 7px 2px rgba(255, 130, 30, 0.7);
+      border-radius: 50%;
+      animation: particle-burst-fade 0.6s ease-out forwards;
+    }
+
+    /* .particle-heal and related animations removed, handled by Canvas now */
+
+    /* Hero Death Particle Effect */
+    .particle-hero-death {
+      width: 6px;
+      height: 6px;
+      background-color: rgba(150, 150, 150, 0.7); /* Grey */
+      box-shadow: 0 0 3px 1px rgba(180, 180, 180, 0.5);
+      border-radius: 50%;
+      animation: hero-death-particle-animate 1s ease-out forwards;
+    }
+
+    @keyframes hero-death-particle-animate {
+      0% { transform: translate(var(--startX, -50%), var(--startY, -50%)) scale(1) rotate(0deg); opacity: 0.9; }
+      100% {
+        transform: translate(calc(var(--startX, -50%) + var(--translateX)), calc(var(--startY, -50%) + var(--translateY))) scale(0.3) rotate(var(--rotateEnd));
+        opacity: 0;
+      }
+    }
+
+    /* Enemy Death Shard Particle Effect */
+    .particle-enemy-shard {
+      position: absolute;
+      background-color: rgba(100, 116, 139, 0.7);
+      box-shadow: 0 0 2px 1px rgba(150, 166, 189, 0.5);
+      animation: enemy-shard-explode-animation 1s ease-out forwards;
+    }
+
+    @keyframes enemy-shard-explode-animation {
+      0% {
+        opacity: 1;
+        transform: translate(var(--startX, -50%), var(--startY, -50%)) scale(1) rotate(0deg);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(var(--translateX), var(--translateY)) scale(0.2) rotate(var(--rotateEnd));
+      }
+    }
+    
+    /* Shield Break/Recharge Particles */
+    /* .particle-shield-shatter and @keyframes shield-shatter-particle-animate REMOVED */
+
+    .particle-shield-recharge {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      background-color: rgba(135, 206, 250, 0.7); /* lightskyblue */
+      border-radius: 50%;
+      box-shadow: 0 0 3px 1px rgba(135, 206, 250, 0.5);
+      animation: shield-recharge-particle-animate 1.2s ease-out forwards;
+    }
+    @keyframes shield-recharge-particle-animate {
+        0% {
+            opacity: 0.9;
+            transform: translate(var(--startX, -50%), var(--startY, -50%)) scale(0.8);
+        }
+        100% {
+            opacity: 0;
+            transform: translate(calc(var(--startX, -50%) + var(--translateX)), calc(var(--startY, -50%) + var(--translateY))) scale(0.2);
+        }
+    }
+    
+    /* Shield Bar Animations - REMOVED as bar is now canvas based */
+    /* .animate-shield-break-bar .shield-bar-fill {} */
+    /* .animate-shield-recharge-bar .shield-bar-fill {} */
+
+
+    /* View Transition Animations */
+    .view-transition-wrapper {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+    }
+
+    @keyframes view-slide-out-left {
+      from { transform: translateX(0); opacity: 1; }
+      to { transform: translateX(-50px); opacity: 0; }
+    }
+    .view-exit-active {
+      animation: view-slide-out-left 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+      z-index: 1;
+    }
+
+    @keyframes view-slide-in-right {
+      from { transform: translateX(50px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    .view-enter-active {
+      animation: view-slide-in-right 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+      z-index: 2;
+    }
+
+    /* Ripple Effect for Buttons */
+    .ripple {
+      position: absolute;
+      border-radius: 50%;
+      transform: scale(0);
+      animation: ripple-animation 0.6s linear;
+      pointer-events: none;
+    }
+
+    @keyframes ripple-animation {
+      to {
+        transform: scale(4);
+        opacity: 0;
+      }
+    }
+
+    /* Hero Card Animations */
+    @keyframes level-up-card-flash {
+      0%, 100% { box-shadow: 0 0 8px 2px rgba(129, 140, 248, 0); border-color: rgba(71,85,105,1); }
+      50% { box-shadow: 0 0 20px 8px rgba(165, 180, 252, 0.6); border-color: rgba(129,140,248,0.8); }
+    }
+    .animate-level-up-flash {
+      animation: level-up-card-flash 0.5s ease-out;
+    }
+
+    @keyframes skill-points-available-glow {
+      0%, 100% { box-shadow: 0 0 6px 1px rgba(251, 191, 36, 0.2); }
+      50% { box-shadow: 0 0 12px 4px rgba(251, 191, 36, 0.5); }
+    }
+    .animate-skill-points-glow {
+      animation: skill-points-available-glow 1.8s infinite ease-in-out;
+    }
+
+    /* HP Value Pulse Animations - REMOVED as text is now canvas based */
+    /* .animate-hp-damage-value {} */
+    /* .animate-hp-heal-value {} */
+
+    /* Action Bar Ready Glow */
+    @keyframes action-bar-ready-glow {
+      0%, 100% { box-shadow: 0 0 6px 2px rgba(0, 255, 255, 0.35); }
+      50% { box-shadow: 0 0 15px 5px rgba(0, 255, 255, 0.7); }
+    }
+    .animate-action-bar-ready {
+      animation: action-bar-ready-glow 0.9s infinite ease-in-out;
+    }
+
+    /* Golem Click Effect for Stone Quarry Minigame */
+    @keyframes golem-click-pulse {
+      0% { transform: scale(0.5); opacity: 0.7; }
+      50% { transform: scale(1.3); opacity: 0.3; }
+      100% { transform: scale(1.6); opacity: 0; }
+    }
+    .golem-click-effect {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 60%;
+      height: 60%;
+      background-color: rgba(220, 220, 220, 0.6);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      animation: golem-click-pulse 0.3s ease-out forwards;
+      pointer-events: none;
+    }
+
+    /* Minigame Resource Popup Animation */
+    @keyframes resource-popup-arc-refined {
+      0% {
+        opacity: 0;
+        transform: translate(var(--initial-x-offset-px, 0px), var(--initial-y-offset-px, 0px)) scale(0.6);
+      }
+      30% {
+        opacity: 1;
+        transform: translate(var(--arc-horizontal-drift, 0px), var(--arc-vertical-peak, -40px)) scale(1.1);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(calc(var(--arc-horizontal-drift, 0px) * 1.5), var(--arc-vertical-fall, 50px)) scale(0.5);
+      }
+    }
+
+    .resource-popup {
+      position: absolute;
+      padding: 2px 6px;
+      border-radius: 0.25rem;
+      font-size: 0.75rem;
+      font-weight: bold;
+      background-color: rgba(30, 41, 59, 0.85);
+      border: 1px solid rgba(71, 85, 105, 0.7);
+      text-shadow: 1px 1px 1px rgba(0,0,0,0.5);
+      pointer-events: none;
+      z-index: 20;
+      animation-name: resource-popup-arc-refined;
+      animation-duration: 1.5s;
+      animation-timing-function: ease-out;
+      animation-fill-mode: forwards;
+      transform: translate(-50%, -50%);
+      --initial-x-offset-px: 0px;
+      --initial-y-offset-px: 0px;
+      --arc-horizontal-drift: 0px;
+      --arc-vertical-peak: -40px;
+      --arc-vertical-fall: 50px;
+    }
+
+    /* Cell Transformation Pulse for Stone Quarry Minigame */
+    @keyframes cell-transform-pulse {
+      0%, 100% { box-shadow: inset 0 0 0 0 rgba(250, 204, 21, 0); }
+      50% { box-shadow: inset 0 0 8px 2px rgba(250, 204, 21, 0.5); }
+    }
+    .animate-cell-transform-pulse {
+      animation: cell-transform-pulse 1s infinite ease-in-out;
+    }
+
+    /* Colosseum Specific Styles */
+    .colosseum-participant {
+      transition: left 0.1s linear, top 0.1s linear;
+    }
+
+    .enemy-health-bar-colosseum, .hero-health-bar-colosseum {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 28px;
+        height: 4px;
+        background-color: rgba(50,50,50,0.7);
+        border-radius: 2px;
+        overflow: hidden;
+        border: 1px solid rgba(0,0,0,0.5);
+    }
+    .enemy-health-bar-colosseum { top: -6px; }
+    .hero-health-bar-colosseum { bottom: -6px; }
+
+    .enemy-health-bar-colosseum > div, .hero-health-bar-colosseum > div {
+        height: 100%;
+        transition: width 0.2s ease-out;
+    }
+    .enemy-health-bar-colosseum > div { background-color: #ef4444; }
+    .hero-health-bar-colosseum > div { background-color: #22c55e; }
+
+    @keyframes colosseum-attack-flash {
+      0%, 100% { filter: brightness(1); transform: scale(1) translateX(0); }
+      50% { filter: brightness(1.75) drop-shadow(0 0 3px #fff); transform: scale(1.1) translateX(var(--attack-translate-x, 0px)); }
+    }
+    .attacking-visual-colosseum {
+      animation: colosseum-attack-flash 0.2s ease-in-out;
+    }
+    .attacking-visual-colosseum.melee { --attack-translate-x: 3px; }
+    .attacking-visual-colosseum.ranged { --attack-translate-x: -2px; }
+
+    /* Colosseum Death Animations */
+    @keyframes enemy-death-colosseum {
+        0% { opacity: 1; transform: scale(1) rotate(0deg); }
+        100% { opacity: 0; transform: scale(0.3) rotate(30deg); }
+    }
+    .animate-enemy-death-colosseum {
+        animation: enemy-death-colosseum 0.5s ease-out forwards;
+        pointer-events: none;
+    }
+
+    @keyframes hero-death-colosseum-enhanced {
+      0% { opacity: 1; transform: scale(1) translateY(0); filter: grayscale(0%); }
+      50% { opacity: 0.7; transform: scale(0.95) translateY(2px); filter: grayscale(50%); }
+      100% { opacity: 0; transform: scale(0.85) translateY(5px); filter: grayscale(100%); }
+    }
+    .animate-hero-death-colosseum-enhanced {
+        animation: hero-death-colosseum-enhanced 0.6s ease-out forwards;
+        pointer-events: none;
+    }
+    .hero-defeated-colosseum {
+        filter: grayscale(100%) opacity(50%);
+        transition: filter 0.3s ease-out, transform 0.3s ease-out;
+    }
+
+    /* Colosseum Targeting Lines */
+    .targeting-line-hero {
+        stroke: rgba(100, 180, 255, 0.6);
+        stroke-width: 1.5;
+        stroke-dasharray: 3, 2;
+    }
+    .targeting-line-enemy {
+        stroke: rgba(255, 100, 100, 0.6);
+        stroke-width: 1.5;
+        stroke-dasharray: 3, 2;
+    }
+    .potential-target-reticle {
+        fill: none;
+        stroke: rgba(0, 220, 220, 0.7);
+        stroke-width: 1.5;
+        stroke-dasharray: 2, 2;
+    }
+
+    /* Colosseum Projectile (Arrow) - Removed, handled by Canvas */
+
+    /* Colosseum Wave Announcements */
+    .colosseum-wave-announcement {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.8);
+      opacity: 0;
+      font-size: 2.5rem;
+      font-weight: bold;
+      text-align: center;
+      color: white;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+      z-index: 50;
+      animation: colosseum-wave-announce-anim 2s ease-out forwards;
+      white-space: nowrap;
+    }
+    .colosseum-wave-announcement.wave-cleared { color: #4ade80; }
+    .colosseum-wave-announcement.wave-starting { color: #f59e0b; }
+    .colosseum-wave-announcement.defeated { color: #ef4444; }
+
+    @keyframes colosseum-wave-announce-anim {
+      0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+      25% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+      75% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(0.9); opacity: 0; }
+    }
+
+    /* Shared Skill Tree Node Styles */
+    .shared-skill-node-container {
+      transition: width 0.3s ease-in-out, height 0.3s ease-in-out, min-height 0.3s ease-in-out, transform 0.3s ease-in-out, border-radius 0.3s ease-in-out;
+      will-change: width, height, min-height, transform, border-radius;
+      position: absolute; 
+      z-index: 10;
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+    }
+    .shared-skill-node-container.expanded {
+      z-index: 20;
+      border-radius: 0.75rem; /* Tailwind rounded-lg for expanded state */
+      align-items: stretch; /* Override for expanded state */
+      justify-content: flex-start; /* Override for expanded state */
+    }
+    .shared-skill-node-container:not(.expanded) {
+        border-radius: 50%; /* Circular when not expanded */
+        overflow: visible; /* Allow SVG to draw outside the main box for border */
+    }
+    .shared-skill-node-visual {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+    .compact-node-style .shared-skill-node-visual-compact-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center; /* Center content vertically */
+      text-align: center;
+      width: 100%;
+      height: 100%;
+      padding: 4px; 
+      position: relative; /* Needed for SVG to be absolute inside */
+      z-index: 5; /* Content above SVG background track */
+    }
+
+    .compact-node-style .shared-skill-detail-content {
+      display: none;
+      opacity: 0;
+      transform: translateY(10px);
+      pointer-events: none;
+    }
+    .expanded-node-style .shared-skill-node-visual-compact-content {
+        display: none;
+    }
+    .expanded-node-style .shared-skill-detail-content {
+      opacity: 1;
+      transform: translateY(0);
+      transition: opacity 0.2s ease-out 0.15s, transform 0.2s ease-out 0.15s;
+      width: 100%;
+      height: 100%;
+      display: flex; 
+      flex-direction: column; 
+      overflow-y: auto; 
+      overflow-x: hidden;
+    }
+
+    /* SVG progress styles are now handled inline in the component or Tailwind */
+    /* Minor Level Progress Bar for Shared Skills - REMOVED */
+    /* .minor-progress-bar-container {} */
+    /* .minor-progress-bar-fill {} */
+
+    .circular-progress-svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1; /* Below compact content but above node bg */
+      pointer-events: none; /* Allow clicks to pass through to node */
+      transform: rotate(-90deg); /* Start progress from top */
+    }
+
+    /* Text on Stat Bars - REMOVED, handled by Tailwind in BattleStatBars.tsx */
+    /* .text-on-bar {} */

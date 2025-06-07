@@ -1,0 +1,15 @@
+export type MinigameUpgradeType =
+  | 'playerClickPower'
+  | 'golemClickPower'
+  | 'golemClickSpeed'
+  | 'golemMoveSpeed'
+  | 'essenceDropChance'
+  | 'playerMultiClickChance'
+  | 'golemEssenceAffinity'
+  | 'playerCrystalFindChance'
+  | 'golemCrystalSifters'
+  | 'playerAdvancedExcavation'
+  | 'golemSynchronization'
+  | 'emeraldExpertise'
+  | 'rubyRefinement'
+  | 'sapphireSynthesis';

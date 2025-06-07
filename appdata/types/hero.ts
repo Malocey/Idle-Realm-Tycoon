@@ -1,0 +1,225 @@
+
+import { Cost } from './common';
+import { EquipmentSlot, ResourceType, SpecialAttackTargetType, StatusEffectType, AbilityEffectTriggerType } from './enums'; // Added AbilityEffectTriggerType
+import { PlayerOwnedShard } from './shards';
+import { StatusEffectDefinition } from './battle/effects';
+
+export interface HeroStats {
+  maxHp: number;
+  damage: number;
+  defense: number;
+  attackSpeed: number;
+  critChance?: number;
+  critDamage?: number;
+  healPower?: number;
+  maxMana?: number;
+  manaRegen?: number;
+  hpRegen?: number;
+  maxEnergyShield?: number;
+  energyShieldRechargeRate?: number; 
+  energyShieldRechargeDelay?: number; 
+}
+
+export type PermanentHeroBuff = {
+  stat: keyof HeroStats;
+  value: number;
+  description: string;
+};
+
+export interface HeroDefinition {
+  id: string;
+  name: string;
+  description: string;
+  baseStats: HeroStats; 
+  iconName: string;
+  skillTreeId: string;
+  recruitmentCost?: Cost[];
+  unlockWaveRequirement?: number;
+  attackType?: 'MELEE' | 'RANGED';
+  rangedAttackRangeUnits?: number;
+}
+
+export interface PlayerHeroState {
+  definitionId: string;
+  level: number;
+  currentExp: number;
+  expToNextLevel: number;
+  skillPoints: number;
+  skillLevels: Record<string, number>;
+  specialAttackLevels: Record<string, number>;
+  equipmentLevels: Record<string, number>;
+  permanentBuffs: Array<PermanentHeroBuff>;
+  ownedShards: PlayerOwnedShard[];
+}
+
+// --- Ability Effect Definitions ---
+export type AbilityEffectTargetScope = 'SELF' | 'CURRENT_TARGET' | 'ALL_ENEMIES_IN_RANGE' | 'ALL_ALLIES_IN_RANGE' | 'ALL_ENEMIES' | 'ALL_ALLIES';
+
+interface BaseAbilityEffect {
+    targetScope: AbilityEffectTargetScope;
+    range?: number; 
+}
+
+export interface DamageAbilityEffect extends BaseAbilityEffect {
+    type: 'DAMAGE';
+    damageMultiplier: number; 
+    numHits?: number; 
+}
+
+export interface HealAbilityEffect extends BaseAbilityEffect {
+    type: 'HEAL';
+    healAmount?: number; 
+    healMultiplier?: number; 
+    shieldHealPercentage?: number; 
+}
+
+export interface ApplyStatusAbilityEffect extends BaseAbilityEffect {
+    type: 'APPLY_STATUS';
+    statusEffectId?: string;
+    inlineStatusEffect?: Omit<StatusEffectDefinition, 'id'>;
+    chance?: number; 
+}
+
+export interface SummonAbilityEffect extends BaseAbilityEffect {
+    type: 'SUMMON';
+    enemyIdToSummon: string;
+    count: number;
+    isElite?: boolean;
+}
+
+export interface StatBuffDebuffAbilityEffect extends BaseAbilityEffect {
+    type: 'STAT_MODIFIER';
+    stat: keyof HeroStats;
+    value: number;
+    modifierType: 'FLAT' | 'PERCENTAGE_ADDITIVE';
+    durationMs: number;
+}
+
+export interface TriggerChannelingAbilityEffect extends BaseAbilityEffect {
+    type: 'TRIGGER_CHANNELING_ABILITY';
+    abilityIdToTrigger: string; 
+}
+
+export interface TransformIntoEnemyEffect extends BaseAbilityEffect {
+    type: 'TRANSFORM_INTO_ENEMY';
+    enemyIdToTransformInto: string;
+    inheritEliteStatus?: boolean; // Default true
+}
+
+export type AbilityEffect = 
+  | DamageAbilityEffect 
+  | HealAbilityEffect 
+  | ApplyStatusAbilityEffect 
+  | SummonAbilityEffect 
+  | StatBuffDebuffAbilityEffect
+  | TriggerChannelingAbilityEffect
+  | TransformIntoEnemyEffect; // Added TransformIntoEnemyEffect
+
+
+// --- Channeling Properties ---
+export interface ChannelingProperties {
+    channelDurationMs: number;
+    blocksMovementWhileChanneling?: boolean; // Default true
+    blocksActionsWhileChanneling?: boolean;  // Default true
+    channelTickIntervalMs?: number; 
+    effects: Partial<Record<AbilityEffectTriggerType, AbilityEffect[]>>; 
+}
+
+export interface SpecialAttackEffectDefinition {
+  damageMultiplierBase: number;
+  damageMultiplierIncreasePerLevel: number;
+  numHitsBase: number;
+  numHitsIncreasePerLevel: number;
+  healAmountBase?: number;
+  healAmountIncreasePerLevel?: number;
+}
+
+export interface SpecialAttackStatusEffectApplication {
+  effectId?: string; 
+  inlineEffect?: Omit<StatusEffectDefinition, 'id'>; 
+  chance: number; 
+  durationMsOverride?: (level: number) => number; 
+}
+
+export interface SpecialAttackDefinition {
+  id: string;
+  name: string;
+  description: (level: number, calculatedData: CalculatedSpecialAttackData) => string;
+  iconName: string;
+  cooldownBaseMs: number;
+  cooldownReductionPerLevelMs: number;
+  targetType: SpecialAttackTargetType;
+  effects: SpecialAttackEffectDefinition[]; 
+  statusEffectsToApply?: SpecialAttackStatusEffectApplication[]; 
+  channelingProperties?: ChannelingProperties; 
+  maxLevel: number;
+  costResource: ResourceType;
+  costBase: number;
+  costIncreasePerLevel: number;
+  manaCostBase?: number;
+  manaCostIncreasePerLevel?: number;
+}
+
+export interface CalculatedSpecialAttackData {
+  currentDamageMultiplier: number;
+  currentNumHits: number;
+  currentCooldownMs: number;
+  currentHealAmount?: number;
+  currentManaCost?: number;
+  nextLevelDamageMultiplier?: number;
+  nextLevelNumHits?: number;
+  nextLevelCooldownMs?: number;
+  nextLevelHealAmount?: number;
+  nextLevelManaCost?: number;
+}
+
+export interface HeroEquipmentDefinition {
+  id: string;
+  heroDefinitionId: string;
+  slot: EquipmentSlot;
+  name: string;
+  description: (level: number, totalBonus: Partial<HeroStats>) => string;
+  iconName: string;
+  maxLevel: number;
+  costsPerLevel: (currentLevel: number) => Cost[];
+  statBonusesPerLevel: (level: number) => Partial<HeroStats>;
+  unlockForgeLevel?: number; 
+}
+
+export interface StatBreakdownItem {
+  source: string;
+  value: number | string; 
+  isPercentage?: boolean;
+  isFlat?: boolean;
+  valueDisplay?: string; 
+}
+
+export interface SharedSkillEffect {
+  stat: keyof HeroStats;
+  baseValuePerMajorLevel: number[]; 
+  minorValuePerMinorLevel: number[]; 
+  isPercentage: boolean;
+}
+
+export interface SharedSkillDefinition {
+  id: string;
+  name: string;
+  description: (currentBonus: number, nextBonusPerMinorLevel: number | null, nextBonusPerMajorLevelUnlock: number | null, isPercentage: boolean) => string;
+  iconName: string;
+  maxMajorLevels: number;
+  minorLevelsPerMajorTier: number[]; 
+  costSharedSkillPointsPerMajorLevel: number[]; 
+  costHeroXpPoolPerMinorLevel: (currentMajorLevel: number, currentMinorLevel: number) => number;
+  effects: SharedSkillEffect[];
+  prerequisites?: Array<{ skillId: string; majorLevel: number }>; 
+  position?: { x: number; y: number }; 
+  isPassiveEffect?: boolean; 
+  nodeSize?: 'normal' | 'large'; 
+}
+
+export interface PlayerSharedSkillProgress {
+  currentMajorLevel: number;
+  currentMinorLevel: number;
+}
+
+export type PlayerSharedSkillsState = Record<string, PlayerSharedSkillProgress>;

@@ -1,0 +1,28 @@
+export enum DungeonEventType {
+  TEXT_ONLY = 'TEXT_ONLY',
+  RESOURCE_GAIN = 'RESOURCE_GAIN',
+  RESOURCE_LOSS = 'RESOURCE_LOSS',
+  HEAL_PARTY = 'HEAL_PARTY',
+  DAMAGE_PARTY = 'DAMAGE_PARTY',
+  OFFER_RUN_BUFF_CHOICE = 'OFFER_RUN_BUFF_CHOICE',
+}
+
+export enum RunBuffRarity {
+  COMMON = 'COMMON',
+  UNCOMMON = 'UNCOMMON',
+  RARE = 'RARE',
+  EPIC = 'EPIC',
+  LEGENDARY = 'LEGENDARY',
+  MYTHIC = 'MYTHIC',
+}
+
+export enum CellType {
+  EMPTY = 'EMPTY',
+  WALL = 'WALL',
+  START = 'START',
+  EXIT = 'EXIT',
+  ENEMY = 'ENEMY',
+  LOOT = 'LOOT',
+  TRAP = 'TRAP',
+  EVENT = 'EVENT',
+}
