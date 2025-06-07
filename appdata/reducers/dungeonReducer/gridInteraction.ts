@@ -434,7 +434,9 @@ export const handleGridInteractionActions = (
                             y: 0,
                             statusEffects: [],
                             isElite: encounterDef.isElite,
-                            specialAttackCooldownsRemaining: {}, // Initialize for dungeon grid enemies
+                            specialAttackCooldownsRemaining: {}, 
+                            summonStrengthModifier: enemyDef.summonAbility ? 1.0 : undefined,
+                            currentShieldHealCooldownMs: enemyDef.shieldHealAbility?.initialCooldownMs ?? enemyDef.shieldHealAbility?.cooldownMs,
                         };
                         if (enemyDef.channelingAbilities) {
                              enemyDef.channelingAbilities.forEach((caDef: EnemyChannelingAbilityDefinition) => {
@@ -458,7 +460,7 @@ export const handleGridInteractionActions = (
                 battleLog: [`Encounter: ${encounterDef.name || 'Enemies'} at (${newC}, ${newR})!`],
                 status: 'FIGHTING',
                 ticksElapsed: 0, lastAttackEvents: [], battleLootCollected: [], defeatedEnemiesWithLoot: {}, battleExpCollected: 0, buildingLevelUpEventsInBattle: [], activePotionIdForUsage: null,
-                sessionTotalLoot: [], // Initialize for a new battle
+                sessionTotalLoot: [], 
                 sessionTotalExp: 0,
                 sessionTotalBuildingLevelUps: [],
             };

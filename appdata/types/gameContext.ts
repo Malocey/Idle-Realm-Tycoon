@@ -10,7 +10,7 @@ import { EnemyDefinition } from './enemy';
 import { WaveDefinition, BattleHero, StatusEffectDefinition } from './battle'; // Added StatusEffectDefinition
 import { IconComponent, Production, Cost } from './common';
 import { TownHallUpgradeDefinition, BuildingSpecificUpgradeDefinition, GuildHallUpgradeDefinition } from './upgrades';
-import { DungeonDefinition, TrapDefinition, DungeonEventDefinition } from './dungeon';
+import { DungeonDefinition, TrapDefinition, DungeonEventDefinition, WorldMapDefinition } from './dungeon'; // Added WorldMapDefinition
 import { PotionDefinition } from './crafting';
 import { ShardDefinition } from './shards';
 import { QuestTemplate } from './quests';
@@ -42,8 +42,9 @@ export interface GameContextType {
     runBuffDefinitions: Record<string, RunBuffDefinition>;
     colosseumWaveDefinitions: ColosseumWaveDefinition[];
     sharedSkillDefinitions: Record<string, SharedSkillDefinition>;
-    statusEffectDefinitions: Record<string, StatusEffectDefinition>; // New
-    demoniconMilestoneRewards: Record<string, DemoniconMilestoneRewardDefinition[]>; // New
+    statusEffectDefinitions: Record<string, StatusEffectDefinition>; 
+    demoniconMilestoneRewards: Record<string, DemoniconMilestoneRewardDefinition[]>;
+    worldMapDefinitions: Record<string, WorldMapDefinition>; // Added worldMapDefinitions
   };
   getCalculatedHeroStats: (heroState: PlayerHeroState | BattleHero) => HeroStats;
   getBuildingProduction: (buildingState: PlayerBuildingState) => Production[];

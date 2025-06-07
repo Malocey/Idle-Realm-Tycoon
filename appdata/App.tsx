@@ -14,7 +14,8 @@ import StoneQuarryMinigameView from './views/StoneQuarryMinigameView';
 import ActionBattleView from './views/ActionBattleView';
 import SharedSkillTreeView from './views/SharedSkillTreeView'; 
 import GoldMineMinigameView from './views/GoldMineMinigameView';
-import DemoniconPortalView from './views/DemoniconPortalView'; // New Import
+import DemoniconPortalView from './views/DemoniconPortalView';
+import WorldMapView from './views/WorldMapView'; // New Import
 import { GameState } from './types'; 
 
 const VIEW_TRANSITION_DURATION = 400; // ms, should match CSS animation duration
@@ -79,7 +80,8 @@ const AppContentInternal: React.FC = () => {
       case 'ACTION_BATTLE_VIEW': viewComponent = <ActionBattleView />; break;
       case 'SHARED_SKILL_TREE': viewComponent = <SharedSkillTreeView />; break; 
       case 'GOLD_MINE_MINIGAME': viewComponent = <GoldMineMinigameView />; break;
-      case 'DEMONICON_PORTAL': viewComponent = <DemoniconPortalView />; break; // New Case
+      case 'DEMONICON_PORTAL': viewComponent = <DemoniconPortalView />; break;
+      case 'WORLD_MAP': viewComponent = <WorldMapView />; break; 
       default: return null;
     }
 

@@ -1,4 +1,5 @@
 
+
 export * from './enums';
 export * from './common';
 export * from './building';
@@ -14,6 +15,7 @@ export * from './shards';
 export * from './quests';
 export * from './minigame';
 export * from './actionBattle';
+export * from './mapTypes'; // Added export for mapTypes
 export * from './main';
 
 // New Demonicon Milestone Types

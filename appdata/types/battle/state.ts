@@ -35,4 +35,7 @@ export interface BattleState {
   isDemoniconBattle?: boolean;
   demoniconEnemyId?: string;
   demoniconRank?: number;
+
+  // World Map Battle Origin
+  sourceMapNodeId?: string; // ID of the MapNode that triggered this battle
 }

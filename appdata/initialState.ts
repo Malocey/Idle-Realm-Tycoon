@@ -3,8 +3,17 @@ import { GameState, ResourceType, PlayerHeroState, StoneQuarryMinigameState, Act
 import { INITIAL_RESOURCES, INITIAL_HEROES, SQMG_GRID_SIZE, SQMG_DIRT_CLICK_YIELD, SQMG_INITIAL_GOLEM_CLICK_POWER, SQMG_INITIAL_GOLEM_CLICK_SPEED_MS, SQMG_INITIAL_GOLEM_MOVE_SPEED_MS, SQMG_ESSENCE_DROP_CHANCE, SQMG_PLAYER_MULTI_CLICK_CHANCE_BASE, SQMG_GOLEM_ESSENCE_AFFINITY_BASE, SQMG_PLAYER_CRYSTAL_FIND_CHANCE_BASE, SQMG_GOLEM_CRYSTAL_SIFTERS_BASE, SQMG_PLAYER_ADVANCED_EXCAVATION_BASE_CHANCE, BASE_GOLD_MINE_GRID_ROWS, BASE_GOLD_MINE_GRID_COLS, INITIAL_GOLD_MINE_PLAYER_STATS } from './constants';
 import { getExpToNextHeroLevel, calculateGoldMinePlayerStats } from './utils'; 
 import { RUN_BUFF_DEFINITIONS } from './gameData/index';
+import { worldMapDefinitions } from './gameData/maps/index'; // Updated import path
 
 export const INITIAL_STARTING_BUILDINGS: string[] = ['TOWN_HALL'];
+
+const initialMapId = 'verdant_plains'; 
+const initialPlayerNodeId = 'hometown'; 
+const initialMapDefinition = worldMapDefinitions[initialMapId];
+
+const initialRevealedMapNodeIds = initialMapDefinition?.nodes.find(node => node.id === initialPlayerNodeId)
+  ? [initialPlayerNodeId, 'goblin_camp_early'] 
+  : [];
 
 
 export const initialGameState: GameState = {
@@ -96,13 +105,13 @@ export const initialGameState: GameState = {
   goldMineMinigame: {
     status: 'IDLE_AT_SURFACE',
     grid: [],
-    gridRows: BASE_GOLD_MINE_GRID_ROWS, // Use base for initial
-    gridCols: BASE_GOLD_MINE_GRID_COLS, // Use base for initial
+    gridRows: BASE_GOLD_MINE_GRID_ROWS, 
+    gridCols: BASE_GOLD_MINE_GRID_COLS, 
     playerGridPos: { r: 0, c: 0 },
     currentStamina: INITIAL_GOLD_MINE_PLAYER_STATS.maxStamina,
     playerStats: calculateGoldMinePlayerStats(INITIAL_GOLD_MINE_PLAYER_STATS, {}), 
     currentDepth: 1,
-    maxUnlockedDepth: 1, // Initialize max unlocked depth
+    maxUnlockedDepth: 1, 
     resourcesCollectedThisRun: {},
     permanentUpgradeLevels: {},
     popupEvents: [],
@@ -113,13 +122,25 @@ export const initialGameState: GameState = {
   playerSharedSkills: {
     'SHARED_ORIGIN': { currentMajorLevel: 1, currentMinorLevel: 0 } 
   },
-  actionBattleAISystem: 'legacy', // Default AI system
-  // Demonicon State Initialization
+  actionBattleAISystem: 'legacy', 
+  currentMapId: initialMapId,
+  playerCurrentNodeId: initialPlayerNodeId, 
+  revealedMapNodeIds: initialRevealedMapNodeIds,
+  mapPoiCompletionStatus: {
+    'archer_unlocked_verdant_plains': false,
+    'lumber_mill_blueprint_obtained': false,
+    'farm_blueprint_obtained': false,
+    'damaged_gold_mine_access_granted': false,
+    'tannery_blueprint_obtained': false,
+    'cleric_recruitment_unlocked': false,
+    'stone_quarry_blueprint_obtained': false,
+  },
+
   defeatedEnemyTypes: [],
   demoniconHighestRankCompleted: {},
   activeDemoniconChallenge: null,
   globalDemoniconLevel: 1,
   globalDemoniconXP: 0,
-  expToNextGlobalDemoniconLevel: 20, // XP needed for Level 1 -> 2
-  achievedDemoniconMilestoneRewards: [], // New
+  expToNextGlobalDemoniconLevel: 20, 
+  achievedDemoniconMilestoneRewards: [], 
 };

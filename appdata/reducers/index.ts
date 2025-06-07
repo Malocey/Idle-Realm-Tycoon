@@ -1,5 +1,5 @@
 
-import { GameState, GameAction, GlobalBonuses, Cost, GameNotification, ResourceType, GameContextType, ActiveDemoniconChallenge, BattleHero, EnemyDefinition, BattleState, BuildingLevelUpEventInBattle } from './../types';
+import { GameState, GameAction, GlobalBonuses, Cost, GameNotification, ResourceType, GameContextType, ActiveDemoniconChallenge, BattleHero, EnemyDefinition, BattleState, BuildingLevelUpEventInBattle, PlayerHeroState } from './../types';
 import { calculateGlobalBonusesFromAllSources, formatNumber, canAfford, calculateGoldMinePlayerStats, calculateDemoniconEnemyStats as calculateDemoniconEnemyStatsUtil, getExpToNextHeroLevel, calculateHeroStats as calculateHeroStatsUtil } from './../utils';
 import { HERO_DEFINITIONS, ENEMY_DEFINITIONS as ALL_ENEMY_DEFINITIONS, TOWN_HALL_UPGRADE_DEFINITIONS, BUILDING_SPECIFIC_UPGRADE_DEFINITIONS, GUILD_HALL_UPGRADE_DEFINITIONS, GOLD_MINE_UPGRADE_DEFINITIONS, SKILL_TREES, EQUIPMENT_DEFINITIONS, RUN_BUFF_DEFINITIONS, STATUS_EFFECT_DEFINITIONS, SPECIAL_ATTACK_DEFINITIONS, BUILDING_DEFINITIONS, SHARD_DEFINITIONS, WAVE_DEFINITIONS } from '../gameData/index';
 import { NOTIFICATION_ICONS, INITIAL_GOLD_MINE_PLAYER_STATS, GAME_TICK_MS, DEFAULT_ENERGY_SHIELD_RECHARGE_DELAY_TICKS, MAX_WAVE_NUMBER } from '../constants';
@@ -67,6 +67,68 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
       }
     }
   }
+  
+  if (action.type === 'SET_PLAYER_MAP_NODE') { 
+    return { ...state, playerCurrentNodeId: action.payload.nodeId };
+  }
+  if (action.type === 'REVEAL_MAP_NODES_STATIC') {
+    const newRevealedIds = Array.from(new Set([...state.revealedMapNodeIds, ...action.payload.nodeIds]));
+    if (newRevealedIds.length > state.revealedMapNodeIds.length) {
+        return { ...state, revealedMapNodeIds: newRevealedIds };
+    }
+    return state;
+  }
+  if (action.type === 'SET_CURRENT_MAP') {
+    const { mapId } = action.payload;
+    const newMapDef = staticData.worldMapDefinitions[mapId];
+    if (!newMapDef) {
+      console.error(`Map definition not found for ID: ${mapId}`);
+      return state;
+    }
+    const entryNode = newMapDef.nodes.find(node => node.id === newMapDef.entryNodeId);
+    if (!entryNode) {
+        console.error(`Entry node ${newMapDef.entryNodeId} not found in map ${mapId}`);
+        return state;
+    }
+    const newRevealedMapNodeIds = [entryNode.id, ...entryNode.connections];
+    return {
+        ...state,
+        currentMapId: mapId,
+        playerCurrentNodeId: newMapDef.entryNodeId,
+        revealedMapNodeIds: newRevealedMapNodeIds,
+    };
+  }
+  if (action.type === 'COLLECT_MAP_RESOURCE') {
+    const { nodeId, mapId } = action.payload;
+    const mapDef = staticData.worldMapDefinitions[mapId];
+    if (!mapDef) return state;
+    const node = mapDef.nodes.find(n => n.id === nodeId);
+    if (!node || node.poiType !== 'RESOURCE' || !node.resourceType || !node.resourceAmount) return state;
+
+    const newResources = { ...state.resources };
+    newResources[node.resourceType] = (newResources[node.resourceType] || 0) + node.resourceAmount;
+    
+    const newNotifications = [...state.notifications, {
+        id: Date.now().toString(),
+        message: `Collected ${formatNumber(node.resourceAmount)} ${node.resourceType.replace(/_/g, ' ')} from ${node.name}.`,
+        type: 'success',
+        iconName: ICONS[node.resourceType] ? node.resourceType : NOTIFICATION_ICONS.success,
+        timestamp: Date.now()
+    } as GameNotification];
+
+    // Future: Add cooldown logic here if needed
+    return { ...state, resources: newResources, notifications: newNotifications };
+  }
+  if (action.type === 'SET_MAP_POI_COMPLETED') { 
+    return {
+      ...state,
+      mapPoiCompletionStatus: {
+        ...state.mapPoiCompletionStatus,
+        [action.payload.poiKey]: true,
+      },
+    };
+  }
+
 
   if (action.type === 'CONSTRUCT_BUILDING' || action.type === 'UPGRADE_BUILDING') {
     nextState = handleBuildingActions(state, action, globalBonuses);
@@ -95,15 +157,9 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
     nextState = handleLibraryActions(state, action, globalBonuses);
   }
   else if (action.type === 'START_DEMONICON_CHALLENGE' || action.type === 'PROCESS_DEMONICON_VICTORY_REWARDS' || action.type === 'CONTINUE_DEMONICON_CHALLENGE' || action.type === 'CLEANUP_DEMONICON_STATE') {
-    // START_DEMONICON_CHALLENGE is handled by demoniconReducer, which sets up battleState.
-    // The others are also internal demonicon flow.
     nextState = demoniconReducer(state, action, globalBonuses, staticData);
   }
   else if (action.type === 'START_BATTLE_PREPARATION') {
-    // Dispatch to waveBattleFlowReducer for normal wave battles
-    // Demonicon start is handled by START_DEMONICON_CHALLENGE in demoniconReducer
-    // Dungeon grid battle start is handled within gridInteraction.
-    // This specific action is now primarily for initiating regular wave battles.
     nextState = waveBattleFlowReducer(state, { type: 'START_WAVE_BATTLE_PREPARATION', payload: action.payload }, globalBonuses);
     if (action.payload.isAutoProgression && action.payload.previousBattleOutcomeForQuestProcessing) {
         const questProgressAction: GameAction = {
@@ -115,24 +171,53 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
   }
   else if (action.type === 'END_BATTLE') {
     if (!originalBattleState) {
-      return state; // No battle to end
+      return state; 
     }
+    
+    if (originalBattleState.sourceMapNodeId && action.payload.outcome === 'VICTORY') {
+        let poiKeyToComplete: string | null = null;
+        let unlockNotificationMessage: string | null = null;
+        
+        if (originalBattleState.sourceMapNodeId === 'lumber_mill_battle' && !state.mapPoiCompletionStatus['lumber_mill_blueprint_obtained']) {
+            poiKeyToComplete = 'lumber_mill_blueprint_obtained';
+            unlockNotificationMessage = 'Lumber Mill blueprints acquired! You can now build it in town.';
+        } else if (originalBattleState.sourceMapNodeId === 'farm_battle' && !state.mapPoiCompletionStatus['farm_blueprint_obtained']) {
+            poiKeyToComplete = 'farm_blueprint_obtained';
+            unlockNotificationMessage = 'Farm plans discovered! You can now build it in town.';
+        } else if (originalBattleState.sourceMapNodeId === 'gold_mine_access_battle' && !state.mapPoiCompletionStatus['damaged_gold_mine_access_granted']) { // Updated from gold_mine_approach
+            poiKeyToComplete = 'damaged_gold_mine_access_granted';
+            unlockNotificationMessage = 'The path to the Damaged Gold Mine is clear!';
+        } else if (originalBattleState.sourceMapNodeId === 'tannery_guardians' && !state.mapPoiCompletionStatus['tannery_blueprint_obtained']) {
+            poiKeyToComplete = 'tannery_blueprint_obtained';
+            unlockNotificationMessage = 'Tannery Blueprints secured! Available for construction.';
+        } else if (originalBattleState.sourceMapNodeId === 'deep_woods_encounter' && !state.mapPoiCompletionStatus['cleric_recruitment_unlocked']) {
+            poiKeyToComplete = 'cleric_recruitment_unlocked';
+            unlockNotificationMessage = 'A Cleric, impressed by your valor, offers their aid! Cleric recruitment now available.';
+        } else if (originalBattleState.sourceMapNodeId === 'stone_quarry_guards' && !state.mapPoiCompletionStatus['stone_quarry_blueprint_obtained']) {
+            poiKeyToComplete = 'stone_quarry_blueprint_obtained';
+            unlockNotificationMessage = 'Stone Quarry Blueprints obtained! You can now build it.';
+        }
+
+
+        if (poiKeyToComplete && unlockNotificationMessage) {
+            nextState = {
+                ...nextState,
+                mapPoiCompletionStatus: { ...nextState.mapPoiCompletionStatus, [poiKeyToComplete]: true },
+                notifications: [...nextState.notifications, { id: Date.now().toString(), message: unlockNotificationMessage, type: 'success', iconName: ICONS.UPGRADE ? 'UPGRADE' : NOTIFICATION_ICONS.success, timestamp: Date.now() }]
+            };
+        }
+    }
+
+
     if (originalBattleState.isDemoniconBattle) {
-      nextState = demoniconReducer(state, action as any, globalBonuses, staticData); // demoniconReducer handles its own END_BATTLE logic internally
+      nextState = demoniconReducer(state, action as any, globalBonuses, staticData); 
     } else if (originalBattleState.isDungeonGridBattle) {
-      // A battle from a dungeon grid cell has ended.
       nextState = dungeonBattleFlowReducer(state, { type: 'END_DUNGEON_GRID_BATTLE_RESULT', payload: { outcome: action.payload.outcome, battleStateFromEnd: originalBattleState } }, globalBonuses);
-    } else if (originalBattleState.isDungeonBattle) {
-      // This is for a non-grid dungeon battle (e.g., scripted boss, might not exist yet, or END_DUNGEON_FLOOR handles it)
-      // For now, treat as END_DUNGEON_FLOOR or delegate to a specific dungeon flow if it exists.
-      // This case might need more specific handling if dungeon battles differ significantly from grid encounters' end.
-      // Assuming END_DUNGEON_FLOOR is the primary way these conclude.
-      // If END_BATTLE is called for a generic dungeon battle, it means the floor is over.
+    } else if (originalBattleState.isDungeonBattle) { 
       nextState = handleDungeonActions(state, { type: 'END_DUNGEON_FLOOR', payload: { outcome: action.payload.outcome, collectedLoot: action.payload.collectedLoot, collectedExp: action.payload.expRewardToHeroes, buildingLevelUps: originalBattleState.buildingLevelUpEventsInBattle } }, globalBonuses);
 
-    } else { // Normal Wave Battle
-      nextState = waveBattleFlowReducer(state, { type: 'END_WAVE_BATTLE_RESULT', payload: { outcome: action.payload.outcome, battleStateFromEnd: originalBattleState } }, globalBonuses);
-       // Quest processing for wave battles
+    } else { // Normal Wave Battle (or a map battle that's not dungeon/demonicon)
+      nextState = waveBattleFlowReducer(nextState, { type: 'END_WAVE_BATTLE_RESULT', payload: { outcome: action.payload.outcome, battleStateFromEnd: originalBattleState } }, globalBonuses);
       const lootForQuests: Cost[] = [];
       (action.payload.collectedLoot || []).forEach(loot => {
           const existing = lootForQuests.find(l => l.resource === loot.resource);
@@ -156,21 +241,10 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
     }
   }
   else if (action.type === 'SELECT_POTION_FOR_USAGE' || action.type === 'USE_POTION_ON_HERO') {
-      if(state.battleState){ // Potions are only relevant if a battle is active
-        // This part was already implicitly handled by the battleReducer logic for wave battles
-        // Ensure this is passed to the correct battle flow if needed, or keep general logic here.
-        // For simplicity, let's assume `handleBattleActions` was a placeholder and the logic
-        // for potion usage during a battle tick is handled by the respective battle processor.
-        // If these actions modify `battleState` directly, they should be part of the flow reducers.
-        // For now, assuming battle processors handle potion effects based on `activePotionIdForUsage`.
-        // If this is an action that *modifies* state before a tick (e.g., setting activePotionIdForUsage),
-        // it could be here.
+      if(state.battleState){
         if (action.type === 'SELECT_POTION_FOR_USAGE' && state.battleState) {
              nextState = { ...state, battleState: { ...state.battleState, activePotionIdForUsage: action.payload.potionId }};
         } else if (action.type === 'USE_POTION_ON_HERO' && state.battleState && state.battleState.activePotionIdForUsage) {
-            // The actual effect application happens in the battle tick logic.
-            // This action might just log or confirm. For now, let a tick handle it.
-            // Or, if immediate, it needs access to hero stats and potion defs.
              const potionId = state.battleState.activePotionIdForUsage;
              const potionDef = staticData.potionDefinitions[potionId];
              if (!potionDef || (state.potions[potionId] || 0) <= 0) {
@@ -180,8 +254,6 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
             if (heroIndex === -1 || state.battleState.heroes[heroIndex].currentHp <= 0) {
                 return { ...state, notifications: [...state.notifications, { id: Date.now().toString(), message: "Cannot use potion on invalid or defeated target.", type: "warning", iconName: NOTIFICATION_ICONS.warning, timestamp: Date.now() }] };
             }
-            // Actual effect should be in tick or a dedicated potion effect processor.
-            // For now, just consume the potion.
             const newPotions = { ...state.potions };
             newPotions[potionId] = (newPotions[potionId] || 1) - 1;
             const hero = state.battleState.heroes[heroIndex];
@@ -206,8 +278,8 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
     nextState = handleDungeonActions(tempStateWithNotification, { type: 'GAIN_RUN_XP', payload: { amount: 1000 } }, globalBonuses);
   }
   else if (
-    action.type === 'START_DUNGEON_RUN' || // START_DUNGEON_RUN is now a distinct setup action
-    action.type === 'END_DUNGEON_FLOOR' || // END_DUNGEON_FLOOR handles end of a floor (incl. battle from grid)
+    action.type === 'START_DUNGEON_RUN' || 
+    action.type === 'END_DUNGEON_FLOOR' || 
     action.type === 'END_DUNGEON_RUN' ||
     action.type === 'START_DUNGEON_EXPLORATION' ||
     action.type === 'MOVE_PARTY_ON_GRID' ||

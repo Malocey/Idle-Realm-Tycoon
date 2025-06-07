@@ -4,6 +4,7 @@ import { PermanentHeroBuff } from '../hero';
 import { DungeonEncounterDefinition } from './encounter';
 import { TrapDefinition } from './trap';
 import { DungeonEventDefinition } from './event';
+import { MapNode } from '../mapTypes';
 
 
 export interface DungeonFloorDefinition {
@@ -33,4 +34,12 @@ export interface DungeonDefinition {
     // equipmentRewardIds?: string[]; // Future: Specific equipment pieces
   };
   possiblePermanentBuffs: Array<Omit<PermanentHeroBuff, 'description'>>; // Template for buffs
+}
+
+export interface WorldMapDefinition {
+  id: string;
+  name: string;
+  description?: string;
+  nodes: MapNode[];
+  entryNodeId: string;
 }

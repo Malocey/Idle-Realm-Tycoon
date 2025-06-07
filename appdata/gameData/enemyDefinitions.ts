@@ -1,3 +1,4 @@
+
 import { EnemyDefinition } from '../types';
 
 // Import individual enemy definitions
@@ -25,8 +26,10 @@ import { IRONCLAD_GOLEM_DEFINITION } from './enemies/ironcladGolem';
 import { BANDIT_MARKSMAN_DEFINITION } from './enemies/banditMarksman';
 import { ARMORED_GOBLIN_DEFINITION } from './enemies/armoredGoblin';
 import { IMP_WARLOCK_DEFINITION } from './enemies/impWarlock';
-import { SHIELDED_GOBLIN_DEFINITION } from './enemies/shieldedGoblin'; // New
-import { ARCANE_SENTRY_DEFINITION } from './enemies/arcaneSentry'; // New
+import { SHIELDED_GOBLIN_DEFINITION } from './enemies/shieldedGoblin'; 
+import { ARCANE_SENTRY_DEFINITION } from './enemies/arcaneSentry'; 
+import { SHIELD_MENDER_GOBLIN_DEFINITION } from './enemies/shieldMenderGoblin'; // New
+import { ARCANE_RESTORER_DEFINITION } from './enemies/arcaneRestorer'; // New
 
 
 export const ENEMY_DEFINITIONS: Record<string, EnemyDefinition> = {
@@ -54,6 +57,8 @@ export const ENEMY_DEFINITIONS: Record<string, EnemyDefinition> = {
   'BANDIT_MARKSMAN': BANDIT_MARKSMAN_DEFINITION,
   'ARMORED_GOBLIN': ARMORED_GOBLIN_DEFINITION,
   'IMP_WARLOCK': IMP_WARLOCK_DEFINITION,
-  'SHIELDED_GOBLIN': SHIELDED_GOBLIN_DEFINITION, // New
-  'ARCANE_SENTRY': ARCANE_SENTRY_DEFINITION, // New
+  'SHIELDED_GOBLIN': SHIELDED_GOBLIN_DEFINITION, 
+  'ARCANE_SENTRY': ARCANE_SENTRY_DEFINITION, 
+  'SHIELD_MENDER_GOBLIN': SHIELD_MENDER_GOBLIN_DEFINITION, // New
+  'ARCANE_RESTORER': ARCANE_RESTORER_DEFINITION, // New
 };

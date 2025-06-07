@@ -31,14 +31,7 @@ const getContextualResources = (
 ): ResourceType[] => {
   switch (activeView) {
     case 'TOWN':
-      return [
-        ResourceType.GOLD, ResourceType.WOOD, ResourceType.STONE, ResourceType.IRON,
-        ResourceType.CRYSTALS, ResourceType.FOOD, ResourceType.LEATHER, ResourceType.TOWN_XP,
-        ResourceType.HEROIC_POINTS, ResourceType.META_CURRENCY, ResourceType.CATACOMB_KEY,
-        ResourceType.CATACOMB_BLUEPRINT, ResourceType.AETHERIUM, ResourceType.HERB_BLOODTHISTLE,
-        ResourceType.HERB_IRONWOOD_LEAF,
-        ...(gameState.buildings.some(b => b.id === 'DEMONICON_GATE' && b.level > 0) ? [ResourceType.DEMONIC_COIN] : [])
-      ].filter(rt => gameState.resources[rt] !== undefined || rt === ResourceType.TOWN_XP);
+      return [ResourceType.GOLD, ResourceType.TOWN_XP]; // Simplified for Town View
     case 'BATTLEFIELD':
       if (battleState?.isDemoniconBattle) {
         return [ResourceType.HEROIC_POINTS, ResourceType.DEMONIC_COIN];
@@ -74,6 +67,8 @@ const getContextualResources = (
       return [ResourceType.DEMONIC_COIN, ResourceType.GOLD, ResourceType.HEROIC_POINTS];
     case 'DUNGEON_REWARD':
       return [ResourceType.GOLD, ResourceType.HEROIC_POINTS]; 
+    case 'WORLD_MAP': // Add case for World Map
+      return [ResourceType.GOLD, ResourceType.FOOD, ResourceType.HEROIC_POINTS]; // Example resources for world map
     default:
       return [ResourceType.GOLD, ResourceType.HEROIC_POINTS];
   }
@@ -99,7 +94,7 @@ const TopBar: React.FC = () => {
               p.resource !== ResourceType.HEROIC_POINTS &&
               p.resource !== ResourceType.CATACOMB_BLUEPRINT &&
               p.resource !== ResourceType.AETHERIUM) {
-            amountPerTickWithBonus *= (1 + currentGlobalBonuses.allResourceProductionBonus);
+             amountPerTickWithBonus *= (1 + currentGlobalBonuses.allResourceProductionBonus);
           }
           rates[p.resource] = (rates[p.resource] || 0) + amountPerTickWithBonus;
         });
@@ -132,12 +127,12 @@ const TopBar: React.FC = () => {
   const canAccessHeroAcademy = gameState.heroes.length > 0;
 
   const mainViewButtonText = () => {
-    if (gameState.activeView === 'TOWN') return 'Go to Battle';
+    if (gameState.activeView === 'TOWN' || gameState.activeView === 'WORLD_MAP') return 'Go to Battle';
     return 'Go to Town';
   };
 
   const handleMainViewToggle = () => {
-    if (gameState.activeView === 'TOWN') {
+    if (gameState.activeView === 'TOWN' || gameState.activeView === 'WORLD_MAP') {
       if (gameState.activeDungeonGrid) {
         dispatch({ type: 'SET_ACTIVE_VIEW', payload: 'DUNGEON_EXPLORE' });
       } else if (gameState.battleState && gameState.battleState.status === 'FIGHTING') {
@@ -253,7 +248,9 @@ const TopBar: React.FC = () => {
             const value = resType === ResourceType.TOWN_XP ? gameState.totalTownXp : (gameState.resources[resType] || 0);
             const rate = productionRates[resType];
 
-            if (!isMinigameView && value === 0 && !rate && ![ResourceType.GOLD, ResourceType.TOWN_XP, ResourceType.HEROIC_POINTS].includes(resType)) {
+            if (gameState.activeView === 'TOWN') {
+                 if (resType !== ResourceType.GOLD && resType !== ResourceType.TOWN_XP) return null;
+            } else if (!isMinigameView && value === 0 && !rate && ![ResourceType.GOLD, ResourceType.TOWN_XP, ResourceType.HEROIC_POINTS].includes(resType)) {
                 return null;
             }
              
@@ -287,6 +284,16 @@ const TopBar: React.FC = () => {
               <Button onClick={() => setIsDungeonModalOpen(true)} variant="secondary" size="sm" icon={ICONS.COMPASS && <ICONS.COMPASS className="w-4 h-4"/>}>
                   Dungeons
               </Button>
+          )}
+          {gameState.activeView !== 'WORLD_MAP' && ( // New Button for World Map
+            <Button
+              onClick={() => dispatch({ type: 'SET_ACTIVE_VIEW', payload: 'WORLD_MAP' })}
+              variant="secondary"
+              size="sm"
+              icon={ICONS.MAP_ICON && <ICONS.MAP_ICON className="w-4 h-4"/>}
+            >
+              World Map
+            </Button>
           )}
           {canAccessHeroAcademy && gameState.activeView !== 'HERO_ACADEMY' && (
             <Button

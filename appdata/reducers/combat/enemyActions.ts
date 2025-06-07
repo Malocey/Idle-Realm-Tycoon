@@ -53,7 +53,6 @@ export const processEnemyActions = (
                     areActionsBlocked: abilityDef.channelingProperties.blocksActionsWhileChanneling ?? true,
                 };
                 
-                // ** CRITICAL FIX: Set cooldown for the channeling ability itself upon starting it **
                 if (!enemyCopy.specialAttackCooldownsRemaining) {
                     enemyCopy.specialAttackCooldownsRemaining = {};
                 }
@@ -61,22 +60,16 @@ export const processEnemyActions = (
                 
                 if (abilityDef.channelingProperties.blocksActionsWhileChanneling) {
                     enemyActedThisTick = true;
-                    // If channel blocks actions, it also "uses up" the basic attack for this turn
                     enemyCopy.attackCooldown = (1000 / enemyCopy.calculatedStats.attackSpeed); 
                 }
-                // If channel does NOT block actions, enemyActedThisTick remains false.
-                // Basic attack CD is NOT reset here by the channel start itself.
-                // It will be reset if a basic attack occurs later in this function.
                 break; 
             }
         }
     }
 
-    // 2. Other Cooldown-Based Abilities (Summon, Heal, AOE, Periodic)
-    // These will only trigger if not already channeling something that blocks actions,
-    // or if the channel ability itself doesn't block actions and the enemy hasn't acted yet.
+    // 2. Other Cooldown-Based Abilities
 
-    // Explosion Ability Check (if it has one)
+    // Explosion Ability Check
     if (!enemyActedThisTick && enemyCopy.explosionAbility && enemyCopy.explosionTimerRemainingMs !== undefined) {
       if (enemyCopy.explosionTimerRemainingMs <= 0) {
         logMessages.push(`${enemyCopy.name} explodes!`);
@@ -89,8 +82,8 @@ export const processEnemyActions = (
             logMessages.push(`  ↳ Hits ${heroTarget.name} for ${damageDealt} damage.`);
           }
         });
-        enemyCopy.currentHp = 0; // Enemy is destroyed by explosion
-        enemyActedThisTick = true; // Considered an action
+        enemyCopy.currentHp = 0; 
+        enemyActedThisTick = true; 
       }
     }
 
@@ -103,13 +96,12 @@ export const processEnemyActions = (
           if (heroTarget.currentHp > 0) {
             const newEffect: StatusEffect = {
               instanceId: `periodic-${enemyCopy.uniqueBattleId}-${heroTarget.uniqueBattleId}-${Date.now()}`,
-              // definitionId will be undefined for inline effects
               type: effectDef.type,
               name: effectDef.name,
               iconName: effectDef.iconName,
               remainingDurationMs: effectDef.durationMs,
               sourceId: enemyCopy.uniqueBattleId,
-              appliedAtTick: gameState.battleState!.ticksElapsed, // Assuming battleState is not null here
+              appliedAtTick: gameState.battleState!.ticksElapsed,
               statAffected: effectDef.statAffected,
               modifierType: effectDef.modifierType,
               value: effectDef.value,
@@ -122,8 +114,8 @@ export const processEnemyActions = (
           }
         });
         enemyCopy.currentPeriodicEffectCooldownMs = enemyCopy.periodicEffectAbility.cooldownMs;
-        enemyActedThisTick = true; // Considered an action
-        enemyCopy.attackCooldown = (1000 / enemyCopy.calculatedStats.attackSpeed); // Reset basic attack cooldown
+        enemyActedThisTick = true; 
+        enemyCopy.attackCooldown = (1000 / enemyCopy.calculatedStats.attackSpeed); 
       }
     }
 
@@ -131,13 +123,14 @@ export const processEnemyActions = (
     if (!enemyActedThisTick && enemyCopy.summonAbility && enemyCopy.currentSummonCooldownMs !== undefined) {
       if (enemyCopy.currentSummonCooldownMs <= 0) {
         logMessages.push(`${enemyCopy.name} uses ${enemyCopy.summonAbility.enemyIdToSummon === 'GOBLIN' ? 'Summon Goblins' : 'Summon'}!`);
+        const currentSummonStrength = enemyCopy.summonStrengthModifier || 1.0; // Get current strength
         for (let i = 0; i < enemyCopy.summonAbility.count; i++) {
           const summonedEnemyDef = ENEMY_DEFINITIONS[enemyCopy.summonAbility.enemyIdToSummon];
           if (summonedEnemyDef) {
             const currentWaveForScaling = gameState.battleState?.waveNumber;
             const summonedEnemyStats = (enemyCopy.summonAbility.scaleWithWave && currentWaveForScaling)
-              ? calculateWaveEnemyStats(summonedEnemyDef, currentWaveForScaling)
-              : calculateWaveEnemyStats(summonedEnemyDef, 1); 
+              ? calculateWaveEnemyStats(summonedEnemyDef, currentWaveForScaling, false, currentSummonStrength) // Pass strength modifier
+              : calculateWaveEnemyStats(summonedEnemyDef, 1, false, currentSummonStrength); // Pass strength modifier
 
             const initialSummonCooldowns: Record<string, number> = {};
             if (summonedEnemyDef.channelingAbilities) {
@@ -160,9 +153,9 @@ export const processEnemyActions = (
               statusEffects: [], isElite: false,
               specialAttackCooldownsRemaining: initialSummonCooldowns,
             };
-             // Initialize other specific ability cooldowns for the summon
             if (summonedEnemyDef.summonAbility) newSummonedEnemy.currentSummonCooldownMs = summonedEnemyDef.summonAbility.initialCooldownMs ?? summonedEnemyDef.summonAbility.cooldownMs;
             if (summonedEnemyDef.healAbility) newSummonedEnemy.currentHealCooldownMs = summonedEnemyDef.healAbility.initialCooldownMs ?? summonedEnemyDef.healAbility.cooldownMs;
+            if (summonedEnemyDef.shieldHealAbility) newSummonedEnemy.currentShieldHealCooldownMs = summonedEnemyDef.shieldHealAbility.initialCooldownMs ?? summonedEnemyDef.shieldHealAbility.cooldownMs;
             if (summonedEnemyDef.aoeAttackChance && summonedEnemyDef.aoeAttackCooldownBaseMs) newSummonedEnemy.currentAoeAttackCooldownMs = summonedEnemyDef.aoeAttackCooldownBaseMs;
             if (summonedEnemyDef.explosionAbility) newSummonedEnemy.explosionTimerRemainingMs = summonedEnemyDef.explosionAbility.timerMs;
             if (summonedEnemyDef.periodicEffectAbility) newSummonedEnemy.currentPeriodicEffectCooldownMs = summonedEnemyDef.periodicEffectAbility.initialCooldownMs ?? summonedEnemyDef.periodicEffectAbility.cooldownMs;
@@ -172,11 +165,49 @@ export const processEnemyActions = (
           }
         }
         enemyCopy.currentSummonCooldownMs = enemyCopy.summonAbility.cooldownMs;
-        enemyActedThisTick = true; // Considered an action
-        enemyCopy.attackCooldown = (1000 / enemyCopy.calculatedStats.attackSpeed); // Reset basic attack cooldown
+        enemyCopy.summonStrengthModifier = currentSummonStrength * 1.25; // Increase strength for next summon
+        logMessages.push(`  ↳ ${enemyCopy.name}'s summons will be stronger next time! (Modifier: x${enemyCopy.summonStrengthModifier.toFixed(2)})`);
+        enemyActedThisTick = true; 
+        enemyCopy.attackCooldown = (1000 / enemyCopy.calculatedStats.attackSpeed); 
       }
     }
     
+    // Shield Heal Ability
+    if (!enemyActedThisTick && enemyCopy.shieldHealAbility && enemyCopy.currentShieldHealCooldownMs !== undefined) {
+        if (enemyCopy.currentShieldHealCooldownMs <= 0) {
+            const alliesWithShield = currentEnemies.filter(e => 
+                e.currentHp > 0 && 
+                e.uniqueBattleId !== enemyCopy.uniqueBattleId && 
+                e.calculatedStats.maxEnergyShield && e.calculatedStats.maxEnergyShield > 0 &&
+                (e.currentEnergyShield || 0) < e.calculatedStats.maxEnergyShield
+            );
+
+            if (alliesWithShield.length > 0) {
+                let healTarget: BattleEnemy | undefined;
+                if (enemyCopy.shieldHealAbility.targetPriority === 'LOWEST_SHIELD_PERCENTAGE') {
+                    alliesWithShield.sort((a,b) => ((a.currentEnergyShield||0) / a.calculatedStats.maxEnergyShield!) - ((b.currentEnergyShield||0) / b.calculatedStats.maxEnergyShield!));
+                } else if (enemyCopy.shieldHealAbility.targetPriority === 'LOWEST_SHIELD_ABSOLUTE') {
+                    alliesWithShield.sort((a,b) => (a.currentEnergyShield||0) - (b.currentEnergyShield||0));
+                } else { // RANDOM_ALLY_WITH_SHIELD
+                    // Already filtered, just pick one
+                }
+                healTarget = alliesWithShield[0];
+
+                if (healTarget) {
+                    const shieldHealAmount = enemyCopy.shieldHealAbility.healAmount;
+                    attackEvents.push({
+                        attackerId: enemyCopy.uniqueBattleId, targetId: healTarget.uniqueBattleId, damage: 0, isCrit: false,
+                        timestamp: Date.now() + Math.random(), isHeal: true, healAmount: 0, shieldHealAmount
+                    });
+                    logMessages.push(`${enemyCopy.name} restores ${shieldHealAmount} Shield to ${healTarget.name}.`);
+                    enemyCopy.currentShieldHealCooldownMs = enemyCopy.shieldHealAbility.cooldownMs;
+                    enemyActedThisTick = true;
+                    enemyCopy.attackCooldown = (1000 / enemyCopy.calculatedStats.attackSpeed);
+                }
+            }
+        }
+    }
+
     // Heal Ability
     if (!enemyActedThisTick && enemyCopy.healAbility && enemyCopy.currentHealCooldownMs !== undefined) {
       if (enemyCopy.currentHealCooldownMs <= 0) {
@@ -201,8 +232,8 @@ export const processEnemyActions = (
             });
             logMessages.push(`${enemyCopy.name} heilt ${healTarget.name} um ${healAmount} HP.`);
             enemyCopy.currentHealCooldownMs = enemyCopy.healAbility.cooldownMs;
-            enemyActedThisTick = true; // Considered an action
-            enemyCopy.attackCooldown = (1000 / enemyCopy.calculatedStats.attackSpeed); // Reset basic attack cooldown
+            enemyActedThisTick = true; 
+            enemyCopy.attackCooldown = (1000 / enemyCopy.calculatedStats.attackSpeed); 
           }
         }
       }
@@ -220,24 +251,20 @@ export const processEnemyActions = (
                     logMessages.push(`  ↳ Hits ${heroTarget.name} for ${damageDealt} damage.`);
                     attackEvents.push({ attackerId: enemyCopy.uniqueBattleId, targetId: heroTarget.uniqueBattleId, damage: damageDealt, isCrit: false, timestamp: Date.now() + Math.random(), isSpecialAttack: true, specialAttackName: 'AoE Attack' });
                 });
-                enemyCopy.currentAoeAttackCooldownMs = enemyCopy.aoeAttackCooldownBaseMs || 10000; // Default to 10s if base isn't set
-                enemyActedThisTick = true; // Considered an action
-                enemyCopy.attackCooldown = (1000 / enemyCopy.calculatedStats.attackSpeed); // Reset basic attack cooldown
+                enemyCopy.currentAoeAttackCooldownMs = enemyCopy.aoeAttackCooldownBaseMs || 10000; 
+                enemyActedThisTick = true; 
+                enemyCopy.attackCooldown = (1000 / enemyCopy.calculatedStats.attackSpeed); 
             }
         }
     }
 
-    // Basic Attack (if no other action taken and cooldown is ready)
+    // Basic Attack
     if (!enemyActedThisTick && enemyCopy.attackCooldown <= 0) {
-      // Ensure not channeling something that blocks actions (already checked by enemyActedThisTick if channel started this tick and blocks)
-      // If currently in a non-blocking channel, this can still proceed.
       if (enemyCopy.channelingState && enemyCopy.channelingState.areActionsBlocked) {
-        // Skip basic attack if currently channeling something that blocks actions
       } else {
         const livingHeroes = currentHeroes.filter(h => h.currentHp > 0);
         if (livingHeroes.length > 0) {
           let targetHeroData: BattleHero | undefined;
-          // Prioritize taunting heroes if any
           const tauntingHeroes = livingHeroes.filter(h => h.isTaunting);
           if (tauntingHeroes.length > 0) {
               targetHeroData = tauntingHeroes[Math.floor(Math.random() * tauntingHeroes.length)];
@@ -259,7 +286,6 @@ export const processEnemyActions = (
             }
             attackEvents.push({ attackerId: enemyCopy.uniqueBattleId, targetId: targetHeroData.uniqueBattleId, damage: damageDealt, isCrit, timestamp: Date.now() + Math.random() });
 
-            // Apply on-attack abilities
             if (enemyCopy.onAttackAbilities) {
               enemyCopy.onAttackAbilities.forEach(ability => {
                 if (Math.random() < ability.chance) {
@@ -269,18 +295,18 @@ export const processEnemyActions = (
                   if (sourceDef) {
                     effectToApply = {
                       instanceId: `onAttack-${enemyCopy.uniqueBattleId}-${targetHeroData!.uniqueBattleId}-${ability.statusEffectId || 'inline'}-${Date.now()}`,
-                      definitionId: ability.statusEffectId, // Store ID if it's predefined
+                      definitionId: ability.statusEffectId, 
                       type: sourceDef.type,
                       name: sourceDef.name,
                       iconName: sourceDef.iconName,
                       remainingDurationMs: sourceDef.durationMs,
                       sourceId: enemyCopy.uniqueBattleId,
-                      appliedAtTick: gameState.battleState!.ticksElapsed, // Assuming battleState is not null
+                      appliedAtTick: gameState.battleState!.ticksElapsed, 
                       statAffected: sourceDef.statAffected,
                       modifierType: sourceDef.modifierType,
                       value: sourceDef.value,
-                      damagePerTick: sourceDef.damagePerTick, // From definition
-                      tickIntervalMs: sourceDef.tickIntervalMs, // From definition
+                      damagePerTick: sourceDef.damagePerTick, 
+                      tickIntervalMs: sourceDef.tickIntervalMs, 
                       timeUntilNextDotTickMs: sourceDef.type === StatusEffectType.DOT && sourceDef.tickIntervalMs ? sourceDef.tickIntervalMs : undefined,
                     };
                   }
@@ -294,8 +320,7 @@ export const processEnemyActions = (
             }
           }
         }
-        enemyCopy.attackCooldown = (1000 / enemyCopy.calculatedStats.attackSpeed); // Reset basic attack cooldown
-        // enemyActedThisTick = true; // No longer strictly needed to set here if it's the last possible action
+        enemyCopy.attackCooldown = (1000 / enemyCopy.calculatedStats.attackSpeed); 
       }
     }
     return enemyCopy;
@@ -303,4 +328,3 @@ export const processEnemyActions = (
 
   return { updatedEnemies, attackEvents, newSummons, logMessages, statusEffectsToApplyToHeroes };
 };
-

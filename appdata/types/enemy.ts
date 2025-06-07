@@ -12,6 +12,13 @@ export interface SummonAbility {
   scaleWithWave?: boolean;
 }
 
+export interface ShieldHealAbility { // New Interface
+  healAmount: number; // Shield points
+  cooldownMs: number;
+  initialCooldownMs?: number;
+  targetPriority: 'LOWEST_SHIELD_ABSOLUTE' | 'LOWEST_SHIELD_PERCENTAGE' | 'RANDOM_ALLY_WITH_SHIELD';
+}
+
 export interface EnemyHealAbility {
   healAmount: number;
   healFactor?: number; 
@@ -98,6 +105,7 @@ export interface EnemyDefinition {
     defenseFactor?: number;
   };
   summonAbility?: SummonAbility;
+  shieldHealAbility?: ShieldHealAbility; // New Property
   healAbility?: EnemyHealAbility;
   aoeAttackChance?: number;
   aoeDamageFactor?: number;

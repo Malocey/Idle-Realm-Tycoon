@@ -21,7 +21,7 @@ export const waveBattleFlowReducer = (
           rewardsForPreviousWave,
           expFromPreviousWave,
           previousWaveNumberCleared,
-          buildingLevelUpEventsFromPreviousWave, // Corrected property name here
+          buildingLevelUpEventsFromPreviousWave, 
           previousBattleOutcomeForQuestProcessing
       } = action.payload;
       const waveDef = WAVE_DEFINITIONS.find(w => w.waveNumber === waveNumber);
@@ -50,7 +50,7 @@ export const waveBattleFlowReducer = (
               rewardsForPreviousWave.forEach(r => tempNewResources[r.resource] = (tempNewResources[r.resource] || 0) + Math.floor(r.amount));
           }
           newSessionTotalExp += (expFromPreviousWave || 0);
-          if (buildingLevelUpEventsFromPreviousWave) { // Use corrected name here
+          if (buildingLevelUpEventsFromPreviousWave) { 
             newSessionTotalBuildingLevelUps = [...newSessionTotalBuildingLevelUps, ...buildingLevelUpEventsFromPreviousWave];
           }
 
@@ -116,13 +116,16 @@ export const waveBattleFlowReducer = (
       waveDef.enemies.forEach((ew, i_outer) => ENEMY_DEFINITIONS[ew.enemyId] && Array.from({length: ew.count}).forEach((_, i_inner) => {
         const enemyDef = ENEMY_DEFINITIONS[ew.enemyId];
         const finalStats = calculateWaveEnemyStats(enemyDef, waveNumber);
-        battleEnemies.push({
+        const battleEnemyInstance: BattleEnemy = {
             ...enemyDef, attackType: enemyDef.attackType || 'MELEE', rangedAttackRangeUnits: enemyDef.rangedAttackRangeUnits,
             calculatedStats: finalStats, uniqueBattleId: `${ew.enemyId}_${i_outer}_${i_inner}_enemy_wave${waveNumber}`,
             currentHp: finalStats.maxHp, currentEnergyShield: finalStats.maxEnergyShield || 0, shieldRechargeDelayTicksRemaining: 0,
             attackCooldown: (1000 / finalStats.attackSpeed), attackCooldownRemainingTicks: 0,
-            movementSpeed: 0, x: 0, y: 0, statusEffects: [], isElite: false, specialAttackCooldownsRemaining: {}
-        });
+            movementSpeed: 0, x: 0, y: 0, statusEffects: [], isElite: false, specialAttackCooldownsRemaining: {},
+            summonStrengthModifier: enemyDef.summonAbility ? 1.0 : undefined, // Initialize summon strength modifier
+            currentShieldHealCooldownMs: enemyDef.shieldHealAbility?.initialCooldownMs ?? enemyDef.shieldHealAbility?.cooldownMs,
+        };
+        battleEnemies.push(battleEnemyInstance);
       }));
       if (sharedSkillPointsGainedFromWaveXP > 0) tempNotifications.push({ id: Date.now().toString() + "-sspWave", message: `Gained ${sharedSkillPointsGainedFromWaveXP} Shared Skill Point(s) from wave XP!`, type: 'success', iconName: ICONS.UPGRADE ? 'UPGRADE' : undefined, timestamp: Date.now() });
       const newBattleState: BattleState = {

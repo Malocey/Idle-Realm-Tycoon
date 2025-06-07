@@ -6,8 +6,8 @@ import {
   AttackEvent, TownHallUpgradeDefinition, SpecialAttackDefinition, SpecialAttackTargetType,
   HeroEquipmentDefinition, BuildingDefinition, GlobalBonuses, TownHallUpgradeUnlockRequirementType,
   DungeonRunState, DungeonDefinition, PermanentHeroBuff, BuildingLevelUpEventInBattle, BuildingSpecificUpgradeDefinition, GuildHallUpgradeDefinition, PotionDefinition, ShardDefinition,
-  QuestTemplate, TrapDefinition, DungeonEventDefinition, RunBuffDefinition, ColosseumWaveDefinition, ActionBattleState, SharedSkillDefinition, StatusEffectDefinition, // Added StatusEffectDefinition
-  DemoniconMilestoneRewardDefinition // New Import
+  QuestTemplate, TrapDefinition, DungeonEventDefinition, RunBuffDefinition, ColosseumWaveDefinition, ActionBattleState, SharedSkillDefinition, StatusEffectDefinition, WorldMapDefinition, // Added WorldMapDefinition
+  DemoniconMilestoneRewardDefinition 
 } from './types';
 import { ICONS } from './components/Icons';
 import {
@@ -16,8 +16,8 @@ import {
 import {
   BUILDING_DEFINITIONS, HERO_DEFINITIONS, SKILL_TREES, ENEMY_DEFINITIONS,
   WAVE_DEFINITIONS, TOWN_HALL_UPGRADE_DEFINITIONS, SPECIAL_ATTACK_DEFINITIONS, EQUIPMENT_DEFINITIONS,
-  DUNGEON_DEFINITIONS, BUILDING_SPECIFIC_UPGRADE_DEFINITIONS, GUILD_HALL_UPGRADE_DEFINITIONS, POTION_DEFINITIONS, SHARD_DEFINITIONS, QUEST_DEFINITIONS, TRAP_DEFINITIONS, DUNGEON_EVENT_DEFINITIONS, RUN_BUFF_DEFINITIONS, COLOSSEUM_WAVE_DEFINITIONS, SHARED_SKILL_DEFINITIONS, STATUS_EFFECT_DEFINITIONS, // Added STATUS_EFFECT_DEFINITIONS
-  DEMONICON_MILESTONE_REWARDS // New Import
+  DUNGEON_DEFINITIONS, BUILDING_SPECIFIC_UPGRADE_DEFINITIONS, GUILD_HALL_UPGRADE_DEFINITIONS, POTION_DEFINITIONS, SHARD_DEFINITIONS, QUEST_DEFINITIONS, TRAP_DEFINITIONS, DUNGEON_EVENT_DEFINITIONS, RUN_BUFF_DEFINITIONS, COLOSSEUM_WAVE_DEFINITIONS, SHARED_SKILL_DEFINITIONS, STATUS_EFFECT_DEFINITIONS, 
+  DEMONICON_MILESTONE_REWARDS, worldMapDefinitions // Imported worldMapDefinitions
 } from './gameData/index';
 import {
     calculateBuildingProduction, calculateBuildingUpgradeCost,
@@ -61,8 +61,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     runBuffDefinitions: RUN_BUFF_DEFINITIONS, 
     colosseumWaveDefinitions: COLOSSEUM_WAVE_DEFINITIONS,
     sharedSkillDefinitions: SHARED_SKILL_DEFINITIONS,
-    statusEffectDefinitions: STATUS_EFFECT_DEFINITIONS, // New
-    demoniconMilestoneRewards: DEMONICON_MILESTONE_REWARDS, // New
+    statusEffectDefinitions: STATUS_EFFECT_DEFINITIONS, 
+    demoniconMilestoneRewards: DEMONICON_MILESTONE_REWARDS,
+    worldMapDefinitions: worldMapDefinitions, // Added worldMapDefinitions here
   }), []);
 
   const reducerWithStaticData = useMemo(() => createGameReducer(staticData), [staticData]);

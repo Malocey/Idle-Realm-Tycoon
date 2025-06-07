@@ -51,6 +51,7 @@ export interface BattleEnemy extends EnemyDefinition {
   attackCooldownRemainingTicks: number; 
   movementSpeed: number; 
   currentSummonCooldownMs?: number; 
+  currentShieldHealCooldownMs?: number; // New property for shield healing
   currentHealCooldownMs?: number;   
   currentAoeAttackCooldownMs?: number;
   currentPeriodicEffectCooldownMs?: number; 
@@ -77,4 +78,5 @@ export interface BattleEnemy extends EnemyDefinition {
   channelingState?: ParticipantChannelingState | null; 
   specialAttackCooldownsRemaining?: Record<string, number>; 
   isUsingSpecialAttack?: { definitionId: string, targetId?: string | null } | null; // Added optional property
+  summonStrengthModifier?: number; // New property for boss summon scaling
 }

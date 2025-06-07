@@ -34,7 +34,7 @@ export interface GameState {
   heroes: PlayerHeroState[];
   unlockedHeroDefinitions: string[];
   currentWaveProgress: number;
-  activeView: 'TOWN' | 'BATTLEFIELD' | 'DUNGEON_REWARD' | 'HERO_ACADEMY' | 'DUNGEON_EXPLORE' | 'STONE_QUARRY_MINIGAME' | 'ACTION_BATTLE_VIEW' | 'SHARED_SKILL_TREE' | 'GOLD_MINE_MINIGAME' | 'DEMONICON_PORTAL'; // Added GOLD_MINE_MINIGAME and DEMONICON_PORTAL
+  activeView: 'TOWN' | 'BATTLEFIELD' | 'DUNGEON_REWARD' | 'HERO_ACADEMY' | 'DUNGEON_EXPLORE' | 'STONE_QUARRY_MINIGAME' | 'ACTION_BATTLE_VIEW' | 'SHARED_SKILL_TREE' | 'GOLD_MINE_MINIGAME' | 'DEMONICON_PORTAL' | 'WORLD_MAP';
   battleState: BattleState | null;
   activeDungeonRun: DungeonRunState | null;
   activeDungeonGrid: DungeonGridState | null;
@@ -56,17 +56,21 @@ export interface GameState {
   runBuffLibraryLevels: Record<string, number>;
   godModeActive: boolean;
   stoneQuarryMinigame: StoneQuarryMinigameState | null;
-  goldMineMinigame: GoldMineMinigameState | null; // New state for Gold Mine Minigame
-  playerSharedSkillPoints: number; // New
-  playerSharedSkills: PlayerSharedSkillsState; // New
+  goldMineMinigame: GoldMineMinigameState | null; 
+  playerSharedSkillPoints: number; 
+  playerSharedSkills: PlayerSharedSkillsState; 
   actionBattleAISystem: ActionBattleAISystem;
-
+  currentMapId: string; 
+  playerCurrentNodeId: string; 
+  revealedMapNodeIds: string[]; 
+  mapPoiCompletionStatus: Record<string, boolean>; 
+  
   // Demonicon State
-  defeatedEnemyTypes: string[]; // List of enemy IDs defeated at least once
-  demoniconHighestRankCompleted: Record<string, number>; // Keyed by enemy ID, stores highest rank
-  activeDemoniconChallenge: ActiveDemoniconChallenge | null; // State for an ongoing Demonicon challenge
+  defeatedEnemyTypes: string[]; 
+  demoniconHighestRankCompleted: Record<string, number>; 
+  activeDemoniconChallenge: ActiveDemoniconChallenge | null; 
   globalDemoniconLevel: number;
   globalDemoniconXP: number;
   expToNextGlobalDemoniconLevel: number;
-  achievedDemoniconMilestoneRewards: string[]; // New: Stores IDs of achieved milestone rewards
+  achievedDemoniconMilestoneRewards: string[]; 
 }

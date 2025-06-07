@@ -1,3 +1,4 @@
+
 import { IconComponent } from '../../types';
 import { RESOURCE_ICONS } from './resourceIcons';
 import { MINIGAME_RESOURCE_ICONS } from './minigameResourceIcons';
@@ -11,7 +12,7 @@ import { DUNGEON_EVENT_ICONS } from './dungeonAndEventIcons';
 export const ICONS: Record<string, IconComponent> = {
   ...RESOURCE_ICONS,
   ...MINIGAME_RESOURCE_ICONS,
-  ...UI_ELEMENT_ICONS,
+  ...UI_ELEMENT_ICONS, // MAP_ICON will be available here
   ...COMBAT_ABILITY_ICONS,
   ...EQUIPMENT_CRAFTING_ICONS,
   ...STATUS_BUFF_ICONS,

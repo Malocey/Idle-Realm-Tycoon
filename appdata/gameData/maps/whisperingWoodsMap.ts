@@ -1,0 +1,78 @@
+
+import { MapNode, WorldMapDefinition, ResourceType } from '../../types';
+
+const whisperingWoodsNodes: MapNode[] = [
+  {
+    id: 'woods_entry',
+    name: 'Forest Edge',
+    x: 50,
+    y: 85,
+    iconName: 'WOOD',
+    description: 'You emerge at the edge of a dense forest.',
+    connections: ['deep_grove_shrine', 'portal_to_plains', 'hidden_grove'],
+  },
+  {
+    id: 'deep_grove_shrine',
+    name: 'Deep Grove Shrine',
+    x: 50,
+    y: 20,
+    iconName: 'SETTINGS',
+    description: 'An ancient, overgrown shrine.',
+    connections: ['woods_entry', 'spiders_lair'],
+    poiType: 'EVENT',
+  },
+  {
+    id: 'hidden_grove',
+    name: 'Hidden Grove',
+    x: 20,
+    y: 50,
+    iconName: 'WOOD',
+    description: 'A secluded grove rich with lumber.',
+    connections: ['woods_entry', 'spiders_lair'],
+    poiType: 'RESOURCE',
+    resourceType: ResourceType.WOOD,
+    resourceAmount: 50,
+  },
+  {
+    id: 'spiders_lair',
+    name: 'Spider\'s Lair',
+    x: 75,
+    y: 30,
+    iconName: 'ENEMY',
+    description: 'A web-choked cave, home to giant spiders.',
+    connections: ['deep_grove_shrine', 'hidden_grove', 'portal_to_peaks'],
+    isBattleNode: true,
+    battleWaveStart: 3,
+    battleWaveEnd: 6,
+  },
+  {
+    id: 'portal_to_plains',
+    name: 'Path to the Plains',
+    x: 80,
+    y: 75,
+    iconName: 'COMPASS',
+    description: 'A path leads back to the Verdant Plains.',
+    connections: ['woods_entry'],
+    poiType: 'MAP_PORTAL',
+    targetMapId: 'verdant_plains',
+  },
+  {
+    id: 'portal_to_peaks',
+    name: 'Ascent to the Peaks',
+    x: 30,
+    y: 10,
+    iconName: 'COMPASS',
+    description: 'A treacherous path leading up to the Frozen Peaks.',
+    connections: ['spiders_lair'],
+    poiType: 'MAP_PORTAL',
+    targetMapId: 'frozen_peaks',
+  },
+];
+
+export const WHISPERING_WOODS_MAP: WorldMapDefinition = {
+  id: 'whispering_woods',
+  name: 'Whispering Woods',
+  description: 'An ancient forest, rumored to hold many secrets.',
+  nodes: whisperingWoodsNodes,
+  entryNodeId: 'woods_entry',
+};

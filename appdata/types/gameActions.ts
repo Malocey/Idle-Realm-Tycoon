@@ -11,7 +11,7 @@ import { MinigameUpgradeType } from './minigame';
 
 export type GameAction =
   | { type: 'PROCESS_TICK' }
-  | { type: 'SET_ACTIVE_VIEW'; payload: 'TOWN' | 'BATTLEFIELD' | 'DUNGEON_REWARD' | 'HERO_ACADEMY' | 'DUNGEON_EXPLORE' | 'STONE_QUARRY_MINIGAME' | 'ACTION_BATTLE_VIEW' | 'SHARED_SKILL_TREE' | 'GOLD_MINE_MINIGAME' | 'DEMONICON_PORTAL' }
+  | { type: 'SET_ACTIVE_VIEW'; payload: 'TOWN' | 'BATTLEFIELD' | 'DUNGEON_REWARD' | 'HERO_ACADEMY' | 'DUNGEON_EXPLORE' | 'STONE_QUARRY_MINIGAME' | 'ACTION_BATTLE_VIEW' | 'SHARED_SKILL_TREE' | 'GOLD_MINE_MINIGAME' | 'DEMONICON_PORTAL' | 'WORLD_MAP' }
   | { type: 'CONSTRUCT_BUILDING'; payload: { buildingId: string } }
   | { type: 'UPGRADE_BUILDING'; payload: { buildingId: string; levelsToUpgrade?: number; totalBatchCost?: Cost[] } }
   | { type: 'RECRUIT_HERO'; payload: { heroId: string } }
@@ -34,6 +34,7 @@ export type GameAction =
             defeatedEnemyOriginalIds: string[];
             waveNumberReached: number;
         };
+        sourceMapNodeId?: string; // Added to track battle origin from map
     } }
   // Specific START actions for different battle flows
   | { type: 'START_WAVE_BATTLE_PREPARATION'; payload: { 
@@ -51,6 +52,7 @@ export type GameAction =
             defeatedEnemyOriginalIds: string[];
             waveNumberReached: number;
         };
+        sourceMapNodeId?: string; // Added
     } }
   // START_DUNGEON_GRID_BATTLE might be implicitly handled by MOVE_PARTY_ON_GRID if it lands on an enemy cell
   | { type: 'BATTLE_ACTION' } // Combat tick
@@ -98,6 +100,7 @@ export type GameAction =
   | { type: 'CHEAT_FORCE_BATTLE_VICTORY' }
   | { type: 'CHEAT_MODIFY_FIRST_HERO_STATS' }
   | { type: 'CHEAT_TOGGLE_GOD_MODE' }
+  | { type: 'TOGGLE_ACTION_BATTLE_AI_SYSTEM' }
   // Stone Quarry Minigame
   | { type: 'STONE_QUARRY_MINIGAME_INIT' }
   | { type: 'STONE_QUARRY_MINIGAME_CLICK_CELL'; payload: { r: number, c: number } }
@@ -141,10 +144,10 @@ export type GameAction =
       survivingHeroesWithState: Array<{ 
         uniqueBattleId: string; 
         definitionId: string; 
-        level: number; // Added
-        currentExp: number; // Added
-        expToNextLevel: number; // Added
-        skillPoints: number; // Added
+        level: number; 
+        currentExp: number; 
+        expToNextLevel: number; 
+        skillPoints: number; 
         currentHp: number; 
         currentMana: number; 
         specialAttackCooldownsRemaining: Record<string, number>; 
@@ -153,4 +156,10 @@ export type GameAction =
       rankExpCollected: number;  
     } }
   | { type: 'CONTINUE_DEMONICON_CHALLENGE' }
-  | { type: 'CLEANUP_DEMONICON_STATE' };
+  | { type: 'CLEANUP_DEMONICON_STATE' }
+  // World Map Actions
+  | { type: 'SET_PLAYER_MAP_NODE'; payload: { nodeId: string } }
+  | { type: 'REVEAL_MAP_NODES_STATIC'; payload: { nodeIds: string[] } }
+  | { type: 'SET_CURRENT_MAP'; payload: { mapId: string } }
+  | { type: 'COLLECT_MAP_RESOURCE'; payload: { nodeId: string; mapId: string } }
+  | { type: 'SET_MAP_POI_COMPLETED'; payload: { poiKey: string } }; // New action

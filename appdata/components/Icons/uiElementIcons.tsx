@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { IconComponent } from '../../types';
 import { createIcon } from './helpers';
@@ -21,4 +22,5 @@ export const UI_ELEMENT_ICONS: Record<string, IconComponent> = {
   SKILL: createIcon("M17.657 9.343a1 1 0 010 1.414l-5.657 5.657a1 1 0 01-1.414 0l-1.414-1.414a1 1 0 010-1.414l5.657-5.657a1 1 0 011.414 0l1.414 1.414zm-2.828-2.828a1 1 0 011.414 0l1.414 1.414a1 1 0 010 1.414l-5.657 5.657a1 1 0 01-1.414 0l-1.414-1.414a1 1 0 010-1.414l5.657-5.657zM6.728 7.929a1 1 0 011.414 0L10.586 10.5l-2.121 2.121a1 1 0 01-1.414 0L4.929 10.5a1 1 0 010-1.414l1.799-1.157z"),
   COMMAND_POST_ICON: createIcon("M3 6a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm1 3a1 1 0 000 2h10a1 1 0 100-2H4zm13 2a1 1 0 001-1V5a1 1 0 00-1-1H2a1 1 0 00-1 1v9a1 1 0 001 1h1v1a1 1 0 001 1h10a1 1 0 001-1v-1h1z"), // Existing, ensure it's here
   MG_GOLD_GENERATOR_ICON: createIcon("M10 18a8 8 0 100-16 8 8 0 000 16zm-2-3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1zm0-3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1zm0-3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"),
+  MAP_ICON: createIcon("M1 6v12l7-4 8 4 7-4V2l-7 4-8-4-7 4zM8 2v12M16 6v12"),
 };
