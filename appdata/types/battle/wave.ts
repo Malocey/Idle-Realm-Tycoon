@@ -1,7 +1,9 @@
+
 import { Cost } from '../common';
 
 export interface WaveDefinition {
-  waveNumber: number;
+  id: string; // New unique string ID for the wave
+  waveNumber?: number; // Optional: Can still be used for main progression waves
   enemies: Array<{ enemyId: string; count: number }>;
   reward?: Cost[];
 }

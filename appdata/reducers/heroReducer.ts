@@ -3,12 +3,11 @@ import { GameState, GameAction, PlayerHeroState, GameNotification, ResourceType,
 import { HERO_DEFINITIONS, SKILL_TREES, SPECIAL_ATTACK_DEFINITIONS, EQUIPMENT_DEFINITIONS, SHARD_DEFINITIONS } from '../gameData/index';
 import { NOTIFICATION_ICONS } from '../constants';
 import { canAfford, getExpToNextHeroLevel } from '../utils';
-// FIX: Import ICONS
 import { ICONS } from '../components/Icons';
 
 export const handleHeroActions = (
     state: GameState,
-    action: Extract<GameAction, { type: 'RECRUIT_HERO' | 'UPGRADE_SKILL' | 'LEARN_UPGRADE_SPECIAL_ATTACK' | 'UPGRADE_HERO_EQUIPMENT' | 'APPLY_PERMANENT_HERO_BUFF' | 'TRANSFER_SHARD' | 'CHEAT_MODIFY_FIRST_HERO_STATS' }>, // Added CHEAT_MODIFY_FIRST_HERO_STATS
+    action: Extract<GameAction, { type: 'RECRUIT_HERO' | 'UNLOCK_HERO_DEFINITION' | 'UPGRADE_SKILL' | 'LEARN_UPGRADE_SPECIAL_ATTACK' | 'UPGRADE_HERO_EQUIPMENT' | 'APPLY_PERMANENT_HERO_BUFF' | 'TRANSFER_SHARD' | 'CHEAT_MODIFY_FIRST_HERO_STATS' }>, 
     globalBonuses: GlobalBonuses
 ): GameState => {
   switch (action.type) {
@@ -16,10 +15,16 @@ export const handleHeroActions = (
       const heroDef = HERO_DEFINITIONS[action.payload.heroId];
       if (!heroDef || state.heroes.find(h => h.definitionId === action.payload.heroId)) return state;
 
-      if (heroDef.unlockWaveRequirement && heroDef.unlockWaveRequirement > state.currentWaveProgress) {
+      if (heroDef.unlockWaveRequirement && heroDef.unlockWaveRequirement > state.currentWaveProgress && !state.unlockedHeroDefinitions.includes(heroDef.id)) {
         const newNotification: GameNotification = {id: Date.now().toString(), message: `${heroDef.name} unlocks after Wave ${heroDef.unlockWaveRequirement}.`, type: 'warning', iconName: NOTIFICATION_ICONS.warning, timestamp: Date.now()};
         return { ...state, notifications: [...state.notifications, newNotification]};
       }
+      // Ensure hero is in unlockedHeroDefinitions before allowing recruitment (unless wave req is met)
+      if (!state.unlockedHeroDefinitions.includes(heroDef.id) && !(heroDef.unlockWaveRequirement && heroDef.unlockWaveRequirement <= state.currentWaveProgress) ) {
+         const newNotification: GameNotification = {id: Date.now().toString(), message: `${heroDef.name} is not yet unlocked.`, type: 'warning', iconName: NOTIFICATION_ICONS.warning, timestamp: Date.now()};
+         return { ...state, notifications: [...state.notifications, newNotification]};
+      }
+
 
       let recruitmentCost = heroDef.recruitmentCost ? [...heroDef.recruitmentCost] : [];
       if (recruitmentCost.length > 0 && globalBonuses.heroRecruitmentCostReduction > 0) {
@@ -37,7 +42,17 @@ export const handleHeroActions = (
       recruitmentCost.forEach(c => newResources[c.resource] -= c.amount);
       const newHero: PlayerHeroState = { definitionId: heroDef.id, level: 1, currentExp: 0, expToNextLevel: getExpToNextHeroLevel(1), skillPoints: 1, skillLevels: {}, specialAttackLevels: {}, equipmentLevels: {}, permanentBuffs: [], ownedShards: [] };
       const successNotification: GameNotification = {id: Date.now().toString(), message: `${heroDef.name} recruited!`, type: 'success', iconName: NOTIFICATION_ICONS.success, timestamp: Date.now()};
-      return { ...state, resources: newResources, heroes: [...state.heroes, newHero], unlockedHeroDefinitions: [...state.unlockedHeroDefinitions, heroDef.id], notifications: [...state.notifications, successNotification] };
+      return { ...state, resources: newResources, heroes: [...state.heroes, newHero], notifications: [...state.notifications, successNotification] };
+    }
+    case 'UNLOCK_HERO_DEFINITION': {
+        const { heroId } = action.payload;
+        if (!state.unlockedHeroDefinitions.includes(heroId)) {
+            return {
+                ...state,
+                unlockedHeroDefinitions: [...state.unlockedHeroDefinitions, heroId]
+            };
+        }
+        return state;
     }
     case 'UPGRADE_SKILL': {
       const { heroDefinitionId, skillId, levelsToUpgrade = 1, totalBatchCost } = action.payload;
@@ -76,13 +91,13 @@ export const handleHeroActions = (
 
       let finalCostForUpgrade: { skillPoints: number; resources: Cost[]; heroicPointsCost: number } = { skillPoints: 0, resources: [], heroicPointsCost: 0 };
 
-      if (levelsToUpgrade > 1 && totalBatchCost) { // totalBatchCost is Cost[], needs to be parsed for SP, XP, Res
+      if (levelsToUpgrade > 1 && totalBatchCost) { 
         totalBatchCost.forEach(cost => {
             if (cost.resource === 'SKILL_POINTS_TEMP' as any) finalCostForUpgrade.skillPoints += cost.amount;
             else if (cost.resource === ResourceType.HEROIC_POINTS) finalCostForUpgrade.heroicPointsCost += cost.amount;
             else finalCostForUpgrade.resources.push(cost);
         });
-      } else { // Single upgrade
+      } else { 
         const singleCostInfo = skillDef.costPerLevel(initialLevel);
         finalCostForUpgrade.skillPoints = singleCostInfo.skillPoints || 0;
         finalCostForUpgrade.heroicPointsCost = singleCostInfo.heroicPointsCost || 0;

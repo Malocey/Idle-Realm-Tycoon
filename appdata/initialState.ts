@@ -1,16 +1,21 @@
 
 import { GameState, ResourceType, PlayerHeroState, StoneQuarryMinigameState, ActionBattleState, PlayerSharedSkillProgress, GoldMineMinigameState, ActiveDemoniconChallenge } from './types';
-import { INITIAL_RESOURCES, INITIAL_HEROES, SQMG_GRID_SIZE, SQMG_DIRT_CLICK_YIELD, SQMG_INITIAL_GOLEM_CLICK_POWER, SQMG_INITIAL_GOLEM_CLICK_SPEED_MS, SQMG_INITIAL_GOLEM_MOVE_SPEED_MS, SQMG_ESSENCE_DROP_CHANCE, SQMG_PLAYER_MULTI_CLICK_CHANCE_BASE, SQMG_GOLEM_ESSENCE_AFFINITY_BASE, SQMG_PLAYER_CRYSTAL_FIND_CHANCE_BASE, SQMG_GOLEM_CRYSTAL_SIFTERS_BASE, SQMG_PLAYER_ADVANCED_EXCAVATION_BASE_CHANCE, BASE_GOLD_MINE_GRID_ROWS, BASE_GOLD_MINE_GRID_COLS, INITIAL_GOLD_MINE_PLAYER_STATS } from './constants';
+import { INITIAL_RESOURCES, INITIAL_HEROES as INITIAL_UNLOCKED_HEROES, SQMG_GRID_SIZE, SQMG_DIRT_CLICK_YIELD, SQMG_INITIAL_GOLEM_CLICK_POWER, SQMG_INITIAL_GOLEM_CLICK_SPEED_MS, SQMG_INITIAL_GOLEM_MOVE_SPEED_MS, SQMG_ESSENCE_DROP_CHANCE, SQMG_PLAYER_MULTI_CLICK_CHANCE_BASE, SQMG_GOLEM_ESSENCE_AFFINITY_BASE, SQMG_PLAYER_CRYSTAL_FIND_CHANCE_BASE, SQMG_GOLEM_CRYSTAL_SIFTERS_BASE, SQMG_PLAYER_ADVANCED_EXCAVATION_BASE_CHANCE, BASE_GOLD_MINE_GRID_ROWS, BASE_GOLD_MINE_GRID_COLS, INITIAL_GOLD_MINE_PLAYER_STATS } from './constants';
 import { getExpToNextHeroLevel, calculateGoldMinePlayerStats } from './utils'; 
 import { RUN_BUFF_DEFINITIONS } from './gameData/index';
-import { worldMapDefinitions } from './gameData/maps/index'; // Updated import path
+import { worldMapDefinitions } from './gameData/maps/index'; 
 
-export const INITIAL_STARTING_BUILDINGS: string[] = ['TOWN_HALL'];
+export const INITIAL_STARTING_BUILDINGS: string[] = ['TOWN_HALL']; // FARM and LUMBER_MILL removed
+
+// Archer is no longer initially unlocked
+const CUSTOM_INITIAL_UNLOCKED_HEROES = INITIAL_UNLOCKED_HEROES.filter(id => id !== 'ARCHER');
 
 const initialMapId = 'verdant_plains'; 
 const initialPlayerNodeId = 'hometown'; 
 const initialMapDefinition = worldMapDefinitions[initialMapId];
 
+// Only hometown and its direct connection (goblin_camp_early) are initially revealed.
+// Wood Clearing (archer unlock) and other POIs are revealed by moving.
 const initialRevealedMapNodeIds = initialMapDefinition?.nodes.find(node => node.id === initialPlayerNodeId)
   ? [initialPlayerNodeId, 'goblin_camp_early'] 
   : [];
@@ -19,7 +24,7 @@ const initialRevealedMapNodeIds = initialMapDefinition?.nodes.find(node => node.
 export const initialGameState: GameState = {
   resources: { ...INITIAL_RESOURCES },
   buildings: INITIAL_STARTING_BUILDINGS.map(id => ({ id, level: 1 })),
-  heroes: INITIAL_HEROES.map(id => ({
+  heroes: CUSTOM_INITIAL_UNLOCKED_HEROES.map(id => ({ // Use CUSTOM_INITIAL_UNLOCKED_HEROES
     definitionId: id,
     level: 1,
     currentExp: 0,
@@ -31,7 +36,7 @@ export const initialGameState: GameState = {
     permanentBuffs: [],
     ownedShards: [],
   })),
-  unlockedHeroDefinitions: [...INITIAL_HEROES],
+  unlockedHeroDefinitions: [...CUSTOM_INITIAL_UNLOCKED_HEROES], // Use CUSTOM_INITIAL_UNLOCKED_HEROES
   currentWaveProgress: 0,
   activeView: 'TOWN',
   battleState: null,
@@ -127,13 +132,22 @@ export const initialGameState: GameState = {
   playerCurrentNodeId: initialPlayerNodeId, 
   revealedMapNodeIds: initialRevealedMapNodeIds,
   mapPoiCompletionStatus: {
+    // These keys are now explicitly listed and initialized to false.
+    // This helps ensure they exist in the state before being checked.
     'archer_unlocked_verdant_plains': false,
     'lumber_mill_blueprint_obtained': false,
     'farm_blueprint_obtained': false,
-    'damaged_gold_mine_access_granted': false,
+    'damaged_gold_mine_access_granted': false, // Example, might not be used
     'tannery_blueprint_obtained': false,
     'cleric_recruitment_unlocked': false,
     'stone_quarry_blueprint_obtained': false,
+    // Add other battle POI keys here if they gate unlocks
+    'goblin_camp_early_battle_won': false,
+    'lumber_mill_battle_battle_won': false,
+    'farm_battle_battle_won': false,
+    'gold_mine_access_battle_battle_won': false,
+    'tannery_guardians_battle_won': false,
+    'stone_quarry_guards_battle_won': false,
   },
 
   defeatedEnemyTypes: [],

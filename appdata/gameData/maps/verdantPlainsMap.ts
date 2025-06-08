@@ -20,8 +20,12 @@ const verdantPlainsNodes: MapNode[] = [
     description: 'A small goblin encampment blocking the path forward.',
     connections: ['hometown', 'wood_clearing'],
     isBattleNode: true,
-    battleWaveStart: 1,
-    battleWaveEnd: 3,
+    customWaveDefinitionIds: [
+      'map_goblin_camp_wave_1', 
+      'map_goblin_camp_wave_2', 
+      'map_goblin_camp_wave_3', 
+      'map_goblin_camp_wave_4'
+    ],
   },
   {
     id: 'wood_clearing',
@@ -44,8 +48,12 @@ const verdantPlainsNodes: MapNode[] = [
     description: 'Defeat them to secure blueprints for a Lumber Mill.',
     connections: ['wood_clearing', 'gold_mine_access_battle'],
     isBattleNode: true,
-    battleWaveStart: 1,
-    battleWaveEnd: 4,
+    customWaveDefinitionIds: [
+        'map_lumber_mill_wave_1',
+        'map_lumber_mill_wave_2',
+        'map_lumber_mill_wave_3',
+        'map_lumber_mill_wave_4'
+    ],
   },
   {
     id: 'farm_battle',
@@ -56,8 +64,13 @@ const verdantPlainsNodes: MapNode[] = [
     description: 'Win this battle to find plans for a Farm.',
     connections: ['wood_clearing', 'gold_mine_access_battle'],
     isBattleNode: true,
-    battleWaveStart: 1,
-    battleWaveEnd: 6,
+    // battleWaveStart: 1, // Replaced by customWaveDefinitionIds
+    // battleWaveEnd: 6,   // Replaced by customWaveDefinitionIds
+    customWaveDefinitionIds: [
+        'map_farm_battle_wave_1',
+        'map_farm_battle_wave_2',
+        'map_farm_battle_wave_3'
+    ],
   },
   {
     id: 'gold_mine_access_battle',
@@ -66,7 +79,7 @@ const verdantPlainsNodes: MapNode[] = [
     y: 50, 
     iconName: 'FIGHT',
     description: 'A final challenge before reaching the gold-rich mountains.',
-    connections: ['lumber_mill_battle', 'farm_battle', 'damaged_gold_mine'], // Connects to the new Damaged Gold Mine node
+    connections: ['lumber_mill_battle', 'farm_battle', 'damaged_gold_mine'], 
     isBattleNode: true,
     battleWaveStart: 3, 
     battleWaveEnd: 4,
@@ -79,17 +92,16 @@ const verdantPlainsNodes: MapNode[] = [
     iconName: 'PICKAXE_ICON',
     description: 'An old, seemingly depleted gold mine. Perhaps some resources can still be found, or it leads elsewhere...',
     connections: ['gold_mine_access_battle', 'woods_entrance', 'quarry_approach'],
-    poiType: 'RESOURCE', // Placeholder, could be a landmark or trigger for gold mine minigame later
-    resourceType: ResourceType.GOLD, // Placeholder resource
+    poiType: 'RESOURCE', 
+    resourceType: ResourceType.GOLD, 
     resourceAmount: 50,
   },
-  // --- New Forest Branch ---
   {
     id: 'woods_entrance',
-    name: 'Whispering Woods Entrance',
+    name: 'Whispering Woods Path', 
     x: 80, 
-    y: 25, // North-West from Damaged Gold Mine
-    iconName: 'COMPASS', // Or a tree icon if exists
+    y: 25, 
+    iconName: 'COMPASS', 
     description: 'A path leading into the shadowy Whispering Woods.',
     connections: ['damaged_gold_mine', 'tannery_guardians'],
   },
@@ -107,23 +119,23 @@ const verdantPlainsNodes: MapNode[] = [
   },
   {
     id: 'deep_woods_encounter',
-    name: 'Deep Woods Encounter',
+    name: 'Gateway to the Whispering Woods', 
     x: 55,
     y: 10,
-    iconName: 'ENEMY', // Or a more specific event/mystery icon
-    description: 'A challenging encounter deep within the woods. Victory might attract a new ally.',
+    iconName: 'PORTAL', 
+    description: 'An ancient archway hums with power, leading to the Whispering Woods.',
     connections: ['tannery_guardians'],
-    isBattleNode: true, // This "event" is a tough fight
-    battleWaveStart: 1, // Tougher than its position might suggest
-    battleWaveEnd: 6,
+    poiType: 'MAP_PORTAL',
+    targetMapId: 'whispering_woods',
+    targetNodeId: 'ww_node_1', 
+    isBattleNode: false, 
   },
-  // --- New Quarry Branch ---
   {
     id: 'quarry_approach',
     name: 'Quarry Approach',
     x: 80,
-    y: 75, // South-West from Damaged Gold Mine
-    iconName: 'STONE', // Or PICKAXE_ICON
+    y: 75, 
+    iconName: 'STONE', 
     description: 'A rocky path leading towards a potential stone quarry.',
     connections: ['damaged_gold_mine', 'stone_quarry_guards'],
   },

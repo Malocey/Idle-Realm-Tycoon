@@ -21,12 +21,25 @@ const ConstructionTab: React.FC<ConstructionTabProps> = ({
   handleConstructBuilding,
   animatingCardId,
 }) => {
+
+  const buildingsToShow = unbuiltBuildings.filter(def => {
+    if (def.id === 'LUMBER_MILL' && !gameState.mapPoiCompletionStatus['lumber_mill_blueprint_obtained']) {
+        return false;
+    }
+    if (def.id === 'FARM' && !gameState.mapPoiCompletionStatus['farm_blueprint_obtained']) {
+        return false;
+    }
+    // Add other building unlock checks here if needed
+    return true;
+  });
+
+
   return (
     <div> 
       <h2 className="text-2xl font-bold text-green-400 mb-3">Construct New Buildings</h2>
-      {unbuiltBuildings.length > 0 ? (
+      {buildingsToShow.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {unbuiltBuildings.map((def, index) => {
+          {buildingsToShow.map((def, index) => {
             const Icon = ICONS[def.iconName];
             const baseCost = def.baseCost;
             const actualBuildCost = baseCost.map(c => ({
@@ -77,7 +90,7 @@ const ConstructionTab: React.FC<ConstructionTabProps> = ({
           })}
         </div>
       ) : (
-        <p className="text-slate-400 italic text-center py-4">All available buildings have been constructed.</p>
+        <p className="text-slate-400 italic text-center py-4">All available buildings have been constructed or current unlocks have been built.</p>
       )}
     </div>
   );

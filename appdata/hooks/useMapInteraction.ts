@@ -16,7 +16,7 @@ export const useMapInteraction = (
   staticData: GameContextType['staticData'],
   currentMapId: string
 ) => {
-  const { gameState } = useGameContext(); // Get full gameState for mapPoiCompletionStatus
+  const { gameState } = useGameContext(); 
   const [isMoving, setIsMoving] = useState(false);
   const [animationTargetNodeId, setAnimationTargetNodeId] = useState<string | null>(null);
   const [playerVisualPosition, setPlayerVisualPosition] = useState<{ x: number; y: number } | null>(null);
@@ -66,7 +66,7 @@ export const useMapInteraction = (
         setIsPoiModalOpen(false);
       };
       confirmText = `Travel to ${targetMapDef?.name || '???'}`;
-    } else if (node.id === 'gold_mine_approach' && gameState.mapPoiCompletionStatus['gold_mine_approach_access_granted']) {
+    } else if (node.id === 'gold_mine_approach' && gameState.mapPoiCompletionStatus['gold_mine_access_granted']) { 
       title = 'Gold Mine Entrance';
       baseMessage = `${node.name} - The way to the Gold Mine is clear!`;
       confirmAction = () => () => {
@@ -75,24 +75,44 @@ export const useMapInteraction = (
         setIsPoiModalOpen(false);
       };
       confirmText = 'Enter Gold Mine';
-    } else if (node.isBattleNode && node.battleWaveStart !== undefined) {
-      const battleNodeKey = `${node.id}_battle_won`; // e.g., 'lumber_mill_battle_battle_won'
-      if (gameState.mapPoiCompletionStatus[battleNodeKey]) {
-        title = `${node.name} (Cleared)`;
-        baseMessage = `The area around ${node.name} has been secured. You can challenge the foes again if you wish.`;
-      } else {
-        title = `Battle: ${node.name}`;
-        baseMessage = `${baseMessage} Prepare for battle! (Waves ${node.battleWaveStart}-${node.battleWaveEnd || node.battleWaveStart})`;
-      }
+    } else if (node.isBattleNode || (node.customWaveDefinitionIds && node.customWaveDefinitionIds.length > 0)) {
+      const battleNodeKey = `${node.id}_battle_won`;
+      const isCompleted = gameState.mapPoiCompletionStatus[battleNodeKey];
+
+      title = isCompleted ? `${node.name} (Cleared)` : `Battle: ${node.name}`;
+      baseMessage = isCompleted 
+        ? `The area around ${node.name} has been secured. You can challenge the foes again if you wish.`
+        : `${node.description || `You are at ${node.name}.`} Prepare for battle!`;
+
       confirmAction = () => () => {
-        dispatch({ type: 'START_BATTLE_PREPARATION', payload: { waveNumber: node.battleWaveStart!, sourceMapNodeId: node.id } });
+        const payload: any = { 
+            sourceMapNodeId: node.id,
+        };
+        if (node.customWaveDefinitionIds && node.customWaveDefinitionIds.length > 0) {
+            payload.customWaveSequence = node.customWaveDefinitionIds;
+            payload.currentCustomWaveIndex = 0;
+        } else if (node.battleWaveStart !== undefined) {
+            payload.waveNumber = node.battleWaveStart;
+        } else {
+            console.error("Battle node configuration error:", node.id, "Missing wave start info.");
+            dispatch({ type: 'ADD_NOTIFICATION', payload: { message: `Error: Battle at ${node.name} is misconfigured.`, type: 'error', iconName: NOTIFICATION_ICONS.error }});
+            setIsPoiModalOpen(false);
+            return; 
+        }
+        dispatch({ type: 'START_BATTLE_PREPARATION', payload });
         setIsPoiModalOpen(false);
       };
-      confirmText = gameState.mapPoiCompletionStatus[battleNodeKey] ? 'Replay Battle' : `Start Battle (Waves ${node.battleWaveStart}-${node.battleWaveEnd || node.battleWaveStart})`;
+
+      if (node.customWaveDefinitionIds && node.customWaveDefinitionIds.length > 0) {
+        confirmText = isCompleted ? 'Replay Encounter' : 'Start Encounter';
+      } else if (node.battleWaveStart !== undefined) {
+        confirmText = isCompleted ? `Replay Wave ${node.battleWaveStart}` : `Start Wave ${node.battleWaveStart}`;
+      } else {
+        confirmText = 'Engage'; // Fallback
+      }
     } else if (node.poiType === 'DUNGEON') {
       title = 'Dungeon Entrance';
       baseMessage = `${baseMessage} A dark and dangerous dungeon awaits exploration.`;
-      // Add confirm action to enter dungeon, e.g., dispatch action to open DungeonSelectionModal or directly enter
     } else if (node.poiType === 'RESOURCE' && node.resourceType && node.resourceAmount) {
       const resourceName = node.resourceType.replace(/_/g, ' ');
       title = `Resource: ${node.name}`;
@@ -105,17 +125,16 @@ export const useMapInteraction = (
           dispatch({ type: 'COLLECT_MAP_RESOURCE', payload: { nodeId: node.id, mapId: currentMapId } });
           dispatch({ type: 'SET_MAP_POI_COMPLETED', payload: { poiKey } });
           
-          // Archer unlock logic for 'wood_clearing'
+          // Archer Unlock Logic
           if (node.id === 'wood_clearing' && !gameState.mapPoiCompletionStatus['archer_unlocked_verdant_plains']) {
-            const archerNotification: GameNotification = {
-              id: Date.now().toString() + "-archerUnlock",
+            dispatch({ type: 'UNLOCK_HERO_DEFINITION', payload: { heroId: 'ARCHER' } });
+            dispatch({ type: 'SET_MAP_POI_COMPLETED', payload: { poiKey: 'archer_unlocked_verdant_plains' } });
+            const archerNotificationPayload: Omit<GameNotification, 'id' | 'timestamp'> = {
               message: "The availability of fresh wood has attracted a skilled Archer to your cause! Archer recruitment is now available.",
               type: "success",
-              iconName: ICONS.ARCHER ? 'ARCHER' : NOTIFICATION_ICONS.success, // Assuming 'ARCHER' is a valid IconName
-              timestamp: Date.now()
+              iconName: ICONS.BOW_ICON ? 'BOW_ICON' : NOTIFICATION_ICONS.success,
             };
-            dispatch({ type: 'ADD_NOTIFICATION', payload: archerNotification });
-            dispatch({ type: 'SET_MAP_POI_COMPLETED', payload: { poiKey: 'archer_unlocked_verdant_plains' } });
+            dispatch({ type: 'ADD_NOTIFICATION', payload: archerNotificationPayload });
           }
           setIsPoiModalOpen(false);
         };
@@ -124,7 +143,6 @@ export const useMapInteraction = (
     } else if (node.poiType === 'EVENT') {
       title = `Event: ${node.name}`;
       baseMessage = `${baseMessage} Something unexpected might happen.`;
-      // Specific event logic would go here or be triggered by a confirm button
     }
 
     setPoiModalContent({ title, message: baseMessage, nodeName: node.name });
@@ -132,7 +150,7 @@ export const useMapInteraction = (
     if (confirmText) setPoiModalConfirmButtonText(confirmText);
     setIsPoiModalOpen(true);
 
-  }, [dispatch, staticData.worldMapDefinitions, currentMapId, gameState.mapPoiCompletionStatus]);
+  }, [dispatch, staticData.worldMapDefinitions, currentMapId, gameState.mapPoiCompletionStatus, gameState.playerCurrentNodeId]);
 
   const handleNodeClick = useCallback((nodeId: string) => {
     if (isMoving || !revealedMapNodeIds.includes(nodeId)) return;
@@ -147,15 +165,12 @@ export const useMapInteraction = (
     
     const isConnectedToCurrent = currentNode.connections.includes(nodeId);
     if (!isConnectedToCurrent) {
-        // console.warn(`Node ${nodeId} is not directly connected to current node ${currentNode.id}. Cannot move.`);
-        const notConnectedNotification: GameNotification = {
-            id: Date.now().toString() + "-notConnected",
+        const notConnectedNotificationPayload: Omit<GameNotification, 'id' | 'timestamp'> = {
             message: `Cannot travel to ${targetNode.name}. No direct path from your current location.`,
             type: "warning",
             iconName: NOTIFICATION_ICONS.warning,
-            timestamp: Date.now()
         };
-        dispatch({ type: 'ADD_NOTIFICATION', payload: notConnectedNotification });
+        dispatch({ type: 'ADD_NOTIFICATION', payload: notConnectedNotificationPayload });
         return;
     }
 
@@ -208,7 +223,6 @@ export const useMapInteraction = (
         if (targetNode) {
           setPlayerVisualPosition({ x: targetNode.x, y: targetNode.y });
           dispatch({ type: 'SET_PLAYER_MAP_NODE', payload: { nodeId: animationTargetNodeId! } });
-          handlePoiInteraction(targetNode);
         }
         setIsMoving(false);
         setAnimationTargetNodeId(null);
@@ -225,9 +239,9 @@ export const useMapInteraction = (
 
     animationFrameRef.current = requestAnimationFrame(animatePlayerMarker);
     return () => { if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current); };
-  }, [isMoving, animationPathDetails, dispatch, animationTargetNodeId, currentMapNodes, playerVisualPosition, handlePoiInteraction]);
+  }, [isMoving, animationPathDetails, dispatch, animationTargetNodeId, currentMapNodes, playerVisualPosition]);
   
-  useEffect(() => {
+   useEffect(() => {
     if (currentNode && !isMoving && revealedMapNodeIds && currentMapNodes.length > 0) {
         const nodesToRevealThisMap = currentNode.connections
             .filter(id => {
@@ -240,8 +254,9 @@ export const useMapInteraction = (
         if (nodesToRevealThisMap.length > 0) {
             dispatch({ type: 'REVEAL_MAP_NODES_STATIC', payload: { nodeIds: nodesToRevealThisMap } });
         }
+        handlePoiInteraction(currentNode);
     }
-  }, [playerCurrentNodeId, isMoving, dispatch, currentNode, revealedMapNodeIds, currentMapNodes]);
+  }, [playerCurrentNodeId, isMoving, dispatch, currentNode, revealedMapNodeIds, currentMapNodes, handlePoiInteraction]);
 
 
   const handleClosePoiModal = () => {

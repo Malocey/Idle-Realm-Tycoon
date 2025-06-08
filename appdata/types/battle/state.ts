@@ -4,7 +4,9 @@ import { BattleHero, BattleEnemy } from './participants';
 import { AttackEvent, BuildingLevelUpEventInBattle } from './events';
 
 export interface BattleState {
-  waveNumber?: number; // Undefined for dungeon battles
+  waveNumber?: number; // Undefined for dungeon battles, or current step in custom sequence
+  customWaveSequence?: string[]; // New: Array of WaveDefinition IDs for custom map battles
+  currentCustomWaveIndex?: number; // New: Index for the current wave in customWaveSequence
   dungeonRunId?: string; // For dungeon battles
   dungeonFloor?: number; // For dungeon battles
   isDungeonBattle?: boolean; // True if it's a standard dungeon floor battle (not grid)

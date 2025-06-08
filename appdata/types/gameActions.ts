@@ -5,38 +5,35 @@ import { PermanentHeroBuff, PlayerHeroState } from './hero';
 import { BuildingLevelUpEventInBattle, BattleHero, BattleState } from './battle'; 
 import { MinigameUpgradeType } from './minigame';
 
-// Repräsentiert die Form des 'payload' für verschiedene Aktionen
-// Dies ist keine diskriminierte Union selbst, sondern eine Sammlung von Payload-Typen
-// Die eigentliche GameAction wird eine diskriminierte Union sein, die diese verwendet.
-
 export type GameAction =
   | { type: 'PROCESS_TICK' }
   | { type: 'SET_ACTIVE_VIEW'; payload: 'TOWN' | 'BATTLEFIELD' | 'DUNGEON_REWARD' | 'HERO_ACADEMY' | 'DUNGEON_EXPLORE' | 'STONE_QUARRY_MINIGAME' | 'ACTION_BATTLE_VIEW' | 'SHARED_SKILL_TREE' | 'GOLD_MINE_MINIGAME' | 'DEMONICON_PORTAL' | 'WORLD_MAP' }
   | { type: 'CONSTRUCT_BUILDING'; payload: { buildingId: string } }
   | { type: 'UPGRADE_BUILDING'; payload: { buildingId: string; levelsToUpgrade?: number; totalBatchCost?: Cost[] } }
   | { type: 'RECRUIT_HERO'; payload: { heroId: string } }
+  | { type: 'UNLOCK_HERO_DEFINITION'; payload: { heroId: string } } // New Action
   | { type: 'UPGRADE_SKILL'; payload: { heroDefinitionId: string; skillId: string; levelsToUpgrade?: number; totalBatchCost?: Cost[] } }
   | { type: 'LEARN_UPGRADE_SPECIAL_ATTACK'; payload: { heroDefinitionId: string; skillNodeId: string; levelsToUpgrade?: number; totalBatchCost?: Cost[] } }
   | { type: 'UPGRADE_HERO_EQUIPMENT'; payload: { heroDefinitionId: string; equipmentId: string; levelsToUpgrade?: number; totalBatchCost?: Cost[] } }
-  // Generic START_BATTLE_PREPARATION, context might be inferred or passed.
   | { type: 'START_BATTLE_PREPARATION'; payload: { 
-        waveNumber: number;
+        waveNumber: number; 
         isAutoProgression?: boolean;
         persistedHeroHp?: Record<string, number>;
         persistedHeroMana?: Record<string, number>;
         persistedHeroSpecialCooldowns?: Record<string, Record<string, number>>;
         rewardsForPreviousWave?: Cost[];
         expFromPreviousWave?: number;
-        previousWaveNumberCleared?: number;
+        previousWaveNumberCleared?: number; 
         buildingLevelUpEventsFromPreviousWave?: BuildingLevelUpEventInBattle[];
         previousBattleOutcomeForQuestProcessing?: {
             lootCollected: Cost[];
             defeatedEnemyOriginalIds: string[];
             waveNumberReached: number;
         };
-        sourceMapNodeId?: string; // Added to track battle origin from map
+        sourceMapNodeId?: string; 
+        customWaveSequence?: string[]; 
+        currentCustomWaveIndex?: number; 
     } }
-  // Specific START actions for different battle flows
   | { type: 'START_WAVE_BATTLE_PREPARATION'; payload: { 
         waveNumber: number;
         isAutoProgression?: boolean;
@@ -47,16 +44,17 @@ export type GameAction =
         expFromPreviousWave?: number;
         previousWaveNumberCleared?: number;
         buildingLevelUpEventsFromPreviousWave?: BuildingLevelUpEventInBattle[];
-         previousBattleOutcomeForQuestProcessing?: { // Added for quest processing
+         previousBattleOutcomeForQuestProcessing?: { 
             lootCollected: Cost[];
             defeatedEnemyOriginalIds: string[];
             waveNumberReached: number;
         };
-        sourceMapNodeId?: string; // Added
+        sourceMapNodeId?: string; 
+        customWaveSequence?: string[]; 
+        currentCustomWaveIndex?: number; 
     } }
-  // START_DUNGEON_GRID_BATTLE might be implicitly handled by MOVE_PARTY_ON_GRID if it lands on an enemy cell
-  | { type: 'BATTLE_ACTION' } // Combat tick
-  | { type: 'END_BATTLE'; payload: { outcome: 'VICTORY' | 'DEFEAT'; waveClearBonus?: Cost[], collectedLoot?: Cost[], expRewardToHeroes?: number } } // Generic end, will be dispatched to specifics
+  | { type: 'BATTLE_ACTION' } 
+  | { type: 'END_BATTLE'; payload: { outcome: 'VICTORY' | 'DEFEAT'; waveClearBonus?: Cost[], collectedLoot?: Cost[], expRewardToHeroes?: number } } 
   | { type: 'END_WAVE_BATTLE_RESULT'; payload: { outcome: 'VICTORY' | 'DEFEAT'; battleStateFromEnd: BattleState } }
   | { type: 'END_DUNGEON_GRID_BATTLE_RESULT'; payload: { outcome: 'VICTORY' | 'DEFEAT'; battleStateFromEnd: BattleState } }
   | { type: 'ADD_NOTIFICATION'; payload: Omit<GameNotification, 'id' | 'timestamp'> }
@@ -101,7 +99,6 @@ export type GameAction =
   | { type: 'CHEAT_MODIFY_FIRST_HERO_STATS' }
   | { type: 'CHEAT_TOGGLE_GOD_MODE' }
   | { type: 'TOGGLE_ACTION_BATTLE_AI_SYSTEM' }
-  // Stone Quarry Minigame
   | { type: 'STONE_QUARRY_MINIGAME_INIT' }
   | { type: 'STONE_QUARRY_MINIGAME_CLICK_CELL'; payload: { r: number, c: number } }
   | { type: 'STONE_QUARRY_MINIGAME_PURCHASE_UPGRADE'; payload: { upgradeType: MinigameUpgradeType } }
@@ -111,7 +108,6 @@ export type GameAction =
   | { type: 'STONE_QUARRY_MINIGAME_CRAFT_CRYSTAL_GOLEM' }
   | { type: 'STONE_QUARRY_MINIGAME_UPGRADE_GOLEM'; payload: { golemId?: string; upgradeType: 'clickPower' | 'clickSpeed' | 'moveSpeed' } }
   | { type: 'STONE_QUARRY_MINIGAME_TICK' }
-  // Action Battle / Colosseum
   | { type: 'START_ACTION_BATTLE'; payload?: { encounterId?: string } }
   | { type: 'ACTION_BATTLE_SET_KEY_PRESSED'; payload: { key: string, pressed: boolean } }
   | { type: 'ACTION_BATTLE_TOGGLE_AUTO_MODE' }
@@ -123,10 +119,8 @@ export type GameAction =
   | { type: 'COLOSSEUM_ENEMY_TAKE_DAMAGE'; payload: { enemyUniqueId: string; damage: number } }
   | { type: 'COLOSSEUM_HERO_TAKE_DAMAGE'; payload: { heroUniqueId: string; damage: number } }
   | { type: 'TOGGLE_ACTION_BATTLE_AI_SYSTEM' }
-  // Shared Passive Skills
   | { type: 'UPGRADE_SHARED_SKILL_MAJOR'; payload: { skillId: string } }
   | { type: 'UPGRADE_SHARED_SKILL_MINOR'; payload: { skillId: string } }
-  // Gold Mine Minigame Actions
   | { type: 'GOLD_MINE_MINIGAME_INIT'; payload?: { depth?: number } }
   | { type: 'GOLD_MINE_MINIGAME_START_RUN'; payload?: { depth?: number } }
   | { type: 'GOLD_MINE_MINIGAME_MINE_CELL'; payload: { dr: number, dc: number } } 
@@ -134,9 +128,7 @@ export type GameAction =
   | { type: 'GOLD_MINE_MINIGAME_RETURN_TO_SURFACE' }
   | { type: 'GOLD_MINE_MINIGAME_PURCHASE_UPGRADE'; payload: { upgradeId: string } }
   | { type: 'GOLD_MINE_MINIGAME_TICK' }
-  // New Battle Target Action
   | { type: 'SET_BATTLE_TARGET'; payload: { targetId: string | null } }
-  // Demonicon Actions
   | { type: 'START_DEMONICON_CHALLENGE'; payload: { enemyId: string } }
   | { type: 'PROCESS_DEMONICON_VICTORY_REWARDS'; payload: { 
       enemyId: string; 
@@ -157,9 +149,8 @@ export type GameAction =
     } }
   | { type: 'CONTINUE_DEMONICON_CHALLENGE' }
   | { type: 'CLEANUP_DEMONICON_STATE' }
-  // World Map Actions
   | { type: 'SET_PLAYER_MAP_NODE'; payload: { nodeId: string } }
   | { type: 'REVEAL_MAP_NODES_STATIC'; payload: { nodeIds: string[] } }
   | { type: 'SET_CURRENT_MAP'; payload: { mapId: string } }
   | { type: 'COLLECT_MAP_RESOURCE'; payload: { nodeId: string; mapId: string } }
-  | { type: 'SET_MAP_POI_COMPLETED'; payload: { poiKey: string } }; // New action
+  | { type: 'SET_MAP_POI_COMPLETED'; payload: { poiKey: string } };

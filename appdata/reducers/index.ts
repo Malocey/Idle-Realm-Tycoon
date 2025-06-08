@@ -1,7 +1,8 @@
 
+
 import { GameState, GameAction, GlobalBonuses, Cost, GameNotification, ResourceType, GameContextType, ActiveDemoniconChallenge, BattleHero, EnemyDefinition, BattleState, BuildingLevelUpEventInBattle, PlayerHeroState } from './../types';
 import { calculateGlobalBonusesFromAllSources, formatNumber, canAfford, calculateGoldMinePlayerStats, calculateDemoniconEnemyStats as calculateDemoniconEnemyStatsUtil, getExpToNextHeroLevel, calculateHeroStats as calculateHeroStatsUtil } from './../utils';
-import { HERO_DEFINITIONS, ENEMY_DEFINITIONS as ALL_ENEMY_DEFINITIONS, TOWN_HALL_UPGRADE_DEFINITIONS, BUILDING_SPECIFIC_UPGRADE_DEFINITIONS, GUILD_HALL_UPGRADE_DEFINITIONS, GOLD_MINE_UPGRADE_DEFINITIONS, SKILL_TREES, EQUIPMENT_DEFINITIONS, RUN_BUFF_DEFINITIONS, STATUS_EFFECT_DEFINITIONS, SPECIAL_ATTACK_DEFINITIONS, BUILDING_DEFINITIONS, SHARD_DEFINITIONS, WAVE_DEFINITIONS } from '../gameData/index';
+import { HERO_DEFINITIONS, ENEMY_DEFINITIONS as ALL_ENEMY_DEFINITIONS, TOWN_HALL_UPGRADE_DEFINITIONS, BUILDING_SPECIFIC_UPGRADE_DEFINITIONS, GUILD_HALL_UPGRADE_DEFINITIONS, GOLD_MINE_UPGRADE_DEFINITIONS, SKILL_TREES, EQUIPMENT_DEFINITIONS, RUN_BUFF_DEFINITIONS, STATUS_EFFECT_DEFINITIONS, SPECIAL_ATTACK_DEFINITIONS, BUILDING_DEFINITIONS, SHARD_DEFINITIONS, WAVE_DEFINITIONS, worldMapDefinitions } from '../gameData/index';
 import { NOTIFICATION_ICONS, INITIAL_GOLD_MINE_PLAYER_STATS, GAME_TICK_MS, DEFAULT_ENERGY_SHIELD_RECHARGE_DELAY_TICKS, MAX_WAVE_NUMBER } from '../constants';
 
 // Modular reducer imports
@@ -25,8 +26,10 @@ import { handleSharedSkillsActions } from './sharedSkillsReducer';
 import { goldMineMinigameReducer } from './minigame/goldMine/goldMineMinigameReducer';
 import { ICONS } from '../components/Icons';
 import { demoniconReducer } from './demoniconReducer';
-import { waveBattleFlowReducer } from './battleFlow/waveBattleFlowReducer';
+import { waveBattleFlowReducer } from './battleFlow/waveBattleFlowReducer'; 
+import { startBattleReducer } from './battleFlow/startBattleReducer'; 
 import { dungeonBattleFlowReducer } from './battleFlow/dungeonBattleFlowReducer';
+import { handleMapActions } from './mapReducer'; 
 
 export const createGameReducer = (staticData: GameContextType['staticData']) =>
   (state: GameState, action: GameAction): GameState => {
@@ -68,65 +71,8 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
     }
   }
   
-  if (action.type === 'SET_PLAYER_MAP_NODE') { 
-    return { ...state, playerCurrentNodeId: action.payload.nodeId };
-  }
-  if (action.type === 'REVEAL_MAP_NODES_STATIC') {
-    const newRevealedIds = Array.from(new Set([...state.revealedMapNodeIds, ...action.payload.nodeIds]));
-    if (newRevealedIds.length > state.revealedMapNodeIds.length) {
-        return { ...state, revealedMapNodeIds: newRevealedIds };
-    }
-    return state;
-  }
-  if (action.type === 'SET_CURRENT_MAP') {
-    const { mapId } = action.payload;
-    const newMapDef = staticData.worldMapDefinitions[mapId];
-    if (!newMapDef) {
-      console.error(`Map definition not found for ID: ${mapId}`);
-      return state;
-    }
-    const entryNode = newMapDef.nodes.find(node => node.id === newMapDef.entryNodeId);
-    if (!entryNode) {
-        console.error(`Entry node ${newMapDef.entryNodeId} not found in map ${mapId}`);
-        return state;
-    }
-    const newRevealedMapNodeIds = [entryNode.id, ...entryNode.connections];
-    return {
-        ...state,
-        currentMapId: mapId,
-        playerCurrentNodeId: newMapDef.entryNodeId,
-        revealedMapNodeIds: newRevealedMapNodeIds,
-    };
-  }
-  if (action.type === 'COLLECT_MAP_RESOURCE') {
-    const { nodeId, mapId } = action.payload;
-    const mapDef = staticData.worldMapDefinitions[mapId];
-    if (!mapDef) return state;
-    const node = mapDef.nodes.find(n => n.id === nodeId);
-    if (!node || node.poiType !== 'RESOURCE' || !node.resourceType || !node.resourceAmount) return state;
-
-    const newResources = { ...state.resources };
-    newResources[node.resourceType] = (newResources[node.resourceType] || 0) + node.resourceAmount;
-    
-    const newNotifications = [...state.notifications, {
-        id: Date.now().toString(),
-        message: `Collected ${formatNumber(node.resourceAmount)} ${node.resourceType.replace(/_/g, ' ')} from ${node.name}.`,
-        type: 'success',
-        iconName: ICONS[node.resourceType] ? node.resourceType : NOTIFICATION_ICONS.success,
-        timestamp: Date.now()
-    } as GameNotification];
-
-    // Future: Add cooldown logic here if needed
-    return { ...state, resources: newResources, notifications: newNotifications };
-  }
-  if (action.type === 'SET_MAP_POI_COMPLETED') { 
-    return {
-      ...state,
-      mapPoiCompletionStatus: {
-        ...state.mapPoiCompletionStatus,
-        [action.payload.poiKey]: true,
-      },
-    };
+  if (action.type === 'SET_PLAYER_MAP_NODE' || action.type === 'REVEAL_MAP_NODES_STATIC' || action.type === 'SET_CURRENT_MAP' || action.type === 'COLLECT_MAP_RESOURCE' || action.type === 'SET_MAP_POI_COMPLETED') {
+    return handleMapActions(state, action as any); 
   }
 
 
@@ -141,6 +87,7 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
   }
   else if (
     action.type === 'RECRUIT_HERO' ||
+    action.type === 'UNLOCK_HERO_DEFINITION' || // Added for hero unlock
     action.type === 'UPGRADE_SKILL' ||
     action.type === 'LEARN_UPGRADE_SPECIAL_ATTACK' ||
     action.type === 'UPGRADE_HERO_EQUIPMENT' ||
@@ -159,8 +106,8 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
   else if (action.type === 'START_DEMONICON_CHALLENGE' || action.type === 'PROCESS_DEMONICON_VICTORY_REWARDS' || action.type === 'CONTINUE_DEMONICON_CHALLENGE' || action.type === 'CLEANUP_DEMONICON_STATE') {
     nextState = demoniconReducer(state, action, globalBonuses, staticData);
   }
-  else if (action.type === 'START_BATTLE_PREPARATION') {
-    nextState = waveBattleFlowReducer(state, { type: 'START_WAVE_BATTLE_PREPARATION', payload: action.payload }, globalBonuses);
+  else if (action.type === 'START_BATTLE_PREPARATION') { 
+    nextState = startBattleReducer(state, {type: 'START_WAVE_BATTLE_PREPARATION', payload: action.payload}, globalBonuses); 
     if (action.payload.isAutoProgression && action.payload.previousBattleOutcomeForQuestProcessing) {
         const questProgressAction: GameAction = {
             type: 'PROCESS_QUEST_PROGRESS_FROM_BATTLE',
@@ -169,54 +116,21 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
         nextState = questReducer(nextState, questProgressAction);
     }
   }
+  else if (action.type === 'END_WAVE_BATTLE_RESULT') { 
+    nextState = waveBattleFlowReducer(state, action, globalBonuses);
+  }
   else if (action.type === 'END_BATTLE') {
     if (!originalBattleState) {
       return state; 
     }
     
-    if (originalBattleState.sourceMapNodeId && action.payload.outcome === 'VICTORY') {
-        let poiKeyToComplete: string | null = null;
-        let unlockNotificationMessage: string | null = null;
-        
-        if (originalBattleState.sourceMapNodeId === 'lumber_mill_battle' && !state.mapPoiCompletionStatus['lumber_mill_blueprint_obtained']) {
-            poiKeyToComplete = 'lumber_mill_blueprint_obtained';
-            unlockNotificationMessage = 'Lumber Mill blueprints acquired! You can now build it in town.';
-        } else if (originalBattleState.sourceMapNodeId === 'farm_battle' && !state.mapPoiCompletionStatus['farm_blueprint_obtained']) {
-            poiKeyToComplete = 'farm_blueprint_obtained';
-            unlockNotificationMessage = 'Farm plans discovered! You can now build it in town.';
-        } else if (originalBattleState.sourceMapNodeId === 'gold_mine_access_battle' && !state.mapPoiCompletionStatus['damaged_gold_mine_access_granted']) { // Updated from gold_mine_approach
-            poiKeyToComplete = 'damaged_gold_mine_access_granted';
-            unlockNotificationMessage = 'The path to the Damaged Gold Mine is clear!';
-        } else if (originalBattleState.sourceMapNodeId === 'tannery_guardians' && !state.mapPoiCompletionStatus['tannery_blueprint_obtained']) {
-            poiKeyToComplete = 'tannery_blueprint_obtained';
-            unlockNotificationMessage = 'Tannery Blueprints secured! Available for construction.';
-        } else if (originalBattleState.sourceMapNodeId === 'deep_woods_encounter' && !state.mapPoiCompletionStatus['cleric_recruitment_unlocked']) {
-            poiKeyToComplete = 'cleric_recruitment_unlocked';
-            unlockNotificationMessage = 'A Cleric, impressed by your valor, offers their aid! Cleric recruitment now available.';
-        } else if (originalBattleState.sourceMapNodeId === 'stone_quarry_guards' && !state.mapPoiCompletionStatus['stone_quarry_blueprint_obtained']) {
-            poiKeyToComplete = 'stone_quarry_blueprint_obtained';
-            unlockNotificationMessage = 'Stone Quarry Blueprints obtained! You can now build it.';
-        }
-
-
-        if (poiKeyToComplete && unlockNotificationMessage) {
-            nextState = {
-                ...nextState,
-                mapPoiCompletionStatus: { ...nextState.mapPoiCompletionStatus, [poiKeyToComplete]: true },
-                notifications: [...nextState.notifications, { id: Date.now().toString(), message: unlockNotificationMessage, type: 'success', iconName: ICONS.UPGRADE ? 'UPGRADE' : NOTIFICATION_ICONS.success, timestamp: Date.now() }]
-            };
-        }
-    }
-
-
     if (originalBattleState.isDemoniconBattle) {
-      nextState = demoniconReducer(state, action as any, globalBonuses, staticData); 
+        nextState = demoniconReducer(state, action as any, globalBonuses, staticData); 
     } else if (originalBattleState.isDungeonGridBattle) {
       nextState = dungeonBattleFlowReducer(state, { type: 'END_DUNGEON_GRID_BATTLE_RESULT', payload: { outcome: action.payload.outcome, battleStateFromEnd: originalBattleState } }, globalBonuses);
     } else if (originalBattleState.isDungeonBattle) { 
       nextState = handleDungeonActions(state, { type: 'END_DUNGEON_FLOOR', payload: { outcome: action.payload.outcome, collectedLoot: action.payload.collectedLoot, collectedExp: action.payload.expRewardToHeroes, buildingLevelUps: originalBattleState.buildingLevelUpEventsInBattle } }, globalBonuses);
-
-    } else { // Normal Wave Battle (or a map battle that's not dungeon/demonicon)
+    } else { 
       nextState = waveBattleFlowReducer(nextState, { type: 'END_WAVE_BATTLE_RESULT', payload: { outcome: action.payload.outcome, battleStateFromEnd: originalBattleState } }, globalBonuses);
       const lootForQuests: Cost[] = [];
       (action.payload.collectedLoot || []).forEach(loot => {
@@ -238,6 +152,35 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
           payload: { lootCollected: lootForQuests, defeatedEnemyOriginalIds, waveNumberReached }
       };
       nextState = questReducer(nextState, questProgressAction);
+      
+      if (originalBattleState.sourceMapNodeId) {
+        if (action.payload.outcome === 'VICTORY' || action.payload.outcome === 'DEFEAT') {
+            const battleNodeKey = `${originalBattleState.sourceMapNodeId}_battle_won`;
+            let poiNotifications: GameNotification[] = [];
+
+            if (action.payload.outcome === 'VICTORY' && !state.mapPoiCompletionStatus[battleNodeKey]) {
+                nextState = {
+                    ...nextState,
+                    mapPoiCompletionStatus: { ...nextState.mapPoiCompletionStatus, [battleNodeKey]: true }
+                };
+                
+                if (originalBattleState.sourceMapNodeId === 'lumber_mill_battle' && !state.mapPoiCompletionStatus['lumber_mill_blueprint_obtained']) {
+                    nextState = { ...nextState, mapPoiCompletionStatus: { ...nextState.mapPoiCompletionStatus, 'lumber_mill_blueprint_obtained': true } };
+                    poiNotifications.push({ id: Date.now().toString() + "-lm-unlock", message: 'Lumber Mill blueprints acquired! You can now build it in town.', type: 'success', iconName: 'WOOD', timestamp: Date.now() });
+                } else if (originalBattleState.sourceMapNodeId === 'farm_battle' && !state.mapPoiCompletionStatus['farm_blueprint_obtained']) {
+                    nextState = { ...nextState, mapPoiCompletionStatus: { ...nextState.mapPoiCompletionStatus, 'farm_blueprint_obtained': true } };
+                    poiNotifications.push({ id: Date.now().toString() + "-farm-unlock", message: 'Farm plans discovered! You can now build it in town.', type: 'success', iconName: 'FOOD', timestamp: Date.now() });
+                }
+                // Add other specific POI completion messages here if needed
+                if (poiNotifications.length > 0) {
+                    nextState.notifications.push(...poiNotifications);
+                }
+            }
+            nextState = { ...nextState, activeView: 'WORLD_MAP', battleState: null };
+        }
+      } else if (action.payload.outcome === 'DEFEAT' || (originalBattleState.waveNumber && originalBattleState.waveNumber >= MAX_WAVE_NUMBER && action.payload.outcome === 'VICTORY')) {
+        nextState = { ...nextState, activeView: 'TOWN', battleState: null };
+      }
     }
   }
   else if (action.type === 'SELECT_POTION_FOR_USAGE' || action.type === 'USE_POTION_ON_HERO') {
@@ -362,7 +305,6 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
     return state;
   }
 
-  // Enemy defeat tracking for Demonicon (applies after all other logic for the tick)
   if (originalBattleState && originalBattleState.defeatedEnemiesWithLoot) {
     let updatedDefeatedEnemyTypes = [...nextState.defeatedEnemyTypes];
     let updatedDemoniconRanks = { ...nextState.demoniconHighestRankCompleted };

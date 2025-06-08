@@ -185,18 +185,29 @@ const BattleView: React.FC = () => {
     selectedTargetId,
     isDemoniconBattle,
     demoniconEnemyId,
-    demoniconRank
+    demoniconRank,
+    sourceMapNodeId,
+    customWaveSequence,
+    currentCustomWaveIndex
   } = gameState.battleState;
 
   const dungeonDef = (isDungeonBattle || isDungeonGridBattle) && dungeonRunId ? staticData.dungeonDefinitions[dungeonRunId] : null;
   
-  let battleTitle = `Wave ${waveNumber}`;
-  if (isDungeonBattle || isDungeonGridBattle) {
-    battleTitle = dungeonDef ? `${dungeonDef.name} - Floor ${dungeonFloor! + 1}` : "Dungeon Battle";
-  } else if (isDemoniconBattle && demoniconEnemyId && demoniconRank !== undefined) {
+  let battleTitle = `Wave ${waveNumber}`; // Default
+  if (isDemoniconBattle && demoniconEnemyId && demoniconRank !== undefined) {
     const enemyName = staticData.enemyDefinitions[demoniconEnemyId]?.name || "Unknown Enemy";
     const statusText = status === 'FIGHTING' && gameState.activeDemoniconChallenge ? "IN PROGRESS" : status.toUpperCase();
     battleTitle = `Demonicon: ${enemyName} - Rank ${demoniconRank + 1} - ${statusText}`;
+  } else if (isDungeonBattle || isDungeonGridBattle) {
+    battleTitle = dungeonDef ? `${dungeonDef.name} - Floor ${dungeonFloor! + 1}` : "Dungeon Battle";
+  } else if (sourceMapNodeId && customWaveSequence && customWaveSequence.length > 0 && currentCustomWaveIndex !== undefined) {
+    const mapDef = staticData.worldMapDefinitions[gameState.currentMapId];
+    const mapNodeName = mapDef?.nodes.find(n => n.id === sourceMapNodeId)?.name || "Map Battle";
+    battleTitle = `${mapNodeName} - Wave ${currentCustomWaveIndex + 1} of ${customWaveSequence.length}`;
+  } else if (sourceMapNodeId && waveNumber) { // Map battle but not a custom sequence (fallback or older setup)
+    const mapDef = staticData.worldMapDefinitions[gameState.currentMapId];
+    const mapNodeName = mapDef?.nodes.find(n => n.id === sourceMapNodeId)?.name || "Map Battle";
+    battleTitle = `${mapNodeName} - Wave ${waveNumber}`;
   }
 
 
@@ -217,18 +228,14 @@ const BattleView: React.FC = () => {
   // Logic for main button based on battle status and type
   if (status === 'VICTORY') {
     if (isDemoniconBattle) {
-        // If auto-progression is successful, battleState.status will change to FIGHTING for the next rank.
-        // So, if we are still in VICTORY status here, it means auto-progression *didn't* happen (e.g. all heroes died).
         showMainButton = true; 
         mainButtonText = "Return to Portal";
         mainButtonAction = () => dispatch({ type: 'CLEANUP_DEMONICON_STATE' });
     } else if (isDungeonGridBattle) {
       mainButtonText = "Return to Dungeon Map";
       mainButtonAction = () => dispatch({ type: 'END_BATTLE', payload: { outcome: 'VICTORY' } }); 
-    } else { // Wave battle victory
+    } else { 
       mainButtonText = "Return to Town"; 
-      // Action for wave victory (final return) is handled by useBattleProgression if max wave, or auto-starts next wave.
-      // This button becomes a manual "Return to Town" if auto-progression is somehow stuck or for the very final wave.
       mainButtonAction = () => dispatch({type: 'END_BATTLE', payload: { outcome: 'VICTORY', collectedLoot: battleLootCollected, expRewardToHeroes: battleExpCollected }});
     }
   } else if (status === 'DEFEAT') {
@@ -260,7 +267,7 @@ const BattleView: React.FC = () => {
     }
   } else if (status === 'FIGHTING') { 
     if (isDemoniconBattle) {
-        showMainButton = true; // Allow surrendering Demonicon
+        showMainButton = true; 
         mainButtonText = "Abandon Challenge";
         mainButtonAction = () => dispatch({ type: 'CLEANUP_DEMONICON_STATE' });
     } else if (isDungeonGridBattle) {

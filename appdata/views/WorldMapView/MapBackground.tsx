@@ -21,13 +21,12 @@ const MapBackground: React.FC<MapBackgroundProps> = ({ mapId }) => {
       );
     case 'whispering_woods':
       return (
-        <div className="absolute inset-0 bg-emerald-900 -z-20 overflow-hidden">
-          <div className="absolute inset-x-0 bottom-0 h-1/3 bg-amber-900/70 blur-sm"></div>
-          <div className="absolute -top-1/4 -left-1/4 w-1/2 h-1/2 bg-green-800/50 rounded-full blur-xl opacity-70"></div>
-          <div className="absolute -top-1/3 -right-1/3 w-2/3 h-1/2 bg-emerald-700/40 rounded-full blur-2xl opacity-60"></div>
-          <div className="absolute bottom-0 left-1/4 w-1/3 h-1/3 bg-lime-800/30 rounded-t-full blur-lg opacity-50"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-800 via-green-900 to-slate-900 -z-20 overflow-hidden">
+          {/* Tree-like shadows or patterns */}
+          <div className="absolute top-0 left-0 w-1/2 h-full bg-black/20 opacity-50" style={{ clipPath: 'polygon(0 0, 100% 0, 50% 100%, 0% 100%)' }}></div>
+          <div className="absolute top-0 right-0 w-1/2 h-3/4 bg-black/10 opacity-40" style={{ clipPath: 'polygon(100% 0, 0 0, 100% 50%, 50% 100%)' }}></div>
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-4xl font-serif text-emerald-200/30 opacity-60 transform -rotate-6 select-none">Whispering Woods</span>
+            <span className="text-4xl font-serif text-green-200/20 opacity-50 transform -rotate-3 select-none">Whispering Woods</span>
           </div>
         </div>
       );
