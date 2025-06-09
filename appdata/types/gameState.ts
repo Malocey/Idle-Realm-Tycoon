@@ -28,6 +28,12 @@ export interface ActiveDemoniconChallenge {
   xpThisRun: number;   // Total HERO EXP gained by heroes this run (for UI summary)
 }
 
+export interface PerMapState {
+  playerCurrentNodeId: string;
+  revealedMapNodeIds: string[];
+  mapPoiCompletionStatus: Record<string, boolean>;
+}
+
 export interface GameState {
   resources: Record<ResourceType, number>;
   buildings: PlayerBuildingState[];
@@ -61,9 +67,11 @@ export interface GameState {
   playerSharedSkills: PlayerSharedSkillsState; 
   actionBattleAISystem: ActionBattleAISystem;
   currentMapId: string; 
-  playerCurrentNodeId: string; 
-  revealedMapNodeIds: string[]; 
-  mapPoiCompletionStatus: Record<string, boolean>; 
+  playerCurrentNodeId: string; // Kept for quick access to current node on current map
+  revealedMapNodeIds: string[]; // Kept for quick access to revealed nodes on current map
+  mapPoiCompletionStatus: Record<string, boolean>; // Kept for quick access to POI status on current map
+
+  mapStates?: Record<string, PerMapState>; // New: Stores state for each map
   
   // Demonicon State
   defeatedEnemyTypes: string[]; 

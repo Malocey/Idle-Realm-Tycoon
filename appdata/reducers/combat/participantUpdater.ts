@@ -143,6 +143,7 @@ const applyAbilityEffectsLocal = ( // Renamed to avoid conflict if it's also in 
                         attackCooldownRemainingTicks: 0,
                         movementSpeed: 0, x: 0, y: 0, 
                         statusEffects: [],
+                        temporaryBuffs: [],
                         isElite: effect.isElite,
                         specialAttackCooldownsRemaining: initialSummonCooldowns,
                     };
@@ -178,10 +179,11 @@ const applyAbilityEffectsLocal = ( // Renamed to avoid conflict if it's also in 
                         shieldRechargeDelayTicksRemaining: 0,
                         attackCooldown: (1000 / transformedStats.attackSpeed),
                         attackCooldownRemainingTicks: 0,
-                        movementSpeed: 0, 
+                        movementSpeed: 0,
                         x: enemyCaster.x, // Spawn at original caster's position
                         y: enemyCaster.y,
                         statusEffects: [], // Start with no status effects
+                        temporaryBuffs: [],
                         isElite: isTransformedElite,
                         specialAttackCooldownsRemaining: initialTransformedCooldowns,
                     };
@@ -257,6 +259,8 @@ export const updateParticipants = (
     updatedParticipant.statusEffects = [...(participant.statusEffects || [])];
     if (isHero) {
       (updatedParticipant as BattleHero).temporaryBuffs = [...((updatedParticipant as BattleHero).temporaryBuffs || [])];
+    } else {
+      (updatedParticipant as BattleEnemy).temporaryBuffs = [...((updatedParticipant as BattleEnemy).temporaryBuffs || [])];
     }
 
     const wasStunned = updatedParticipant.statusEffects.some(effect => effect.type === StatusEffectType.STUN);
@@ -401,7 +405,18 @@ export const updateParticipants = (
         }
         logMessages.push(`${heroParticipant.name} had ${previousBuffCount - heroParticipant.temporaryBuffs.length} temporary buff(s) wear off.`);
       }
+    } else {
+        const enemyParticipant = updatedParticipant as BattleEnemy;
+        const previousBuffCount = enemyParticipant.temporaryBuffs.length;
+        enemyParticipant.temporaryBuffs = enemyParticipant.temporaryBuffs
+            .map(buff => ({ ...buff, remainingDurationMs: Math.max(0, buff.remainingDurationMs - battleTickDurationMs) }))
+            .filter(buff => buff.remainingDurationMs > 0);
+        if (enemyParticipant.temporaryBuffs.length !== previousBuffCount) {
+            // Enemy stat recalculation handled centrally if needed
+            logMessages.push(`${enemyParticipant.name} had ${previousBuffCount - enemyParticipant.temporaryBuffs.length} temporary buff(s) wear off.`);
+        }
     }
+
 
     if (updatedParticipant.calculatedStats.hpRegen && updatedParticipant.calculatedStats.hpRegen > 0 && updatedParticipant.currentHp < updatedParticipant.calculatedStats.maxHp) {
       const hpToRegenPerTick = (updatedParticipant.calculatedStats.hpRegen / (1000 / battleTickDurationMs));

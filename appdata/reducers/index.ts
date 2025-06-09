@@ -87,13 +87,14 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
   }
   else if (
     action.type === 'RECRUIT_HERO' ||
-    action.type === 'UNLOCK_HERO_DEFINITION' || // Added for hero unlock
+    action.type === 'UNLOCK_HERO_DEFINITION' || 
     action.type === 'UPGRADE_SKILL' ||
     action.type === 'LEARN_UPGRADE_SPECIAL_ATTACK' ||
     action.type === 'UPGRADE_HERO_EQUIPMENT' ||
     action.type === 'APPLY_PERMANENT_HERO_BUFF' ||
     action.type === 'TRANSFER_SHARD' ||
-    action.type === 'CHEAT_MODIFY_FIRST_HERO_STATS'
+    action.type === 'CHEAT_MODIFY_FIRST_HERO_STATS' ||
+    action.type === 'AWARD_SHARD_TO_HERO' 
   ) {
     nextState = handleHeroActions(state, action as any, globalBonuses);
   }
@@ -153,31 +154,56 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
       };
       nextState = questReducer(nextState, questProgressAction);
       
+      // Handle map POI completion and Cleric rescue from map battle
       if (originalBattleState.sourceMapNodeId) {
-        if (action.payload.outcome === 'VICTORY' || action.payload.outcome === 'DEFEAT') {
+        if (action.payload.outcome === 'VICTORY') {
             const battleNodeKey = `${originalBattleState.sourceMapNodeId}_battle_won`;
             let poiNotifications: GameNotification[] = [];
-
-            if (action.payload.outcome === 'VICTORY' && !state.mapPoiCompletionStatus[battleNodeKey]) {
+            
+            if (!state.mapPoiCompletionStatus[battleNodeKey]) {
                 nextState = {
                     ...nextState,
                     mapPoiCompletionStatus: { ...nextState.mapPoiCompletionStatus, [battleNodeKey]: true }
                 };
-                
-                if (originalBattleState.sourceMapNodeId === 'lumber_mill_battle' && !state.mapPoiCompletionStatus['lumber_mill_blueprint_obtained']) {
-                    nextState = { ...nextState, mapPoiCompletionStatus: { ...nextState.mapPoiCompletionStatus, 'lumber_mill_blueprint_obtained': true } };
-                    poiNotifications.push({ id: Date.now().toString() + "-lm-unlock", message: 'Lumber Mill blueprints acquired! You can now build it in town.', type: 'success', iconName: 'WOOD', timestamp: Date.now() });
-                } else if (originalBattleState.sourceMapNodeId === 'farm_battle' && !state.mapPoiCompletionStatus['farm_blueprint_obtained']) {
-                    nextState = { ...nextState, mapPoiCompletionStatus: { ...nextState.mapPoiCompletionStatus, 'farm_blueprint_obtained': true } };
-                    poiNotifications.push({ id: Date.now().toString() + "-farm-unlock", message: 'Farm plans discovered! You can now build it in town.', type: 'success', iconName: 'FOOD', timestamp: Date.now() });
-                }
-                // Add other specific POI completion messages here if needed
-                if (poiNotifications.length > 0) {
-                    nextState.notifications.push(...poiNotifications);
+            }
+
+            // Cleric Rescue Check
+            if (originalBattleState.sourceMapNodeId === 'ww_cleric_rescue_battle_node') {
+                const clericPoiKey = 'ww_cleric_rescue_poi_completed';
+                if (!state.mapPoiCompletionStatus[clericPoiKey]) {
+                    nextState = {
+                        ...nextState,
+                        mapPoiCompletionStatus: { ...nextState.mapPoiCompletionStatus, [clericPoiKey]: true }
+                    };
+                    const clericAlreadyUnlocked = nextState.unlockedHeroDefinitions.includes('CLERIC');
+                    if (!clericAlreadyUnlocked) {
+                       nextState.unlockedHeroDefinitions = [...nextState.unlockedHeroDefinitions, 'CLERIC'];
+                    }
+                    poiNotifications.push({
+                        id: Date.now().toString() + "-cleric-rescued",
+                        message: clericAlreadyUnlocked ? 'Cleric is safe! Their resolve is strengthened.' : 'Cleric Rescued! The Cleric can now be recruited in town.',
+                        type: 'success',
+                        iconName: ICONS.HERO ? 'HERO' : undefined,
+                        timestamp: Date.now()
+                    });
                 }
             }
-            nextState = { ...nextState, activeView: 'WORLD_MAP', battleState: null };
+            
+            // Other blueprint/POI unlocks can remain here
+            if (originalBattleState.sourceMapNodeId === 'lumber_mill_battle' && !state.mapPoiCompletionStatus['lumber_mill_blueprint_obtained']) {
+                nextState = { ...nextState, mapPoiCompletionStatus: { ...nextState.mapPoiCompletionStatus, 'lumber_mill_blueprint_obtained': true } };
+                poiNotifications.push({ id: Date.now().toString() + "-lm-unlock", message: 'Lumber Mill blueprints acquired! You can now build it in town.', type: 'success', iconName: 'WOOD', timestamp: Date.now() });
+            } else if (originalBattleState.sourceMapNodeId === 'farm_battle' && !state.mapPoiCompletionStatus['farm_blueprint_obtained']) {
+                nextState = { ...nextState, mapPoiCompletionStatus: { ...nextState.mapPoiCompletionStatus, 'farm_blueprint_obtained': true } };
+                poiNotifications.push({ id: Date.now().toString() + "-farm-unlock", message: 'Farm plans discovered! You can now build it in town.', type: 'success', iconName: 'FOOD', timestamp: Date.now() });
+            }
+            
+            if (poiNotifications.length > 0) {
+                nextState.notifications.push(...poiNotifications);
+            }
         }
+        // Always return to World Map after a map battle, regardless of outcome
+        nextState = { ...nextState, activeView: 'WORLD_MAP', battleState: null };
       } else if (action.payload.outcome === 'DEFEAT' || (originalBattleState.waveNumber && originalBattleState.waveNumber >= MAX_WAVE_NUMBER && action.payload.outcome === 'VICTORY')) {
         nextState = { ...nextState, activeView: 'TOWN', battleState: null };
       }

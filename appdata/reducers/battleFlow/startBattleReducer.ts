@@ -1,5 +1,5 @@
 
-import { GameState, GameAction, GlobalBonuses, BattleHero, BattleEnemy, Cost, ResourceType, GameNotification, BattleState, BuildingLevelUpEventInBattle, WaveDefinition } from '../../types';
+import { GameState, GameAction, GlobalBonuses, BattleHero, BattleEnemy, Cost, ResourceType, GameNotification, BattleState, BuildingLevelUpEventInBattle, WaveDefinition, EnemyChannelingAbilityDefinition } from '../../types';
 import { HERO_DEFINITIONS, SKILL_TREES, WAVE_DEFINITIONS, ENEMY_DEFINITIONS, TOWN_HALL_UPGRADE_DEFINITIONS, EQUIPMENT_DEFINITIONS, GUILD_HALL_UPGRADE_DEFINITIONS, SHARD_DEFINITIONS, RUN_BUFF_DEFINITIONS, STATUS_EFFECT_DEFINITIONS, worldMapDefinitions } from '../../gameData/index';
 import { calculateHeroStats, calculateWaveEnemyStats, getExpToNextHeroLevel, formatNumber } from '../../utils';
 import { MAX_WAVE_NUMBER, NOTIFICATION_ICONS } from '../../constants';
@@ -17,14 +17,14 @@ export const startBattleReducer = (
   }
 
   const {
-      waveNumber, 
+      waveNumber,
       isAutoProgression,
       persistedHeroHp,
       persistedHeroMana,
       persistedHeroSpecialCooldowns,
       rewardsForPreviousWave,
       expFromPreviousWave,
-      previousWaveNumberCleared, 
+      previousWaveNumberCleared,
       buildingLevelUpEventsFromPreviousWave,
       previousBattleOutcomeForQuestProcessing,
       sourceMapNodeId,
@@ -93,7 +93,7 @@ export const startBattleReducer = (
   if (isAutoProgression && previousWaveNumberCleared !== undefined) {
       const effectivePrevWaveForProgress = actualCustomWaveSequenceForState ? (previousWaveNumberCleared +1) : previousWaveNumberCleared;
       tempCurrentWaveProgress = Math.max(state.currentWaveProgress, effectivePrevWaveForProgress || 0);
-      
+
       if (rewardsForPreviousWave) {
           const mergedLoot: Cost[] = [...newSessionTotalLoot];
           rewardsForPreviousWave.forEach(reward => {
@@ -105,7 +105,7 @@ export const startBattleReducer = (
           rewardsForPreviousWave.forEach(r => tempNewResources[r.resource] = (tempNewResources[r.resource] || 0) + Math.floor(r.amount));
       }
       newSessionTotalExp += (expFromPreviousWave || 0);
-      if (buildingLevelUpEventsFromPreviousWave) { 
+      if (buildingLevelUpEventsFromPreviousWave) {
         newSessionTotalBuildingLevelUps = [...newSessionTotalBuildingLevelUps, ...buildingLevelUpEventsFromPreviousWave];
       }
 
@@ -137,7 +137,7 @@ export const startBattleReducer = (
        if (!actualCustomWaveSequenceForState && previousWaveNumberCleared !== undefined && previousWaveNumberCleared >= MAX_WAVE_NUMBER) {
            tempNotifications.push({id: `${Date.now()}-maxwave-auto`, message: `Congratulations! You've cleared the final wave (auto-progress)!`, type: 'success', iconName: NOTIFICATION_ICONS.success, timestamp: Date.now()});
       }
-  } else if (!isAutoProgression) { 
+  } else if (!isAutoProgression) {
       newSessionTotalLoot = [];
       newSessionTotalExp = 0;
       newSessionTotalBuildingLevelUps = [];
@@ -173,14 +173,35 @@ export const startBattleReducer = (
   waveDefToUse.enemies.forEach((ew, i_outer) => ENEMY_DEFINITIONS[ew.enemyId] && Array.from({length: ew.count}).forEach((_, i_inner) => {
     const enemyDef = ENEMY_DEFINITIONS[ew.enemyId];
     const finalStats = calculateWaveEnemyStats(enemyDef, actualBattleTitleWaveNumber); // Use actualBattleTitleWaveNumber for scaling
+    const initialSpecialAttackCooldowns: Record<string, number> = {};
+    if (enemyDef.channelingAbilities) {
+        enemyDef.channelingAbilities.forEach((caDef: EnemyChannelingAbilityDefinition) => {
+            initialSpecialAttackCooldowns[caDef.id] = caDef.initialCooldownMs ?? caDef.cooldownMs;
+        });
+    }
+
     const battleEnemyInstance: BattleEnemy = {
-        ...enemyDef, attackType: enemyDef.attackType || 'MELEE', rangedAttackRangeUnits: enemyDef.rangedAttackRangeUnits,
-        calculatedStats: finalStats, uniqueBattleId: `${ew.enemyId}_${i_outer}_${i_inner}_enemy_wave${actualBattleTitleWaveNumber}`,
-        currentHp: finalStats.maxHp, currentEnergyShield: finalStats.maxEnergyShield || 0, shieldRechargeDelayTicksRemaining: 0,
-        attackCooldown: (1000 / finalStats.attackSpeed), attackCooldownRemainingTicks: 0,
-        movementSpeed: 0, x: 0, y: 0, statusEffects: [], isElite: false, specialAttackCooldownsRemaining: {},
+        ...enemyDef,
+        attackType: enemyDef.attackType || 'MELEE',
+        rangedAttackRangeUnits: enemyDef.rangedAttackRangeUnits,
+        calculatedStats: finalStats,
+        uniqueBattleId: `${ew.enemyId}_${i_outer}_${i_inner}_enemy_wave${actualBattleTitleWaveNumber}`,
+        currentHp: finalStats.maxHp,
+        currentEnergyShield: finalStats.maxEnergyShield || 0,
+        shieldRechargeDelayTicksRemaining: 0,
+        attackCooldown: (1000 / finalStats.attackSpeed),
+        attackCooldownRemainingTicks: 0,
+        movementSpeed: 0, x: 0, y: 0, statusEffects: [], temporaryBuffs: [],
+        isElite: ew.isElite || false, // Use isElite from wave definition if present
+        specialAttackCooldownsRemaining: initialSpecialAttackCooldowns,
         summonStrengthModifier: enemyDef.summonAbility ? 1.0 : undefined,
+        currentSummonCooldownMs: enemyDef.summonAbility?.initialCooldownMs ?? enemyDef.summonAbility?.cooldownMs,
+        currentHealCooldownMs: enemyDef.healAbility?.initialCooldownMs ?? enemyDef.healAbility?.cooldownMs,
+        currentAoeAttackCooldownMs: enemyDef.aoeAttackChance ? (enemyDef.aoeAttackCooldownBaseMs || 0) : undefined,
+        currentPeriodicEffectCooldownMs: enemyDef.periodicEffectAbility?.initialCooldownMs ?? enemyDef.periodicEffectAbility?.cooldownMs,
         currentShieldHealCooldownMs: enemyDef.shieldHealAbility?.initialCooldownMs ?? enemyDef.shieldHealAbility?.cooldownMs,
+        phases: enemyDef.phases ? JSON.parse(JSON.stringify(enemyDef.phases)) : undefined, // Initialize phases here
+        currentPhaseIndex: 0, // Initialize currentPhaseIndex
     };
     battleEnemies.push(battleEnemyInstance);
   }));
@@ -191,7 +212,7 @@ export const startBattleReducer = (
     : `Wave ${actualBattleTitleWaveNumber}`;
 
   const newBattleState: BattleState = {
-    waveNumber: actualBattleTitleWaveNumber, 
+    waveNumber: actualBattleTitleWaveNumber,
     customWaveSequence: actualCustomWaveSequenceForState,
     currentCustomWaveIndex: actualCurrentCustomWaveIndexForState,
     sourceMapNodeId: sourceMapNodeId,

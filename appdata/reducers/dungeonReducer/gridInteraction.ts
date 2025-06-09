@@ -256,7 +256,7 @@ export const handleGridInteractionActions = (
             const availableBuffs = Object.values(RUN_BUFF_DEFINITIONS).filter(buff => state.unlockedRunBuffs.includes(buff.id));
             const chosenBuffIds: string[] = [];
             if(availableBuffs.length > 0){
-                for (let i = 0; i < numChoices && availableBuffs.length > 0; i++) {
+                 for (let i = 0; i < numChoices && availableBuffs.length > 0; i++) {
                     const randomIndex = Math.floor(Math.random() * availableBuffs.length);
                     chosenBuffIds.push(availableBuffs.splice(randomIndex, 1)[0].id);
                 }
@@ -433,6 +433,7 @@ export const handleGridInteractionActions = (
                             x: 0,
                             y: 0,
                             statusEffects: [],
+                            temporaryBuffs: [],
                             isElite: encounterDef.isElite,
                             specialAttackCooldownsRemaining: {}, 
                             summonStrengthModifier: enemyDef.summonAbility ? 1.0 : undefined,

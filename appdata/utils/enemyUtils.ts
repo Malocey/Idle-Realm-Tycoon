@@ -168,6 +168,7 @@ export const calculateDemoniconEnemyStats = (
       x: Math.random() * (500 - 32), 
       y: Math.random() * (200 - 32), 
       statusEffects: [],
+      temporaryBuffs: [], // Initialize temporaryBuffs
       targetId: null,
       specialAttackCooldownsRemaining: {}, 
       attackType: baseEnemyDef.attackType || 'MELEE',

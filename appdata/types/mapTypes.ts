@@ -13,12 +13,15 @@ export interface MapNode {
   isBattleNode?: boolean; // True if this node triggers standard waves
   battleWaveStart?: number;
   battleWaveEnd?: number;
-  customWaveDefinitionIds?: string[]; // New: Array of WaveDefinition IDs for custom sequences
-  poiType?: 'DUNGEON' | 'RESOURCE' | 'EVENT' | 'MAP_PORTAL';
-  targetMapId?: string; // For MAP_PORTAL nodes
-  targetNodeId?: string; // For MAP_PORTAL nodes, specifies the entry node ID on the target map
-  resourceType?: ResourceType; // For RESOURCE nodes
-  resourceAmount?: number;  // For RESOURCE nodes
+  customWaveDefinitionIds?: string[]; 
+  poiType?: 'DUNGEON' | 'RESOURCE' | 'EVENT' | 'MAP_PORTAL' | 'CLERIC_RESCUE_EVENT'; // Added CLERIC_RESCUE_EVENT
+  cleric_rescue_battle_node_id?: string; // Optional: ID of the battle node for cleric rescue
+  targetMapId?: string; 
+  targetNodeId?: string; 
+  resourceType?: ResourceType; 
+  resourceAmount?: number;  
+  grantsShardId?: string; 
+  grantsShardLevel?: number; 
 }
 
 // WorldMapDefinition was moved to types/dungeon/definition.ts

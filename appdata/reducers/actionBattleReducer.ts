@@ -294,7 +294,7 @@ export const actionBattleReducer = (
       
       let currentActionBattleState = { ...state.actionBattleState };
       let newHeroInstances = currentActionBattleState.heroInstances.map(h => ({...h, statusEffects: [...h.statusEffects], temporaryBuffs: [...h.temporaryBuffs]}));
-      let newEnemyInstances = currentActionBattleState.enemyInstances.map(e => ({...e, statusEffects: [...e.statusEffects]}));
+      let newEnemyInstances = currentActionBattleState.enemyInstances.map(e => ({...e, statusEffects: [...e.statusEffects], temporaryBuffs: [...(e.temporaryBuffs || [])]}));
       let newActiveProjectiles = [...currentActionBattleState.activeProjectiles];
       const newTickAttackEvents: AttackEvent[] = [];
       const keysPressed = currentActionBattleState.keysPressed || {};
@@ -569,7 +569,9 @@ export const actionBattleReducer = (
         const heroTargetIndex = newHeroInstances.findIndex(h => h.uniqueBattleId === event.targetId);
         if (heroTargetIndex !== -1) {
             let damageToApply = event.damage;
-            if (state.godModeActive && newHeroInstances[heroTargetIndex].uniqueBattleId === currentActionBattleState.controlledHeroId) damageToApply = 0;
+            if (state.godModeActive && newHeroInstances.some(h => h.uniqueBattleId === event.targetId) && newEnemyInstances.some(e => e.uniqueBattleId === event.attackerId)) { // Apply god mode if attacker is enemy
+                damageToApply = 0;
+            }
             
             if(event.isHeal && event.healAmount) { 
                 newHeroInstances[heroTargetIndex].currentHp = Math.min(newHeroInstances[heroTargetIndex].calculatedStats.maxHp, newHeroInstances[heroTargetIndex].currentHp + event.healAmount);
@@ -713,6 +715,7 @@ export const actionBattleReducer = (
               attackCooldownRemainingTicks: 0,
               movementSpeed: MOVEMENT_SPEED_UNITS_PER_TICK / 1.5, 
               statusEffects: [],
+              temporaryBuffs: [],
               isElite: false,
               x: Math.random() * (ARENA_WIDTH_UNITS - PARTICIPANT_SIZE_UNITS),
               y: Math.random() * (ARENA_HEIGHT_UNITS / 2 - PARTICIPANT_SIZE_UNITS), 
@@ -778,7 +781,7 @@ export const actionBattleReducer = (
         const updatedHeroInstances = [...state.actionBattleState.heroInstances];
         const heroToUpdate = { ...updatedHeroInstances[heroIndex] };
         let actualDamage = damage;
-        if (state.godModeActive && heroToUpdate.uniqueBattleId === state.actionBattleState.controlledHeroId) {
+        if (state.godModeActive) { // God mode protects ALL heroes in Action Battle
             actualDamage = 0;
         }
         heroToUpdate.currentHp = Math.max(0, heroToUpdate.currentHp - actualDamage);

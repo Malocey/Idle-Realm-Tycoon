@@ -14,7 +14,7 @@ const Footer: React.FC<FooterProps> = ({ onToggleCheatMenu }) => {
   return (
     <>
     <footer className="p-2 text-center text-xs text-slate-500 bg-slate-800/50 debug-visible flex flex-wrap justify-center items-center gap-2 sticky bottom-0 z-30"> {/* Added sticky and z-index */}
-      <span>Idle Realm Tycoon v0.3.0.2 |</span>
+      <span>Idle Realm Tycoon v0.3.0.3 |</span>
       {onToggleCheatMenu && (
         <Button
             size="sm"

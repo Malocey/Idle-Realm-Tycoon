@@ -5,48 +5,40 @@ export const SHADOW_CREEPER_DEFINITION: EnemyDefinition = {
   id: 'SHADOW_CREEPER',
   name: 'Shadow Creeper',
   stats: {
-    maxHp: 80,
-    damage: 10, // Shadow Bolt damage
-    defense: 4,
-    attackSpeed: 0.9,
-    critChance: 0.05,
+    maxHp: 70,
+    damage: 12, 
+    defense: 3,
+    attackSpeed: 1.0,
+    critChance: 0.06,
     critDamage: 1.4,
-    maxMana: 0, // Abilities are cooldown based or on-hit
+    maxMana: 0,
     manaRegen: 0,
+    healPower: 0,
+    hpRegen: 0,
+    maxEnergyShield: 0,
+    energyShieldRechargeRate: 0,
+    energyShieldRechargeDelay: 0,
   },
   loot: [
-    { resource: ResourceType.GOLD, amount: 30 },
-    { resource: ResourceType.CRYSTALS, amount: 1 },
+    { resource: ResourceType.GOLD, amount: 20 },
+    { resource: ResourceType.CRYSTALS, amount: 2 },
   ],
-  iconName: 'MAGIC_ARROW', // Placeholder, as it's a ranged magic user
-  expReward: 55,
+  iconName: 'ENEMY', 
+  expReward: 45,
   attackType: 'RANGED',
-  rangedAttackRangeUnits: 150,
+  rangedAttackRangeUnits: 140,
   onAttackAbilities: [
     {
-      chance: 0.30, // 30% chance to apply Curse of Agony
+      chance: 0.25, 
       inlineStatusEffect: {
-        name: 'Curse of Agony',
-        type: StatusEffectType.DOT,
-        durationMs: 10000, // 10 seconds
-        iconName: 'WARNING', // Placeholder icon
-        damagePerTick: 3, // Reduced from 8
-        tickIntervalMs: 2000, // Every 2 seconds
-      },
-    },
-  ],
-  periodicEffectAbility: { // Renamed from debuffAuraAbility
-    cooldownMs: 12000, // 12 seconds
-    initialCooldownMs: 5000, // 5 seconds initial
-    statusEffect: {
-      name: 'Weakening Aura',
-      type: StatusEffectType.DEBUFF, 
-      durationMs: 6000, // 6 seconds
-      iconName: 'SHIELD_BADGE', 
-      statAffected: 'defense' as keyof HeroStats,
-      modifierType: 'PERCENTAGE_ADDITIVE',
-      value: -0.15, // Reduces defense by 15%
-    },
-  },
-  // specialAttackCooldownsRemaining: {}, // No channeling abilities defined
+        name: 'Shadow Curse',
+        type: StatusEffectType.DEBUFF,
+        durationMs: 8000, 
+        iconName: 'WARNING', 
+        statAffected: 'defense' as keyof HeroStats,
+        modifierType: 'PERCENTAGE_ADDITIVE',
+        value: -0.15, // Reduces defense by 15%
+      }
+    }
+  ]
 };

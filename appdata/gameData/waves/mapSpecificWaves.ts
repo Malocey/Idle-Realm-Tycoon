@@ -58,4 +58,59 @@ export const MAP_GOBLIN_CAMP_WAVES: WaveDefinition[] = [
     enemies: [{ enemyId: 'GOBLIN_SHAMAN', count: 1 }, { enemyId: 'DIRE_WOLF', count: 2 }, { enemyId: 'GOBLIN', count: 1 }],
     reward: [{ resource: ResourceType.FOOD, amount: 20 }, { resource: ResourceType.GOLD, amount: 35 }, { resource: ResourceType.LEATHER, amount: 2 }]
   },
+  // New Waves for Gold Mine Sub-Map
+  {
+    id: 'map_gold_mine_ambush_wave_1',
+    enemies: [{ enemyId: 'GOBLIN', count: 3 }, { enemyId: 'EXPLODING_GOBLIN', count: 1 }],
+    reward: [{ resource: ResourceType.GOLD, amount: 40 }, { resource: ResourceType.STONE, amount: 5 }]
+  },
+  {
+    id: 'map_gold_mine_ambush_wave_2',
+    enemies: [{ enemyId: 'ARMORED_GOBLIN', count: 2 }, { enemyId: 'GOBLIN', count: 2 }],
+    reward: [{ resource: ResourceType.GOLD, amount: 55 }, { resource: ResourceType.IRON, amount: 3 }]
+  },
+  // New Waves for Stone Quarry Sub-Map
+  {
+    id: 'map_stone_quarry_golem_wave_1',
+    enemies: [{ enemyId: 'STONE_GOLEM_MINION', count: 2 }], 
+    reward: [{ resource: ResourceType.STONE, amount: 30 }, { resource: ResourceType.CRYSTALS, amount: 3 }]
+  },
+  {
+    id: 'map_stone_quarry_golem_wave_2',
+    enemies: [{ enemyId: 'STONE_GOLEM_MINION', count: 3 }, { enemyId: 'IRONCLAD_GOLEM', count: 1, isElite: true }], 
+    reward: [{ resource: ResourceType.STONE, amount: 50 }, { resource: ResourceType.IRON, amount: 5 }, { resource: ResourceType.CRYSTALS, amount: 5 }]
+  },
+  // New Waves for Whispering Woods Path - Edge
+  {
+    id: 'map_ww_edge_battle_1_wave_1',
+    enemies: [{ enemyId: 'GIANT_SPIDER', count: 2 }, { enemyId: 'SHADOW_CREEPER', count: 1 }],
+    reward: [{ resource: ResourceType.GOLD, amount: 30 }, { resource: ResourceType.LEATHER, amount: 1 }]
+  },
+  {
+    id: 'map_ww_edge_battle_1_wave_2',
+    enemies: [{ enemyId: 'SHADOW_CREEPER', count: 2 }, { enemyId: 'DIRE_WOLF', count: 1 }],
+    reward: [{ resource: ResourceType.GOLD, amount: 40 }, { resource: ResourceType.CRYSTALS, amount: 2 }]
+  },
+  // New Waves for Whispering Woods Path - Depths
+  {
+    id: 'map_ww_depths_battle_1_wave_1',
+    enemies: [{ enemyId: 'DIRE_WOLF', count: 2 }, { enemyId: 'SHADOW_CREEPER', count: 2, isElite: true }],
+    reward: [{ resource: ResourceType.GOLD, amount: 50 }, { resource: ResourceType.WOOD, amount: 10 }]
+  },
+  {
+    id: 'map_ww_depths_battle_1_wave_2',
+    enemies: [{ enemyId: 'TREANT_SAPLING', count: 1 }, { enemyId: 'SHADOW_CREEPER', count: 1 }],
+    reward: [{ resource: ResourceType.GOLD, amount: 60 }, { resource: ResourceType.HERB_IRONWOOD_LEAF, amount: 1 }]
+  },
+  // Waves for Cleric Rescue Battle
+  {
+    id: 'map_ww_cleric_rescue_wave_1',
+    enemies: [{ enemyId: 'SHADOW_CREEPER', count: 3 }, { enemyId: 'DIRE_WOLF', count: 1, isElite: true }],
+    reward: [{ resource: ResourceType.GOLD, amount: 70 }] // Minimal reward for the wave itself
+  },
+  {
+    id: 'map_ww_cleric_rescue_wave_2',
+    enemies: [{ enemyId: 'CORRUPTED_TREANT_MINIBOSS', count: 1 }, { enemyId: 'SHADOW_CREEPER', count: 2 }],
+    reward: [{ resource: ResourceType.GOLD, amount: 100 }, { resource: ResourceType.CRYSTALS, amount: 5 }] // Main reward is cleric unlock
+  },
 ];

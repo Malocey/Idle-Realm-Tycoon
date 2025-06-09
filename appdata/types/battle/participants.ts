@@ -74,7 +74,7 @@ export interface BattleEnemy extends EnemyDefinition {
   explosionTimerRemainingMs?: number;
   currentPhaseIndex?: number; 
   phases?: BossPhaseDefinition[]; 
-  temporaryBuffs?: TemporaryBuff[]; 
+  temporaryBuffs: TemporaryBuff[]; 
   channelingState?: ParticipantChannelingState | null; 
   specialAttackCooldownsRemaining?: Record<string, number>; 
   isUsingSpecialAttack?: { definitionId: string, targetId?: string | null } | null; // Added optional property

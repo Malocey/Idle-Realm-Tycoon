@@ -1,3 +1,4 @@
+
 import { RunBuffRarity } from '../types';
 
 export const getRarityTextClass = (rarity: RunBuffRarity): string => {
@@ -28,4 +29,24 @@ export const getRarityAnimationClass = (rarity: RunBuffRarity): string => {
     if (rarity === RunBuffRarity.LEGENDARY) return 'animate-legendary-shimmer';
     if (rarity === RunBuffRarity.MYTHIC) return 'animate-mythic-pulse';
     return '';
+};
+
+// Color Utility Functions (moved from BattleStatBars)
+export const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null;
+};
+
+export const componentToHex = (c: number): string => { const hex = c.toString(16); return hex.length === 1 ? "0" + hex : hex; };
+
+export const rgbToHex = (r: number, g: number, b: number): string => "#" + componentToHex(r) + componentToHex(g) + componentToHex(b);
+
+export const interpolateColor = (color1Hex: string, color2Hex: string, ratio: number): string => {
+  const rgb1 = hexToRgb(color1Hex);
+  const rgb2 = hexToRgb(color2Hex);
+  if (!rgb1 || !rgb2) return color1Hex; 
+  const r = Math.round(rgb1.r * (1 - ratio) + rgb2.r * ratio);
+  const g = Math.round(rgb1.g * (1 - ratio) + rgb2.g * ratio);
+  const b = Math.round(rgb1.b * (1 - ratio) + rgb2.b * ratio);
+  return rgbToHex(r, g, b);
 };

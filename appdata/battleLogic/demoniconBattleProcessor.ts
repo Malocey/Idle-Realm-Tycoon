@@ -1,6 +1,6 @@
 
 import { GameState, GameAction, GlobalBonuses, Cost, GameNotification, ResourceType, RunBuffDefinition, AttackEvent, BattleState, GameContextType, StatusEffectType, BattleHero } from '../types';
-import { calculateGlobalBonusesFromAllSources, formatNumber, canAfford, calculateHeroStats as calculateHeroStatsUtil, mergeCosts, calculateDemoniconEnemyStats as calculateDemoniconEnemyStatsUtil } from '../utils';
+import { calculateGlobalBonusesFromAllSources, formatNumber, canAfford, calculateHeroStats as calculateHeroStatsUtil, mergeCosts, calculateDemoniconEnemyStats as calculateDemoniconEnemyStatsUtil, calculateWaveEnemyStats } from '../utils';
 import { TOWN_HALL_UPGRADE_DEFINITIONS, BUILDING_SPECIFIC_UPGRADE_DEFINITIONS, GUILD_HALL_UPGRADE_DEFINITIONS, HERO_DEFINITIONS, ENEMY_DEFINITIONS, BUILDING_DEFINITIONS, SPECIAL_ATTACK_DEFINITIONS, EQUIPMENT_DEFINITIONS, RUN_BUFF_DEFINITIONS, SKILL_TREES, SHARD_DEFINITIONS, STATUS_EFFECT_DEFINITIONS } from '../gameData/index';
 import { NOTIFICATION_ICONS, GAME_TICK_MS } from '../constants';
 import { ICONS } from '../components/Icons';
@@ -39,7 +39,8 @@ export const processDemoniconBattleTick = (
 
   let currentDefeatedEnemiesWithLoot = {...currentBattleState.defeatedEnemiesWithLoot};
   let currentUpdatedBattleHeroes = currentBattleState.heroes.map(h => ({...h, statusEffects: [...(h.statusEffects || [])], temporaryBuffs: [...(h.temporaryBuffs || [])] }));
-  let currentUpdatedBattleEnemies = currentBattleState.enemies.map(e => ({...e, statusEffects: [...(e.statusEffects || [])]}));
+  let currentUpdatedBattleEnemies = currentBattleState.enemies.map(e => ({...e, statusEffects: [...(e.statusEffects || [])], temporaryBuffs: [...(e.temporaryBuffs || [])] }));
+
 
   let currentNotifications = [...state.notifications];
   // Building-related state is not typically modified by Demonicon battles
@@ -99,6 +100,8 @@ export const processDemoniconBattleTick = (
   currentUpdatedBattleHeroes = eventProcessingResult.updatedHeroes;
   currentUpdatedBattleEnemies = eventProcessingResult.updatedEnemies;
   currentBattleLog.push(...eventProcessingResult.logMessages);
+  const enemyIdsToRecalculateStats = eventProcessingResult.statsRecalculationNeededForEnemyIds;
+
   if (eventProcessingResult.newSummonsFromPhase && eventProcessingResult.newSummonsFromPhase.length > 0) {
     currentUpdatedBattleEnemies.push(...eventProcessingResult.newSummonsFromPhase);
   }
@@ -118,6 +121,37 @@ export const processDemoniconBattleTick = (
         return updatedHeroRecalc;
       }
       return hero;
+    });
+  }
+
+  if (enemyIdsToRecalculateStats && enemyIdsToRecalculateStats.length > 0) {
+    currentUpdatedBattleEnemies = currentUpdatedBattleEnemies.map(enemy => {
+        if (enemyIdsToRecalculateStats.includes(enemy.uniqueBattleId)) {
+            const enemyDef = staticData.enemyDefinitions[enemy.id];
+            let newStats = calculateDemoniconEnemyStatsUtil( // Use Demonicon specific scaler
+                enemyDef,
+                state.battleState!.demoniconRank || 0,
+                staticData,
+                globalBonuses
+            )[0].calculatedStats; // Assuming it returns an array with one enemy for this purpose, take first.
+
+            if (enemy.temporaryBuffs) {
+                enemy.temporaryBuffs.forEach(buff => {
+                    if (buff.stat && newStats[buff.stat] !== undefined && buff.value !== undefined) {
+                        if (buff.modifierType === 'FLAT') {
+                            (newStats[buff.stat] as number) += buff.value;
+                        } else if (buff.modifierType === 'PERCENTAGE') {
+                            (newStats[buff.stat] as number) *= (1 + buff.value);
+                        }
+                    }
+                });
+            }
+            const currentHpPercentage = enemy.calculatedStats.maxHp > 0 ? enemy.currentHp / enemy.calculatedStats.maxHp : 1;
+            const updatedEnemyWithNewStats = { ...enemy, calculatedStats: newStats };
+            updatedEnemyWithNewStats.currentHp = Math.max(1, Math.floor(newStats.maxHp * currentHpPercentage));
+            return updatedEnemyWithNewStats;
+        }
+        return enemy;
     });
   }
 

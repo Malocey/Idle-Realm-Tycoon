@@ -64,8 +64,6 @@ const verdantPlainsNodes: MapNode[] = [
     description: 'Win this battle to find plans for a Farm.',
     connections: ['wood_clearing', 'gold_mine_access_battle'],
     isBattleNode: true,
-    // battleWaveStart: 1, // Replaced by customWaveDefinitionIds
-    // battleWaveEnd: 6,   // Replaced by customWaveDefinitionIds
     customWaveDefinitionIds: [
         'map_farm_battle_wave_1',
         'map_farm_battle_wave_2',
@@ -90,20 +88,23 @@ const verdantPlainsNodes: MapNode[] = [
     x: 85,
     y: 50,
     iconName: 'PICKAXE_ICON',
-    description: 'An old, seemingly depleted gold mine. Perhaps some resources can still be found, or it leads elsewhere...',
+    description: 'An old gold mine. A passage seems to lead deeper within.',
     connections: ['gold_mine_access_battle', 'woods_entrance', 'quarry_approach'],
-    poiType: 'RESOURCE', 
-    resourceType: ResourceType.GOLD, 
-    resourceAmount: 50,
+    poiType: 'MAP_PORTAL', 
+    targetMapId: 'gold_mine_depths_map',
+    targetNodeId: 'gmd_entry',
   },
   {
     id: 'woods_entrance',
     name: 'Whispering Woods Path', 
     x: 80, 
     y: 25, 
-    iconName: 'COMPASS', 
-    description: 'A path leading into the shadowy Whispering Woods.',
+    iconName: 'PORTAL', // Change icon to portal
+    description: 'A winding path leading into the shadowy Whispering Woods.',
     connections: ['damaged_gold_mine', 'tannery_guardians'],
+    poiType: 'MAP_PORTAL', // Make this a portal to the new map series
+    targetMapId: 'wispering_woods_path_edge_map', // New map
+    targetNodeId: 'ww_edge_entry', // Entry node of the new map
   },
   {
     id: 'tannery_guardians',
@@ -118,16 +119,16 @@ const verdantPlainsNodes: MapNode[] = [
     battleWaveEnd: 5,
   },
   {
-    id: 'deep_woods_encounter',
-    name: 'Gateway to the Whispering Woods', 
+    id: 'deep_woods_encounter', // This remains the portal to the OLD whispering woods
+    name: 'Gateway to the Old Whispering Woods', 
     x: 55,
     y: 10,
     iconName: 'PORTAL', 
-    description: 'An ancient archway hums with power, leading to the Whispering Woods.',
+    description: 'An ancient archway hums with power, leading to the old Whispering Woods.',
     connections: ['tannery_guardians'],
     poiType: 'MAP_PORTAL',
-    targetMapId: 'whispering_woods',
-    targetNodeId: 'ww_node_1', 
+    targetMapId: 'whispering_woods', // Original target
+    targetNodeId: 'ww_node_1', // Original target node
     isBattleNode: false, 
   },
   {
@@ -141,15 +142,16 @@ const verdantPlainsNodes: MapNode[] = [
   },
   {
     id: 'stone_quarry_guards',
-    name: 'Stone Quarry Guards',
+    name: 'Stone Quarry Entrance', 
     x: 70,
     y: 90,
-    iconName: 'FIGHT',
-    description: 'Golems or tough miners guard the entrance to the quarry. Secure plans for a Stone Quarry.',
+    iconName: 'PORTAL', 
+    description: 'The entrance to a deeper section of the stone quarry. What lies within?',
     connections: ['quarry_approach'],
-    isBattleNode: true,
-    battleWaveStart: 2,
-    battleWaveEnd: 4,
+    poiType: 'MAP_PORTAL', 
+    targetMapId: 'stone_quarry_excavation_map',
+    targetNodeId: 'sqe_entry',
+    isBattleNode: false, 
   },
 ];
 

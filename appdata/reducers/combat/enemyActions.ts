@@ -20,7 +20,7 @@ export const processEnemyActions = (
 
   updatedEnemies = updatedEnemies.map(enemy => {
     if (enemy.currentHp <= 0) return enemy;
-    let enemyCopy = { ...enemy, statusEffects: [...(enemy.statusEffects || [])] }; 
+    let enemyCopy = { ...enemy, statusEffects: [...(enemy.statusEffects || [])], temporaryBuffs: [...(enemy.temporaryBuffs || [])] }; 
     let enemyActedThisTick = false;
 
     const isStunned = enemyCopy.statusEffects && enemyCopy.statusEffects.some(effect => effect.type === StatusEffectType.STUN);
@@ -150,7 +150,8 @@ export const processEnemyActions = (
               attackCooldown: (1000 / summonedEnemyStats.attackSpeed),
               attackCooldownRemainingTicks: 0,
               movementSpeed: 0, x: 0, y: 0,
-              statusEffects: [], isElite: false,
+              statusEffects: [], temporaryBuffs: [],
+              isElite: false,
               specialAttackCooldownsRemaining: initialSummonCooldowns,
             };
             if (summonedEnemyDef.summonAbility) newSummonedEnemy.currentSummonCooldownMs = summonedEnemyDef.summonAbility.initialCooldownMs ?? summonedEnemyDef.summonAbility.cooldownMs;

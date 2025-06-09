@@ -1,6 +1,6 @@
 
 import { GameState, GameAction, GlobalBonuses, Cost, GameNotification, ResourceType, RunBuffDefinition, AttackEvent, BattleState, GameContextType, StatusEffectType, BattleHero } from '../types';
-import { calculateGlobalBonusesFromAllSources, formatNumber, canAfford, calculateHeroStats as calculateHeroStatsUtil } from '../utils';
+import { calculateGlobalBonusesFromAllSources, formatNumber, canAfford, calculateHeroStats as calculateHeroStatsUtil, calculateWaveEnemyStats } from '../utils';
 import { TOWN_HALL_UPGRADE_DEFINITIONS, BUILDING_SPECIFIC_UPGRADE_DEFINITIONS, GUILD_HALL_UPGRADE_DEFINITIONS, HERO_DEFINITIONS, ENEMY_DEFINITIONS, BUILDING_DEFINITIONS, SPECIAL_ATTACK_DEFINITIONS, EQUIPMENT_DEFINITIONS, RUN_BUFF_DEFINITIONS, SKILL_TREES, SHARD_DEFINITIONS, STATUS_EFFECT_DEFINITIONS } from '../gameData/index';
 import { NOTIFICATION_ICONS, GAME_TICK_MS } from '../constants';
 import { ICONS } from '../components/Icons';
@@ -32,7 +32,8 @@ export const processWaveBattleTick = (
   let currentDefeatedEnemiesWithLoot = {...state.battleState.defeatedEnemiesWithLoot};
   let currentBattleExpCollected = state.battleState.battleExpCollected;
   let currentUpdatedBattleHeroes = state.battleState.heroes.map(h => ({...h, statusEffects: [...(h.statusEffects || [])], temporaryBuffs: [...(h.temporaryBuffs || [])] }));
-  let currentUpdatedBattleEnemies = state.battleState.enemies.map(e => ({...e, statusEffects: [...(e.statusEffects || [])]}));
+  let currentUpdatedBattleEnemies = state.battleState.enemies.map(e => ({...e, statusEffects: [...(e.statusEffects || [])], temporaryBuffs: [...(e.temporaryBuffs || [])] }));
+
 
   let currentNotifications = [...state.notifications];
   let currentBuildings = [...state.buildings];
@@ -95,6 +96,8 @@ export const processWaveBattleTick = (
   currentUpdatedBattleHeroes = eventProcessingResult.updatedHeroes;
   currentUpdatedBattleEnemies = eventProcessingResult.updatedEnemies;
   currentBattleLog.push(...eventProcessingResult.logMessages);
+  const enemyIdsToRecalculateStats = eventProcessingResult.statsRecalculationNeededForEnemyIds;
+
 
   if (eventProcessingResult.newSummonsFromPhase && eventProcessingResult.newSummonsFromPhase.length > 0) {
     currentUpdatedBattleEnemies.push(...eventProcessingResult.newSummonsFromPhase);
@@ -116,7 +119,9 @@ export const processWaveBattleTick = (
             globalBonuses,
             staticData.shardDefinitions,
             staticData.runBuffDefinitions,
-            staticData.statusEffectDefinitions
+            staticData.statusEffectDefinitions,
+            state.battleState?.isDemoniconBattle,
+            state.achievedDemoniconMilestoneRewards
         );
         const currentHpPercentage = hero.calculatedStats.maxHp > 0 ? hero.currentHp / hero.calculatedStats.maxHp : 1;
         const currentManaPercentage = hero.calculatedStats.maxMana && hero.calculatedStats.maxMana > 0 ? hero.currentMana / hero.calculatedStats.maxMana : 0;
@@ -133,6 +138,38 @@ export const processWaveBattleTick = (
       return hero;
     });
   }
+  
+  if (enemyIdsToRecalculateStats && enemyIdsToRecalculateStats.length > 0) {
+    currentUpdatedBattleEnemies = currentUpdatedBattleEnemies.map(enemy => {
+        if (enemyIdsToRecalculateStats.includes(enemy.uniqueBattleId)) {
+            const enemyDef = staticData.enemyDefinitions[enemy.id];
+            let newStats = calculateWaveEnemyStats( // Or appropriate scaler (dungeon/demonicon)
+                enemyDef,
+                state.battleState!.waveNumber || 1,
+                enemy.isElite,
+                enemy.summonStrengthModifier
+            );
+
+            if (enemy.temporaryBuffs) {
+                enemy.temporaryBuffs.forEach(buff => {
+                    if (buff.stat && newStats[buff.stat] !== undefined && buff.value !== undefined) {
+                        if (buff.modifierType === 'FLAT') {
+                            (newStats[buff.stat] as number) += buff.value;
+                        } else if (buff.modifierType === 'PERCENTAGE') { // Assuming 'PERCENTAGE' is multiplicative from temp buffs
+                            (newStats[buff.stat] as number) *= (1 + buff.value);
+                        }
+                    }
+                });
+            }
+            const currentHpPercentage = enemy.calculatedStats.maxHp > 0 ? enemy.currentHp / enemy.calculatedStats.maxHp : 1;
+            const updatedEnemyWithNewStats = { ...enemy, calculatedStats: newStats };
+            updatedEnemyWithNewStats.currentHp = Math.max(1, Math.floor(newStats.maxHp * currentHpPercentage));
+            return updatedEnemyWithNewStats;
+        }
+        return enemy;
+    });
+  }
+
 
   // 5. Handle Loot, XP, and Building Level Ups from defeated enemies
   const lootAndXPResult = handleLootAndXP(

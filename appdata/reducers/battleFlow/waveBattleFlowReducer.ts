@@ -179,7 +179,7 @@ export const waveBattleFlowReducer = (
             calculatedStats: finalStats, uniqueBattleId: `${ew.enemyId}_${i_outer}_${i_inner}_enemy_wave${actualBattleTitleWaveNumber}`,
             currentHp: finalStats.maxHp, currentEnergyShield: finalStats.maxEnergyShield || 0, shieldRechargeDelayTicksRemaining: 0,
             attackCooldown: (1000 / finalStats.attackSpeed), attackCooldownRemainingTicks: 0,
-            movementSpeed: 0, x: 0, y: 0, statusEffects: [], isElite: false, specialAttackCooldownsRemaining: {},
+            movementSpeed: 0, x: 0, y: 0, statusEffects: [], temporaryBuffs: [], isElite: false, specialAttackCooldownsRemaining: {},
             summonStrengthModifier: enemyDef.summonAbility ? 1.0 : undefined,
             currentShieldHealCooldownMs: enemyDef.shieldHealAbility?.initialCooldownMs ?? enemyDef.shieldHealAbility?.cooldownMs,
         };

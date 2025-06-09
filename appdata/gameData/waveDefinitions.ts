@@ -18,5 +18,5 @@ export const WAVE_DEFINITIONS: WaveDefinition[] = [
   ...addIdsToWaves(WAVES_21_30, 'wave'),
   ...addIdsToWaves(WAVES_31_40, 'wave'),
   ...addIdsToWaves(WAVES_41_50, 'wave'),
-  ...MAP_GOBLIN_CAMP_WAVES, // This already includes farm battle waves
+  ...MAP_GOBLIN_CAMP_WAVES, 
 ];

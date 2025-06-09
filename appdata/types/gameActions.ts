@@ -11,10 +11,11 @@ export type GameAction =
   | { type: 'CONSTRUCT_BUILDING'; payload: { buildingId: string } }
   | { type: 'UPGRADE_BUILDING'; payload: { buildingId: string; levelsToUpgrade?: number; totalBatchCost?: Cost[] } }
   | { type: 'RECRUIT_HERO'; payload: { heroId: string } }
-  | { type: 'UNLOCK_HERO_DEFINITION'; payload: { heroId: string } } // New Action
+  | { type: 'UNLOCK_HERO_DEFINITION'; payload: { heroId: string } } 
   | { type: 'UPGRADE_SKILL'; payload: { heroDefinitionId: string; skillId: string; levelsToUpgrade?: number; totalBatchCost?: Cost[] } }
   | { type: 'LEARN_UPGRADE_SPECIAL_ATTACK'; payload: { heroDefinitionId: string; skillNodeId: string; levelsToUpgrade?: number; totalBatchCost?: Cost[] } }
   | { type: 'UPGRADE_HERO_EQUIPMENT'; payload: { heroDefinitionId: string; equipmentId: string; levelsToUpgrade?: number; totalBatchCost?: Cost[] } }
+  | { type: 'AWARD_SHARD_TO_HERO'; payload: { heroDefinitionId: string; shardDefinitionId: string; shardLevel: number; } } // New Action
   | { type: 'START_BATTLE_PREPARATION'; payload: { 
         waveNumber: number; 
         isAutoProgression?: boolean;
@@ -151,6 +152,6 @@ export type GameAction =
   | { type: 'CLEANUP_DEMONICON_STATE' }
   | { type: 'SET_PLAYER_MAP_NODE'; payload: { nodeId: string } }
   | { type: 'REVEAL_MAP_NODES_STATIC'; payload: { nodeIds: string[] } }
-  | { type: 'SET_CURRENT_MAP'; payload: { mapId: string } }
+  | { type: 'SET_CURRENT_MAP'; payload: { mapId: string; targetNodeId?: string } }
   | { type: 'COLLECT_MAP_RESOURCE'; payload: { nodeId: string; mapId: string } }
   | { type: 'SET_MAP_POI_COMPLETED'; payload: { poiKey: string } };
