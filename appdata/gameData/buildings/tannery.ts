@@ -1,3 +1,4 @@
+
 import { ResourceType, BuildingDefinition } from '../../types';
 
 export const TANNERY_DEFINITION: BuildingDefinition = {
@@ -11,5 +12,5 @@ export const TANNERY_DEFINITION: BuildingDefinition = {
   maxLevel: -1,
   iconName: 'LEATHER',
   isProducer: true,
-  unlockWaveRequirement: 5,
+  // unlockWaveRequirement: 5, // Entfernt
 };

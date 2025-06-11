@@ -15,25 +15,25 @@ export const TREANT_ADULT_DEFINITION: EnemyDefinition = {
   loot: [
     { resource: ResourceType.WOOD, amount: 25 }, 
     { resource: ResourceType.HERB_IRONWOOD_LEAF, amount: 3 },
-    { resource: ResourceType.HEROIC_POINTS, amount: 30 } // More XP than a regular sapling
+    { resource: ResourceType.HEROIC_POINTS, amount: 30 } 
   ],
-  iconName: 'WOOD', // Can be a different icon later if desired
-  expReward: 75, // More EXP
+  iconName: 'WOOD', 
+  expReward: 75, 
   channelingAbilities: [
     {
-      id: 'TREANT_ADULT_SUMMON_CHANNEL', // This was previously on the buffed sapling
-      name: "Sapling-Summon",
-      description: "Beschwört neue Setzlinge, während der ausgewachsene Treant angreifen kann.",
-      cooldownMs: 35000, // Cooldown for the adult to summon again
-      initialCooldownMs: 10000, // Initial cooldown after transforming
+      id: 'TREANT_ADULT_SUMMON_CHANNEL', 
+      name: "Sapling Summon",
+      description: "Summons new saplings while the adult Treant can still attack.",
+      cooldownMs: 35000, 
+      initialCooldownMs: 10000, 
       targetType: 'SELF',
       channelingProperties: {
-        channelDurationMs: 15000, // 15 seconds for summoning
-        blocksActionsWhileChanneling: false, // Can attack during summoning
+        channelDurationMs: 15000, 
+        blocksActionsWhileChanneling: false, 
         blocksMovementWhileChanneling: true, 
         effects: {
           [AbilityEffectTriggerType.ON_CHANNEL_COMPLETE]: [
-            { type: 'SUMMON', targetScope: 'SELF', enemyIdToSummon: 'TREANT_SAPLING', count: 2, isElite: false } // Summons regular saplings
+            { type: 'SUMMON', targetScope: 'SELF', enemyIdToSummon: 'TREANT_SAPLING', count: 2, isElite: false } 
           ]
         }
       }

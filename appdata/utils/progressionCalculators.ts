@@ -1,6 +1,7 @@
 
 import { HERO_XP_PER_LEVEL_BASE, HERO_XP_PER_LEVEL_FACTOR } from '../constants';
 import { Cost, Resources, ResourceType } from '../types';
+import { ACCOUNT_LEVEL_XP_BASE, ACCOUNT_LEVEL_XP_FACTOR } from '../gameData/accountLevelBonuses'; // Import new constants
 
 export const getExpToNextHeroLevel = (level: number): number => {
   return Math.floor(HERO_XP_PER_LEVEL_BASE * Math.pow(HERO_XP_PER_LEVEL_FACTOR, level - 1));
@@ -8,6 +9,12 @@ export const getExpToNextHeroLevel = (level: number): number => {
 
 export const calculateRunExpToNextLevel = (level: number): number => {
   return Math.floor(100 * Math.pow(1.3, level - 1));
+};
+
+export const calculateXPForAccountLevel = (level: number): number => {
+  if (level <= 0) return ACCOUNT_LEVEL_XP_BASE; // Should not happen, but guard
+  if (level === 1) return ACCOUNT_LEVEL_XP_BASE; // XP needed to reach level 2
+  return Math.floor(ACCOUNT_LEVEL_XP_BASE * Math.pow(ACCOUNT_LEVEL_XP_FACTOR, level - 1));
 };
 
 interface CalculateMaxAffordableLevelsArgs {
@@ -45,7 +52,7 @@ export const calculateMaxAffordableLevels = (
 
   let affordableLevels = 0;
   const cumulativeCostItems: { [key in ResourceType]?: number } = {};
-  
+
   let tempMainResources = { ...currentMainResources };
   let tempSecondaryResourceValue = secondaryResource?.currentValue;
   let currentSimulatedLevel = currentLevel;
@@ -57,7 +64,7 @@ export const calculateMaxAffordableLevels = (
   } else { // Item has a defined max level
     effectiveMaxLevelForCalc = forgeLevelCap !== undefined ? Math.min(maxLevel, forgeLevelCap) : maxLevel;
   }
-  
+
   // The loop should not exceed the iteration cap, nor the effective max level.
   const iterationLimit = Math.min(maxIterations, effectiveMaxLevelForCalc - currentLevel);
 
@@ -92,14 +99,14 @@ export const calculateMaxAffordableLevels = (
       });
       if (secondaryResource && tempSecondaryResourceValue !== undefined) {
         tempSecondaryResourceValue -= secondaryCostAmount;
-        cumulativeCostItems[secondaryResource.tempResourceTypeForTotalCost] = 
+        cumulativeCostItems[secondaryResource.tempResourceTypeForTotalCost] =
           (cumulativeCostItems[secondaryResource.tempResourceTypeForTotalCost] || 0) + secondaryCostAmount;
       }
-      
+
       affordableLevels++;
       currentSimulatedLevel++;
     } else {
-      break; 
+      break;
     }
   }
 
@@ -107,6 +114,6 @@ export const calculateMaxAffordableLevels = (
       resource: resType,
       amount: cumulativeCostItems[resType]!
   }));
-  
+
   return { levels: affordableLevels, totalCost: totalCostArray };
 };

@@ -4,11 +4,15 @@ import { GameNotification, Cost } from './common'; // Added Cost import
 import { PlayerBuildingState } from './building';
 import { PlayerHeroState, PlayerSharedSkillsState } from './hero'; // Added PlayerSharedSkillsState
 import { BattleState, BuildingLevelUpEventInBattle, BattleHero } from './battle'; // Added BattleHero
+import { GameAction } from './gameActions'; // Corrected import path
 import { DungeonRunState, DungeonGridState } from './dungeon';
 import { CraftingQueueItem } from './crafting';
 import { PlayerQuest } from './quests';
 import { StoneQuarryMinigameState, GoldMineMinigameState } from './minigame'; // Added GoldMineMinigameState
 import { ActionBattleState } from './actionBattle';
+import { HeroStats } from './hero'; // Added HeroStats
+import { ResonanceMoteType } from './aethericResonanceTypes'; // Import ResonanceMoteType
+import { ResearchProgress, CompletedResearchEntry } from './research';
 
 export type ActionBattleAISystem = 'legacy' | 'behaviorTree';
 
@@ -32,6 +36,22 @@ export interface PerMapState {
   playerCurrentNodeId: string;
   revealedMapNodeIds: string[];
   mapPoiCompletionStatus: Record<string, boolean>;
+}
+
+export interface AccountXpGainEvent {
+  id: string; // Unique ID for the event (e.g., timestamp + random string)
+  timestamp: number;
+  amount: number;
+  source: string; // Description of the source, e.g., "Wave 5 Clear", "Goblin Defeat", "Hero Level Up"
+}
+
+// Information about the last applied Resonance Mote for UI feedback
+export interface LastAppliedResonanceMoteInfo {
+  statId: keyof HeroStats;
+  qualityName: 'Resonance Shard' | 'Clear Core' | 'Potent Focus'; // English names
+  isPercentage: boolean;
+  bonusValue: number;
+  timestamp: number;
 }
 
 export interface GameState {
@@ -62,23 +82,42 @@ export interface GameState {
   runBuffLibraryLevels: Record<string, number>;
   godModeActive: boolean;
   stoneQuarryMinigame: StoneQuarryMinigameState | null;
-  goldMineMinigame: GoldMineMinigameState | null; 
-  playerSharedSkillPoints: number; 
-  playerSharedSkills: PlayerSharedSkillsState; 
+  goldMineMinigame: GoldMineMinigameState | null;
+  playerSharedSkillPoints: number;
+  playerSharedSkills: PlayerSharedSkillsState;
   actionBattleAISystem: ActionBattleAISystem;
-  currentMapId: string; 
-  playerCurrentNodeId: string; // Kept for quick access to current node on current map
-  revealedMapNodeIds: string[]; // Kept for quick access to revealed nodes on current map
-  mapPoiCompletionStatus: Record<string, boolean>; // Kept for quick access to POI status on current map
+  currentMapId: string;
+  playerCurrentNodeId: string;
+  revealedMapNodeIds: string[];
+  mapPoiCompletionStatus: Record<string, boolean>; // Status für die aktuelle Karte
 
-  mapStates?: Record<string, PerMapState>; // New: Stores state for each map
-  
-  // Demonicon State
-  defeatedEnemyTypes: string[]; 
-  demoniconHighestRankCompleted: Record<string, number>; 
-  activeDemoniconChallenge: ActiveDemoniconChallenge | null; 
+  mapStates: Record<string, PerMapState>; // Status für alle Karten
+
+  defeatedEnemyTypes: string[];
+  demoniconHighestRankCompleted: Record<string, number>;
+  activeDemoniconChallenge: ActiveDemoniconChallenge | null;
   globalDemoniconLevel: number;
   globalDemoniconXP: number;
   expToNextGlobalDemoniconLevel: number;
-  achievedDemoniconMilestoneRewards: string[]; 
+  achievedDemoniconMilestoneRewards: string[];
+
+  accountLevel: number;
+  accountXP: number;
+  expToNextAccountLevel: number;
+  firstTimeEnemyDefeatsAccountXP: string[];
+  accountXpHistory: AccountXpGainEvent[];
+  achievedBuildingLevelAccXpThresholds: Record<string, number[]>;
+
+  aethericResonanceBonuses: Partial<Record<keyof HeroStats, { percentage: number; flat: number }>>;
+  resonanceMotes: Partial<Record<keyof HeroStats, { faint: number; clear: number; potent: number }>>;
+  lastAppliedResonanceMote: LastAppliedResonanceMoteInfo | null;
+
+  // Research System
+  researchProgress: Record<string, ResearchProgress>; // Keyed by researchId
+  completedResearch: Record<string, CompletedResearchEntry>; // Keyed by researchId (researchId: {level: number})
+  researchSlots: number;
+  researchQueue: Array<{ researchId: string; levelToResearch: number }>; // Array of researchIds and target levels
+
+  _battleCombatTickResult?: { newlyAddedToFirstTimeDefeatsForAccXp?: string[] };
+  _deferredCombatActions?: GameAction[];
 }

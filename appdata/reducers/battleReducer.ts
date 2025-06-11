@@ -1,4 +1,5 @@
 
+
 import { GameState, GameAction, GlobalBonuses, Cost, GameNotification, ResourceType, GameContextType, ActiveDemoniconChallenge, BattleHero, EnemyDefinition, BattleState, BuildingLevelUpEventInBattle, PlayerHeroState } from './../types';
 import { calculateGlobalBonusesFromAllSources, formatNumber, canAfford, calculateGoldMinePlayerStats, calculateDemoniconEnemyStats as calculateDemoniconEnemyStatsUtil, getExpToNextHeroLevel, calculateHeroStats as calculateHeroStatsUtil } from './../utils';
 import { HERO_DEFINITIONS, ENEMY_DEFINITIONS as ALL_ENEMY_DEFINITIONS, TOWN_HALL_UPGRADE_DEFINITIONS, BUILDING_SPECIFIC_UPGRADE_DEFINITIONS, GUILD_HALL_UPGRADE_DEFINITIONS, GOLD_MINE_UPGRADE_DEFINITIONS, SKILL_TREES, EQUIPMENT_DEFINITIONS, RUN_BUFF_DEFINITIONS, STATUS_EFFECT_DEFINITIONS, SPECIAL_ATTACK_DEFINITIONS, BUILDING_DEFINITIONS, SHARD_DEFINITIONS, WAVE_DEFINITIONS } from '../gameData/index';
@@ -26,12 +27,21 @@ import { goldMineMinigameReducer } from './minigame/goldMine/goldMineMinigameRed
 import { ICONS } from '../components/Icons';
 import { demoniconReducer } from './demoniconReducer';
 import { waveBattleFlowReducer } from './battleFlow/waveBattleFlowReducer';
+import { startBattleReducer } from './battleFlow/startBattleReducer'; 
 import { dungeonBattleFlowReducer } from './battleFlow/dungeonBattleFlowReducer';
+import { handleMapActions } from './mapReducer'; 
+
+const processDeferredActions = (actions: GameAction[], dispatchFn: React.Dispatch<GameAction>, getStateFn: () => GameState) => {
+    actions.forEach(deferredAction => {
+        dispatchFn(deferredAction);
+    });
+};
 
 export const createGameReducer = (staticData: GameContextType['staticData']) =>
   (state: GameState, action: GameAction): GameState => {
   const globalBonuses: GlobalBonuses = calculateGlobalBonusesFromAllSources(state, staticData.townHallUpgradeDefinitions, staticData.buildingSpecificUpgradeDefinitions, staticData.guildHallUpgradeDefinitions);
   let nextState = state;
+  let deferredActionsFromSubReducer: GameAction[] = [];
   
   const originalBattleState: BattleState | null = state.battleState ? JSON.parse(JSON.stringify(state.battleState)) : null;
 
@@ -67,6 +77,11 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
       }
     }
   }
+  
+  if (action.type === 'SET_PLAYER_MAP_NODE' || action.type === 'REVEAL_MAP_NODES_STATIC' || action.type === 'SET_CURRENT_MAP' || action.type === 'COLLECT_MAP_RESOURCE' || action.type === 'SET_MAP_POI_COMPLETED') {
+    return handleMapActions(state, action as any); 
+  }
+
 
   if (action.type === 'CONSTRUCT_BUILDING' || action.type === 'UPGRADE_BUILDING') {
     nextState = handleBuildingActions(state, action, globalBonuses);
@@ -79,12 +94,14 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
   }
   else if (
     action.type === 'RECRUIT_HERO' ||
+    action.type === 'UNLOCK_HERO_DEFINITION' || 
     action.type === 'UPGRADE_SKILL' ||
     action.type === 'LEARN_UPGRADE_SPECIAL_ATTACK' ||
     action.type === 'UPGRADE_HERO_EQUIPMENT' ||
     action.type === 'APPLY_PERMANENT_HERO_BUFF' ||
     action.type === 'TRANSFER_SHARD' ||
-    action.type === 'CHEAT_MODIFY_FIRST_HERO_STATS'
+    action.type === 'CHEAT_MODIFY_FIRST_HERO_STATS' ||
+    action.type === 'AWARD_SHARD_TO_HERO' 
   ) {
     nextState = handleHeroActions(state, action as any, globalBonuses);
   }
@@ -97,8 +114,10 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
   else if (action.type === 'START_DEMONICON_CHALLENGE' || action.type === 'PROCESS_DEMONICON_VICTORY_REWARDS' || action.type === 'CONTINUE_DEMONICON_CHALLENGE' || action.type === 'CLEANUP_DEMONICON_STATE') {
     nextState = demoniconReducer(state, action, globalBonuses, staticData);
   }
-  else if (action.type === 'START_BATTLE_PREPARATION') {
-    nextState = waveBattleFlowReducer(state, { type: 'START_WAVE_BATTLE_PREPARATION', payload: action.payload }, globalBonuses);
+  else if (action.type === 'START_BATTLE_PREPARATION') { 
+    const preparationResult = startBattleReducer(state, {type: 'START_WAVE_BATTLE_PREPARATION', payload: action.payload}, globalBonuses); 
+    nextState = preparationResult.updatedState;
+    deferredActionsFromSubReducer = preparationResult.deferredActions; // Collect deferred actions
     if (action.payload.isAutoProgression && action.payload.previousBattleOutcomeForQuestProcessing) {
         const questProgressAction: GameAction = {
             type: 'PROCESS_QUEST_PROGRESS_FROM_BATTLE',
@@ -107,59 +126,34 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
         nextState = questReducer(nextState, questProgressAction);
     }
   }
+  else if (action.type === 'END_WAVE_BATTLE_RESULT') { // This case might not be directly dispatched by components anymore
+    const waveBattleResult = waveBattleFlowReducer(state, action, globalBonuses);
+    nextState = waveBattleResult.updatedState;
+    deferredActionsFromSubReducer = waveBattleResult.deferredActions;
+  }
   else if (action.type === 'END_BATTLE') {
     if (!originalBattleState) {
-      return state; // No battle to end
+      return state; 
     }
+    
     if (originalBattleState.isDemoniconBattle) {
-        const { outcome } = action.payload;
-        const { enemyId, currentRank } = state.activeDemoniconChallenge!; // Assume activeDemoniconChallenge is not null
-        const battleStateFromEnd = originalBattleState;
-
-        const survivingHeroesWithFullState = battleStateFromEnd.heroes
-            .filter(h => h.currentHp > 0)
-            .map(bh => ({
-                uniqueBattleId: bh.uniqueBattleId,
-                definitionId: bh.definitionId,
-                level: bh.level,
-                currentExp: bh.currentExp,
-                expToNextLevel: bh.expToNextLevel,
-                skillPoints: bh.skillPoints,
-                currentHp: bh.currentHp,
-                currentMana: bh.currentMana,
-                specialAttackCooldownsRemaining: { ...bh.specialAttackCooldownsRemaining }
-            }));
-
-        const processRewardsAction: Extract<GameAction, { type: 'PROCESS_DEMONICON_VICTORY_REWARDS' }> = {
-            type: 'PROCESS_DEMONICON_VICTORY_REWARDS',
-            payload: {
-                enemyId,
-                clearedRank: currentRank!,
-                survivingHeroesWithState: survivingHeroesWithFullState,
-                rankLootCollected: battleStateFromEnd.battleLootCollected,
-                rankExpCollected: battleStateFromEnd.battleExpCollected,
-            }
-        };
-
-        if (outcome === 'VICTORY') {
-            nextState = demoniconReducer(state, processRewardsAction, globalBonuses, staticData);
-        } else {
-             const cleanupAction: Extract<GameAction, { type: 'CLEANUP_DEMONICON_STATE' }> = { type: 'CLEANUP_DEMONICON_STATE' };
-            nextState = demoniconReducer(state, cleanupAction, globalBonuses, staticData);
-        }
+        nextState = demoniconReducer(state, action as any, globalBonuses, staticData); 
     } else if (originalBattleState.isDungeonGridBattle) {
       nextState = dungeonBattleFlowReducer(state, { type: 'END_DUNGEON_GRID_BATTLE_RESULT', payload: { outcome: action.payload.outcome, battleStateFromEnd: originalBattleState } }, globalBonuses);
-    } else if (originalBattleState.isDungeonBattle) {
+    } else if (originalBattleState.isDungeonBattle) { 
       nextState = handleDungeonActions(state, { type: 'END_DUNGEON_FLOOR', payload: { outcome: action.payload.outcome, collectedLoot: action.payload.collectedLoot, collectedExp: action.payload.expRewardToHeroes, buildingLevelUps: originalBattleState.buildingLevelUpEventsInBattle } }, globalBonuses);
-    } else { // Normal Wave Battle
-      nextState = waveBattleFlowReducer(state, { type: 'END_WAVE_BATTLE_RESULT', payload: { outcome: action.payload.outcome, battleStateFromEnd: originalBattleState } }, globalBonuses);
+    } else { 
+      const waveEndResult = waveBattleFlowReducer(state, { type: 'END_WAVE_BATTLE_RESULT', payload: { outcome: action.payload.outcome, battleStateFromEnd: originalBattleState } }, globalBonuses);
+      nextState = waveEndResult.updatedState;
+      deferredActionsFromSubReducer = waveEndResult.deferredActions; // Collect deferred actions
+
       const lootForQuests: Cost[] = [];
       (action.payload.collectedLoot || []).forEach(loot => {
           const existing = lootForQuests.find(l => l.resource === loot.resource);
           if (existing) existing.amount += loot.amount; else lootForQuests.push({...loot});
       });
       if (action.payload.outcome === 'VICTORY') {
-        (action.payload.waveClearBonus || []).forEach(loot => {
+        (action.payload.waveClearBonus || []).forEach(loot => { 
             const existing = lootForQuests.find(l => l.resource === loot.resource);
             if (existing) existing.amount += loot.amount; else lootForQuests.push({...loot});
         });
@@ -173,6 +167,56 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
           payload: { lootCollected: lootForQuests, defeatedEnemyOriginalIds, waveNumberReached }
       };
       nextState = questReducer(nextState, questProgressAction);
+      
+      if (originalBattleState.sourceMapNodeId) {
+        if (action.payload.outcome === 'VICTORY') {
+            const battleNodeKey = `${originalBattleState.sourceMapNodeId}_battle_won`;
+            let poiNotifications: GameNotification[] = [];
+            
+            if (!state.mapPoiCompletionStatus[battleNodeKey]) {
+                nextState = {
+                    ...nextState,
+                    mapPoiCompletionStatus: { ...nextState.mapPoiCompletionStatus, [battleNodeKey]: true }
+                };
+            }
+
+            if (originalBattleState.sourceMapNodeId === 'ww_cleric_rescue_battle_node') {
+                const clericPoiKey = 'ww_cleric_rescue_poi_completed';
+                if (!state.mapPoiCompletionStatus[clericPoiKey]) {
+                    nextState = {
+                        ...nextState,
+                        mapPoiCompletionStatus: { ...nextState.mapPoiCompletionStatus, [clericPoiKey]: true }
+                    };
+                    const clericAlreadyUnlocked = nextState.unlockedHeroDefinitions.includes('CLERIC');
+                    if (!clericAlreadyUnlocked) {
+                       nextState.unlockedHeroDefinitions = [...nextState.unlockedHeroDefinitions, 'CLERIC'];
+                    }
+                    poiNotifications.push({
+                        id: Date.now().toString() + "-cleric-rescued",
+                        message: clericAlreadyUnlocked ? 'Cleric is safe! Their resolve is strengthened.' : 'Cleric Rescued! The Cleric can now be recruited in town.',
+                        type: 'success',
+                        iconName: ICONS.HERO ? 'HERO' : undefined,
+                        timestamp: Date.now()
+                    });
+                }
+            }
+            
+            if (originalBattleState.sourceMapNodeId === 'lumber_mill_battle' && !state.mapPoiCompletionStatus['lumber_mill_blueprint_obtained']) {
+                nextState = { ...nextState, mapPoiCompletionStatus: { ...nextState.mapPoiCompletionStatus, 'lumber_mill_blueprint_obtained': true } };
+                poiNotifications.push({ id: Date.now().toString() + "-lm-unlock", message: 'Lumber Mill blueprints acquired! You can now build it in town.', type: 'success', iconName: 'WOOD', timestamp: Date.now() });
+            } else if (originalBattleState.sourceMapNodeId === 'farm_battle' && !state.mapPoiCompletionStatus['farm_blueprint_obtained']) {
+                nextState = { ...nextState, mapPoiCompletionStatus: { ...nextState.mapPoiCompletionStatus, 'farm_blueprint_obtained': true } };
+                poiNotifications.push({ id: Date.now().toString() + "-farm-unlock", message: 'Farm plans discovered! You can now build it in town.', type: 'success', iconName: 'FOOD', timestamp: Date.now() });
+            }
+            
+            if (poiNotifications.length > 0) {
+                nextState.notifications.push(...poiNotifications);
+            }
+        }
+        nextState = { ...nextState, activeView: 'WORLD_MAP', battleState: null };
+      } else if (action.payload.outcome === 'DEFEAT' || (originalBattleState.waveNumber && originalBattleState.waveNumber >= MAX_WAVE_NUMBER && action.payload.outcome === 'VICTORY')) {
+        nextState = { ...nextState, activeView: 'TOWN', battleState: null };
+      }
     }
   }
   else if (action.type === 'SELECT_POTION_FOR_USAGE' || action.type === 'USE_POTION_ON_HERO') {
@@ -289,7 +333,8 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
     action.type === 'CHEAT_UNLOCK_MAX_ALL_RUN_BUFFS' ||
     action.type === 'CHEAT_FORCE_BATTLE_VICTORY' ||
     action.type === 'CHEAT_TOGGLE_GOD_MODE' ||
-    action.type === 'TOGGLE_ACTION_BATTLE_AI_SYSTEM'
+    action.type === 'TOGGLE_ACTION_BATTLE_AI_SYSTEM' ||
+    action.type === 'GAIN_ACCOUNT_XP' // Included GAIN_ACCOUNT_XP here
   ) {
     nextState = handleMiscActions(state, action as any);
   }
@@ -297,7 +342,31 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
     return state;
   }
 
-  if (originalBattleState && originalBattleState.defeatedEnemiesWithLoot) {
+  if (deferredActionsFromSubReducer.length > 0) {
+    deferredActionsFromSubReducer.forEach(deferredAction => {
+        nextState = createGameReducer(staticData)(nextState, deferredAction);
+    });
+  }
+
+
+  // Moved the firstTimeEnemyDefeatsAccountXP update logic to after the main action processing.
+  if (nextState.battleState && nextState.battleState.defeatedEnemiesWithLoot) {
+    const battleCombatTickResult = (nextState as any)._battleCombatTickResult || {}; // Internal property if set by handleCombatTick
+    if (battleCombatTickResult.newlyAddedToFirstTimeDefeatsForAccXp && battleCombatTickResult.newlyAddedToFirstTimeDefeatsForAccXp.length > 0) {
+        const uniqueNewDefeats = Array.from(new Set([...nextState.firstTimeEnemyDefeatsAccountXP, ...battleCombatTickResult.newlyAddedToFirstTimeDefeatsForAccXp]));
+        nextState = {
+            ...nextState,
+            firstTimeEnemyDefeatsAccountXP: uniqueNewDefeats,
+        };
+        // Clear the temporary property
+        if ((nextState as any)._battleCombatTickResult) {
+          delete (nextState as any)._battleCombatTickResult.newlyAddedToFirstTimeDefeatsForAccXp;
+        }
+    }
+  }
+
+
+  if (originalBattleState && originalBattleState.defeatedEnemiesWithLoot && !nextState.battleState?.isDemoniconBattle) { // Avoid double-counting Demonicon
     let updatedDefeatedEnemyTypes = [...nextState.defeatedEnemyTypes];
     let updatedDemoniconRanks = { ...nextState.demoniconHighestRankCompleted };
     let changed = false;

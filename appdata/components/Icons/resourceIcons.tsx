@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { IconComponent } from '../../types';
 import { createIcon } from './helpers';
@@ -16,7 +17,7 @@ export const RESOURCE_ICONS: Record<string, IconComponent> = {
   GUILD_HALL_TOKEN: createIcon("M10 18a8 8 0 100-16 8 8 0 000 16zm-2-7h4v4H8v-4zm0-2h4V5H8v4z"),
   CATACOMB_KEY: createIcon("M13.828 5.172a4 4 0 00-5.656 0L5 8.343V13a1 1 0 102 0V9.172l.172-.172a2 2 0 012.828 0l1.414 1.414a1 1 0 001.414-1.414l-1.414-1.414a4 4 0 000-5.656L13.828 5.172zM10 11a1 1 0 100-2 1 1 0 000 2z"),
   CATACOMB_BLUEPRINT: createIcon("M9 2a1 1 0 00-1 1v1H4a1 1 0 00-1 1v10a1 1 0 001 1h1V9a1 1 0 011-1h6V3a1 1 0 00-1-1H9zm1 4h6v2H9a1 1 0 01-1-1V6h1zm7 11H4a1 1 0 00-1 1v1a1 1 0 001 1h12a1 1 0 001-1v-1a1 1 0 00-1-1z M13 14a1 1 0 11-2 0 1 1 0 012 0z"),
-  AETHERIUM: createIcon( 
+  AETHERIUM: createIcon(
     <>
       <path d="M10 2a1 1 0 011 1v1.268a8.001 8.001 0 010 11.464V17a1 1 0 11-2 0v-1.268a8.001 8.001 0 010-11.464V3a1 1 0 011-1z" />
       <path d="M17.268 9a1 1 0 011-1h1.268a8.001 8.001 0 01-11.464 0H6.732a1 1 0 110-2h1.268a8.001 8.001 0 0111.464 0H17.27a1 1 0 010 2z" transform="rotate(60 10 10)" />
@@ -24,7 +25,11 @@ export const RESOURCE_ICONS: Record<string, IconComponent> = {
       <circle cx="10" cy="10" r={1.5} />
     </>
   ),
-  HERB_BLOODTHISTLE: createIcon("M10 2a1 1 0 00-1 1v1H5a1 1 0 100 2h1v8l-3 3v1h12v-1l-3-3V6h1a1 1 0 100-2h-4V3a1 1 0 00-1-1zm-1 4h2v7H9V6z"), 
+  HERB_BLOODTHISTLE: createIcon("M10 2a1 1 0 00-1 1v1H5a1 1 0 100 2h1v8l-3 3v1h12v-1l-3-3V6h1a1 1 0 100-2h-4V3a1 1 0 00-1-1zm-1 4h2v7H9V6z"),
   HERB_IRONWOOD_LEAF: createIcon("M14.707 5.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 8.586l3.293-3.293a1 1 0 011.414 0zM10 12a1 1 0 00-1 1v3a1 1 0 102 0v-3a1 1 0 00-1-1z"),
   DEMONIC_COIN: createIcon("M10 2a8 8 0 100 16 8 8 0 000-16zm-1.414 5.172a.5.5 0 01.708 0L10 7.88l.707-.707a.5.5 0 01.708 0L12.828 9H7.172l1.414-1.828zM10 14a3 3 0 100-6 3 3 0 000 6z"),
+  RESEARCH_POINTS: createIcon("M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm2 2h8v1H6V6zm0 3h5v1H6V9zm0 3h6v1H6v-2z"),
+  RESONANCE_MOTE_FAINT: createIcon("M10 18a8 8 0 100-16 8 8 0 000 16zm0-2a6 6 0 100-12 6 6 0 000 12z M10 7a3 3 0 100 6 3 3 0 000-6z"),
+  RESONANCE_MOTE_CLEAR: createIcon("M10 18a8 8 0 100-16 8 8 0 000 16zm0-2a6 6 0 100-12 6 6 0 000 12z M10 7a3 3 0 100 6 3 3 0 000-6zm0 1a2 2 0 100 4 2 2 0 000-4z"),
+  RESONANCE_MOTE_POTENT: createIcon("M10 18a8 8 0 100-16 8 8 0 000 16zm0-2a6 6 0 100-12 6 6 0 000 12z M10 7a3 3 0 100 6 3 3 0 000-6zm0 1a2 2 0 100 4 2 2 0 000-4zm0 1a1 1 0 100 2 1 1 0 000-2z"),
 };

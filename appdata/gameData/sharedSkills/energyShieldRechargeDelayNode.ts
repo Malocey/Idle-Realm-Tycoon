@@ -1,25 +1,25 @@
 
-import { SharedSkillDefinition, HeroStats, ResourceType } from '../../types'; 
-import { GAME_TICK_MS } from '../../constants'; // GAME_TICK_MS for description clarity
+import { SharedSkillDefinition, HeroStats, ResourceType } from '../../types';
+import { GAME_TICK_MS } from '../../constants';
 
 export const QUICK_RECOVERY_NODE: SharedSkillDefinition = {
   id: 'SHARED_ES_RECHARGE_DELAY_FLAT',
   name: 'Quick Recovery',
   description: (currentBonus, nextMinor, nextMajor, isPercentage) => {
-    const currentSeconds = (currentBonus * GAME_TICK_MS / 1000).toFixed(1);
-    const nextMinorSeconds = nextMinor !== null ? (nextMinor * GAME_TICK_MS / 1000).toFixed(1) : null;
-    const nextMajorSeconds = nextMajor !== null ? (nextMajor * GAME_TICK_MS / 1000).toFixed(1) : null;
+    const currentSeconds = (((currentBonus as number) || 0) * GAME_TICK_MS / 1000).toFixed(1);
+    const nextMinorSeconds = nextMinor !== null ? (((nextMinor as number) || 0) * GAME_TICK_MS / 1000).toFixed(1) : null;
+    const nextMajorSeconds = nextMajor !== null ? (((nextMajor as number) || 0) * GAME_TICK_MS / 1000).toFixed(1) : null;
     return `Currently: -${currentSeconds}s Energy Shield Recharge Delay. ${nextMinorSeconds !== null ? `Next Minor: -${nextMinorSeconds}s.` : ''} ${nextMajorSeconds !== null ? `Next Rank: -${nextMajorSeconds}s (base).` : ''}`;
   },
-  iconName: 'WARNING', // Placeholder, maybe a clock icon later
+  iconName: 'WARNING',
   maxMajorLevels: 3,
-  minorLevelsPerMajorTier: [5, 5, 5],
+  minorLevelsPerMajorTier: [5, 10, 15], // Updated
   costSharedSkillPointsPerMajorLevel: [6, 7, 8],
-  costHeroXpPoolPerMinorLevel: (major, minor) => 4 * (110 * major + 40 * minor + 220), // Cost is in Heroic Points
+  costHeroXpPoolPerMinorLevel: (major, minor) => 4 * (25 * major + 10 * minor + 15), // Standardized
   effects: [{
-    stat: 'energyShieldRechargeDelay' as keyof HeroStats, // This is a reduction, so values are negative
-    baseValuePerMajorLevel: [-10, -15, -20], // -10, -15, -20 ticks
-    minorValuePerMinorLevel: [-1, -1, -2],   // -1, -1, -2 ticks per minor
+    stat: 'energyShieldRechargeDelay' as keyof HeroStats,
+    baseValuePerMajorLevel: [-10, -15, -20],
+    minorValuePerMinorLevel: [-1, -1, -2],   // Assuming 3 values already
     isPercentage: false,
   }],
   prerequisites: [

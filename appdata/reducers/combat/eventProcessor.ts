@@ -1,7 +1,6 @@
 
-import { BattleHero, BattleEnemy, AttackEvent, GameState, GlobalBonuses, TemporaryBuff, BossPhaseAbilityType, StatusEffect, StatusEffectType, AbilityEffectTriggerType, EnemyChannelingAbilityDefinition, AbilityEffect } from '../../types';
-import { HERO_DEFINITIONS, ENEMY_DEFINITIONS, STATUS_EFFECT_DEFINITIONS, SPECIAL_ATTACK_DEFINITIONS }
-from '../../gameData/index';
+import { BattleHero, BattleEnemy, AttackEvent, GameState, GlobalBonuses, TemporaryBuff, BossPhaseAbilityType, StatusEffect, StatusEffectType, AbilityEffectTriggerType, EnemyChannelingAbilityDefinition, AbilityEffect, HeroStats } from '../../types';
+import { HERO_DEFINITIONS, ENEMY_DEFINITIONS, STATUS_EFFECT_DEFINITIONS, SPECIAL_ATTACK_DEFINITIONS, SKILL_TREES } from '../../gameData/index';
 import { DEFAULT_ENERGY_SHIELD_RECHARGE_DELAY_TICKS, GAME_TICK_MS } from '../../constants';
 import { calculateWaveEnemyStats, calculateSpecialAttackData } from '../../utils';
 
@@ -70,7 +69,7 @@ export const applyAbilityEffects = (
           break;
         case 'HEAL':
             const healTargetIsHero = 'definitionId' in currentTarget;
-            const healTargetIsEnemy = 'loot' in currentTarget;
+            const healTargetIsEnemy = 'loot' in currentTarget; 
 
             if (healTargetIsHero || healTargetIsEnemy) {
                 const targetParticipant = currentTarget as BattleHero | BattleEnemy;
@@ -79,7 +78,7 @@ export const applyAbilityEffects = (
 
                 if (effect.healAmount) totalHealAmount += effect.healAmount;
                 if (effect.healMultiplier) totalHealAmount += (caster.calculatedStats.healPower || 0) * effect.healMultiplier;
-
+                
                 if (effect.shieldHealPercentage && targetParticipant.calculatedStats.maxEnergyShield && targetParticipant.calculatedStats.maxEnergyShield > 0) {
                     totalShieldRecovery = Math.floor(targetParticipant.calculatedStats.maxEnergyShield * effect.shieldHealPercentage);
                 }
@@ -89,11 +88,11 @@ export const applyAbilityEffects = (
                     logMessages.push(`${caster.name}'s ${logAbilityName} heals ${targetParticipant.name} for ${totalHealAmount} HP.`);
                 }
                 if (totalShieldRecovery > 0) {
-                     attackEvents.push({
-                        attackerId: caster.uniqueBattleId, targetId: targetParticipant.uniqueBattleId, damage: 0, isCrit: false, timestamp: Date.now() + Math.random(),
-                        isSpecialAttack: true, specialAttackName: `${logAbilityName} (Shield)`,
-                        isHeal: true, healAmount: 0,
-                        shieldHealAmount: totalShieldRecovery
+                     attackEvents.push({ 
+                        attackerId: caster.uniqueBattleId, targetId: targetParticipant.uniqueBattleId, damage: 0, isCrit: false, timestamp: Date.now() + Math.random(), 
+                        isSpecialAttack: true, specialAttackName: `${logAbilityName} (Shield)`, 
+                        isHeal: true, healAmount: 0, 
+                        shieldHealAmount: totalShieldRecovery 
                     });
                     logMessages.push(`${caster.name}'s ${logAbilityName} recovers ${totalShieldRecovery} Shield for ${targetParticipant.name}.`);
                 }
@@ -146,7 +145,7 @@ export const applyAbilityEffects = (
                         shieldRechargeDelayTicksRemaining: 0,
                         attackCooldown: (1000 / summonedStats.attackSpeed),
                         attackCooldownRemainingTicks: 0,
-                        movementSpeed: 0, x: 0, y: 0,
+                        movementSpeed: 0, x: 0, y: 0, 
                         statusEffects: [],
                         temporaryBuffs: [],
                         isElite: effect.isElite,
@@ -193,7 +192,7 @@ export const applyAbilityEffects = (
                         specialAttackCooldownsRemaining: initialTransformedCooldowns,
                     };
                     newSummons.push(transformedEnemy);
-                    caster.currentHp = 0;
+                    caster.currentHp = 0; 
                     logMessages.push(`${caster.name} transforms into ${enemyDefToTransformInto.name}!`);
                 } else {
                     logMessages.push(`Error: Definition for transformed enemy '${effect.enemyIdToTransformInto}' not found.`);
@@ -249,12 +248,14 @@ export const processAttackEvents = (
   currentEnemies: BattleEnemy[],
   gameState: GameState,
   globalBonuses: GlobalBonuses
-): { updatedHeroes: BattleHero[], updatedEnemies: BattleEnemy[], logMessages: string[], newSummonsFromPhase?: BattleEnemy[], statsRecalculationNeededForEnemyIds: string[] } => {
+): { updatedHeroes: BattleHero[], updatedEnemies: BattleEnemy[], logMessages: string[], newSummonsFromPhase?: BattleEnemy[], statsRecalculationNeededForEnemyIds: string[], newPassiveAttackEvents: AttackEvent[] } => {
   let updatedHeroes = [...currentHeroes];
   let updatedEnemies = [...currentEnemies];
   const logMessages: string[] = [];
   const newSummonsFromPhase: BattleEnemy[] = [];
   const statsRecalculationNeededForEnemyIds: string[] = [];
+  const newPassiveAttackEvents: AttackEvent[] = [];
+  const statusEffectsToApplyFromPassives: Array<{ targetId: string, effect: StatusEffect }> = [];
 
 
   attackEvents.forEach(event => {
@@ -275,7 +276,6 @@ export const processAttackEvents = (
         }
       } else {
         let damageToApply = event.damage;
-        // GOD MODE CHECK - For Player Heroes in normal battles
         if (gameState.godModeActive && currentEnemies.some(e => e.uniqueBattleId === event.attackerId)) {
             damageToApply = 0;
         }
@@ -294,6 +294,51 @@ export const processAttackEvents = (
 
         if (damageToApply > 0) {
           heroToUpdate.currentHp = Math.max(0, heroToUpdate.currentHp - damageToApply);
+          // --- Warrior's Konterangriff & Unnachgiebigkeit ---
+          if (heroToUpdate.definitionId === 'WARRIOR') {
+            const konterLevel = heroToUpdate.skillLevels['WARRIOR_PASSIVE_COUNTERATTACK_01'] || 0;
+            if (konterLevel > 0 && Math.random() < (0.05 + konterLevel * 0.02)) {
+              const konterDamage = Math.max(1, Math.floor(heroToUpdate.calculatedStats.damage * (0.20 + konterLevel * 0.05)));
+              newPassiveAttackEvents.push({ attackerId: heroToUpdate.uniqueBattleId, targetId: event.attackerId, damage: konterDamage, isCrit: false, timestamp: Date.now() + Math.random(), isSpecialAttack: true, specialAttackName: 'Counter Attack' });
+              logMessages.push(`  ↳ ${heroToUpdate.name}'s Counter Attack hits back for ${konterDamage} damage!`);
+            }
+            const unnachLevel = heroToUpdate.skillLevels['WARRIOR_PASSIVE_DEFENSEBUFF_01'] || 0;
+            if (unnachLevel > 0 && Math.random() < (0.10 + unnachLevel * 0.03)) {
+                const defBuffPercent = 0.15 + unnachLevel * 0.05;
+                const buffDef = STATUS_EFFECT_DEFINITIONS.WARRIOR_UNYIELDING_DEFENSE_BUFF;
+                statusEffectsToApplyFromPassives.push({
+                    targetId: heroToUpdate.uniqueBattleId,
+                    effect: {
+                        instanceId: `unyielding-${heroToUpdate.uniqueBattleId}-${Date.now()}`,
+                        type: StatusEffectType.BUFF, name: buffDef.name, iconName: buffDef.iconName,
+                        remainingDurationMs: buffDef.durationMs, sourceId: heroToUpdate.uniqueBattleId, appliedAtTick: gameState.battleState!.ticksElapsed,
+                        statAffected: 'defense', modifierType: 'PERCENTAGE_ADDITIVE', value: defBuffPercent,
+                    }
+                });
+                logMessages.push(`  ↳ ${heroToUpdate.name}'s Unyielding triggers, increasing Defense by ${(defBuffPercent*100).toFixed(0)}%!`);
+            }
+          }
+          // --- Paladin's Schild des Rächers ---
+          if (heroToUpdate.definitionId === 'PALADIN') {
+            const raecherLevel = heroToUpdate.skillLevels['PALADIN_PASSIVE_AVENGERSHIELD_01'] || 0;
+            if (raecherLevel > 0 && Math.random() < (0.10 + raecherLevel * 0.02)) {
+              const raecherDamage = Math.max(1, Math.floor(heroToUpdate.calculatedStats.defense * (0.15 + raecherLevel * 0.05)));
+              newPassiveAttackEvents.push({ attackerId: heroToUpdate.uniqueBattleId, targetId: event.attackerId, damage: raecherDamage, isCrit: false, timestamp: Date.now() + Math.random(), isSpecialAttack: true, specialAttackName: 'Avenger\'s Shield' });
+              logMessages.push(`  ↳ ${heroToUpdate.name}'s Avenger's Shield deals ${raecherDamage} damage!`);
+            }
+          }
+          // --- Elemental Mage's Arkane Absorption ---
+          if (heroToUpdate.definitionId === 'ELEMENTAL_MAGE' && (heroToUpdate.skillLevels['MAGE_PASSIVE_ARCANEABSORPTION_01'] || 0) > 0) {
+            const absorbLevel = heroToUpdate.skillLevels['MAGE_PASSIVE_ARCANEABSORPTION_01'];
+            const procChance = 0.05 + absorbLevel * 0.01;
+            if (Math.random() < procChance) {
+                const manaGained = Math.floor(damageToApply * (0.15 + absorbLevel * 0.05));
+                if (manaGained > 0) {
+                    heroToUpdate.currentMana = Math.min(heroToUpdate.calculatedStats.maxMana || 0, heroToUpdate.currentMana + manaGained);
+                    logMessages.push(`  ↳ ${heroToUpdate.name}'s Arcane Absorption recovers ${manaGained} Mana!`);
+                }
+            }
+          }
         }
 
         if (heroToUpdate.currentHp <= 0 && updatedHeroes[heroTargetIndex].currentHp > 0) {
@@ -301,6 +346,42 @@ export const processAttackEvents = (
         }
       }
       updatedHeroes[heroTargetIndex] = heroToUpdate;
+
+      // --- Cleric's Heilige Vergeltung ---
+      const clericsInParty = updatedHeroes.filter(h => h.definitionId === 'CLERIC' && h.currentHp > 0 && (h.skillLevels['CLERIC_PASSIVE_HOLYRETRIBUTION_01'] || 0) > 0);
+      clericsInParty.forEach(cleric => {
+        const skillLevel = cleric.skillLevels['CLERIC_PASSIVE_HOLYRETRIBUTION_01'];
+        const procChance = 0.08 + skillLevel * 0.02;
+        if (Math.random() < procChance) {
+          const retributionDamage = Math.max(1, Math.floor((cleric.calculatedStats.healPower || 0) * (0.20 + skillLevel * 0.05)));
+          newPassiveAttackEvents.push({ attackerId: cleric.uniqueBattleId, targetId: event.attackerId, damage: retributionDamage, isCrit: false, timestamp: Date.now() + Math.random(), isSpecialAttack: true, specialAttackName: 'Holy Retribution' });
+          logMessages.push(`  ↳ ${cleric.name}'s Holy Retribution strikes ${ENEMY_DEFINITIONS[event.attackerId.split('_')[0]]?.name || 'Attacker'} for ${retributionDamage} holy damage!`);
+        }
+      });
+
+      // --- Paladin's Standhafter Verteidiger (Refined: Buff Ally) ---
+      const paladinsInParty = updatedHeroes.filter(h => h.definitionId === 'PALADIN' && h.currentHp > 0 && (h.skillLevels['PALADIN_PASSIVE_STEADFASTDEFENDER_01'] || 0) > 0);
+      paladinsInParty.forEach(paladin => {
+        const skillLevel = paladin.skillLevels['PALADIN_PASSIVE_STEADFASTDEFENDER_01'];
+        const procChance = 0.08 + skillLevel * 0.02;
+        const distanceSq = Math.pow(paladin.x - heroToUpdate.x, 2) + Math.pow(paladin.y - heroToUpdate.y, 2);
+        if (heroToUpdate.uniqueBattleId !== paladin.uniqueBattleId && distanceSq < (150*150) && Math.random() < procChance) { // Range: 150 units
+            const defBuffPercent = 0.10 + skillLevel * 0.04;
+            const buffDef = STATUS_EFFECT_DEFINITIONS.PALADIN_DEFENDER_BUFF;
+            statusEffectsToApplyFromPassives.push({
+                targetId: heroToUpdate.uniqueBattleId, // Apply to the ally who was hit
+                effect: {
+                    instanceId: `steadfastDef-${heroToUpdate.uniqueBattleId}-${Date.now()}`,
+                    type: StatusEffectType.BUFF, name: buffDef.name, iconName: buffDef.iconName,
+                    remainingDurationMs: buffDef.durationMs, sourceId: paladin.uniqueBattleId, appliedAtTick: gameState.battleState!.ticksElapsed,
+                    statAffected: 'defense', modifierType: 'PERCENTAGE_ADDITIVE', value: defBuffPercent,
+                }
+            });
+            logMessages.push(`  ↳ ${paladin.name}'s Steadfast Defender grants ${heroToUpdate.name} +${(defBuffPercent*100).toFixed(0)}% Defense!`);
+        }
+      });
+
+
     } else {
       const enemyTargetIndex = updatedEnemies.findIndex(e => e.uniqueBattleId === event.targetId);
       if (enemyTargetIndex !== -1 && updatedEnemies[enemyTargetIndex].currentHp > 0) {
@@ -336,6 +417,24 @@ export const processAttackEvents = (
                 enemyToUpdate.currentHp = Math.max(0, enemyToUpdate.currentHp - damageToApplyToEnemy);
             }
         }
+
+        // Archer's Abprallschuss (Ricochet Shot)
+        const attackerHero = updatedHeroes.find(h => h.uniqueBattleId === event.attackerId);
+        if (attackerHero && attackerHero.definitionId === 'ARCHER' && (attackerHero.skillLevels['ARCHER_PASSIVE_RICOCHET_01'] || 0) > 0 && !event.isHeal && !event.isDotDamage && event.damage > 0) {
+            const ricochetLevel = attackerHero.skillLevels['ARCHER_PASSIVE_RICOCHET_01'];
+            const procChance = 0.10 + ricochetLevel * 0.02;
+            if (Math.random() < procChance) {
+                const livingEnemies = updatedEnemies.filter(e => e.currentHp > 0 && e.uniqueBattleId !== enemyToUpdate.uniqueBattleId);
+                if (livingEnemies.length > 0) {
+                    const ricochetTarget = livingEnemies[Math.floor(Math.random() * livingEnemies.length)];
+                    const ricochetDamagePercent = 0.30 + ricochetLevel * 0.05;
+                    const ricochetDamage = Math.max(1, Math.floor((attackerHero.calculatedStats.damage * ricochetDamagePercent) - ricochetTarget.calculatedStats.defense));
+                    newPassiveAttackEvents.push({ attackerId: attackerHero.uniqueBattleId, targetId: ricochetTarget.uniqueBattleId, damage: ricochetDamage, isCrit: false, timestamp: Date.now() + Math.random(), isSpecialAttack: true, specialAttackName: 'Ricochet Shot' });
+                    logMessages.push(`  ↳ ${attackerHero.name}'s Ricochet Shot hits ${ricochetTarget.name} for ${ricochetDamage} damage!`);
+                }
+            }
+        }
+
 
         const enemyDef = ENEMY_DEFINITIONS[enemyToUpdate.id];
         if (enemyDef && enemyDef.phases && enemyDef.phases.length > 0) {
@@ -453,6 +552,43 @@ export const processAttackEvents = (
       }
     }
   });
+  
+  // Apply status effects from passive procs
+  statusEffectsToApplyFromPassives.forEach(appliance => {
+    let target: BattleHero | BattleEnemy | undefined;
+    const heroTargetIndex = updatedHeroes.findIndex(h => h.uniqueBattleId === appliance.targetId);
+    if (heroTargetIndex !== -1) {
+        target = updatedHeroes[heroTargetIndex];
+        const existingEffectIndex = target.statusEffects.findIndex(se => se.name === appliance.effect.name && se.type === appliance.effect.type);
+        if (existingEffectIndex !== -1) {
+            target.statusEffects[existingEffectIndex].remainingDurationMs = appliance.effect.remainingDurationMs;
+            if (appliance.effect.statAffected && target.statusEffects[existingEffectIndex].statAffected === appliance.effect.statAffected) {
+                target.statusEffects[existingEffectIndex].value = appliance.effect.value; // Update value if same stat/type
+            }
+        } else {
+            target.statusEffects.push(appliance.effect);
+        }
+        if (appliance.effect.statAffected) statsRecalculationNeededForEnemyIds.push(target.uniqueBattleId); // Mark hero for recalc
+        updatedHeroes[heroTargetIndex] = {...target}; // Ensure change is captured
+    } else {
+        const enemyTargetIndex = updatedEnemies.findIndex(e => e.uniqueBattleId === appliance.targetId);
+        if (enemyTargetIndex !== -1) {
+            target = updatedEnemies[enemyTargetIndex];
+            const existingEffectIndex = target.statusEffects.findIndex(se => se.name === appliance.effect.name && se.type === appliance.effect.type);
+            if (existingEffectIndex !== -1) {
+                target.statusEffects[existingEffectIndex].remainingDurationMs = appliance.effect.remainingDurationMs;
+                 if (appliance.effect.statAffected && target.statusEffects[existingEffectIndex].statAffected === appliance.effect.statAffected) {
+                    target.statusEffects[existingEffectIndex].value = appliance.effect.value;
+                }
+            } else {
+                target.statusEffects.push(appliance.effect);
+            }
+            if (appliance.effect.statAffected) statsRecalculationNeededForEnemyIds.push(target.uniqueBattleId); // Mark enemy for recalc
+            updatedEnemies[enemyTargetIndex] = {...target}; // Ensure change is captured
+        }
+    }
+  });
 
-  return { updatedHeroes, updatedEnemies, logMessages, newSummonsFromPhase, statsRecalculationNeededForEnemyIds };
+
+  return { updatedHeroes, updatedEnemies, logMessages, newSummonsFromPhase, statsRecalculationNeededForEnemyIds, newPassiveAttackEvents };
 };

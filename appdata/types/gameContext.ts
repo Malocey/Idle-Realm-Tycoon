@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { GameState } from './gameState';
 import { GameAction } from './gameActions';
@@ -10,13 +11,13 @@ import { EnemyDefinition } from './enemy';
 import { WaveDefinition, BattleHero, StatusEffectDefinition } from './battle'; // Added StatusEffectDefinition
 import { IconComponent, Production, Cost } from './common';
 import { TownHallUpgradeDefinition, BuildingSpecificUpgradeDefinition, GuildHallUpgradeDefinition } from './upgrades';
-import { DungeonDefinition, TrapDefinition, DungeonEventDefinition, WorldMapDefinition } from './dungeon'; // Added WorldMapDefinition
+import { DungeonDefinition, TrapDefinition, DungeonEventDefinition, WorldMapDefinition, AethericResonanceStatConfig, ResearchDefinition } from './index'; // Added WorldMapDefinition and AethericResonanceStatConfig, ResearchDefinition
 import { PotionDefinition } from './crafting';
 import { ShardDefinition } from './shards';
 import { QuestTemplate } from './quests';
 import { RunBuffDefinition } from './runBuffs';
 import { ColosseumWaveDefinition } from './actionBattle';
-import { DemoniconMilestoneRewardDefinition } from './index'; // Import new type
+import { DemoniconMilestoneRewardDefinition, AccountLevelDefinition } from './index'; // Import new type & AccountLevelDefinition
 
 export interface GameContextType {
   gameState: GameState;
@@ -45,6 +46,9 @@ export interface GameContextType {
     statusEffectDefinitions: Record<string, StatusEffectDefinition>; 
     demoniconMilestoneRewards: Record<string, DemoniconMilestoneRewardDefinition[]>;
     worldMapDefinitions: Record<string, WorldMapDefinition>; // Added worldMapDefinitions
+    accountLevelDefinitions: AccountLevelDefinition[]; // Added accountLevelDefinitions
+    aethericResonanceStatConfigs: AethericResonanceStatConfig[]; // Added Aetheric Resonance Stat Configs
+    researchDefinitions: Record<string, ResearchDefinition>; // Added researchDefinitions
   };
   getCalculatedHeroStats: (heroState: PlayerHeroState | BattleHero) => HeroStats;
   getBuildingProduction: (buildingState: PlayerBuildingState) => Production[];

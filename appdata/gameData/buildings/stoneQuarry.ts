@@ -1,3 +1,4 @@
+
 import { ResourceType, BuildingDefinition } from '../../types';
 
 export const STONE_QUARRY_DEFINITION: BuildingDefinition = {
@@ -11,6 +12,6 @@ export const STONE_QUARRY_DEFINITION: BuildingDefinition = {
   maxLevel: -1,
   iconName: 'STONE',
   isProducer: true,
-  unlockWaveRequirement: 5,
+  // unlockWaveRequirement: 5, // Entfernt
   hasMinigame: true,
 };

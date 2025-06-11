@@ -45,6 +45,7 @@ const RESOURCE_PILL_COLORS: Record<ResourceType, { bg: string; border: string }>
   [ResourceType.OBSTACLE]: { bg: 'bg-gray-800', border: 'border-gray-900' },
   [ResourceType.SKILL_POINTS_TEMP]: { bg: 'bg-orange-300', border: 'border-orange-400' },
   [ResourceType.DEMONIC_COIN]: { bg: 'bg-rose-500', border: 'border-rose-600' },
+  [ResourceType.RESEARCH_POINTS]: { bg: 'bg-teal-500', border: 'border-teal-600'},
 };
 
 

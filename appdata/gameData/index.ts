@@ -19,8 +19,11 @@ export * from './eventDefinitions';
 export * from './runBuffDefinitions';
 export * from './colosseumWaveDefinitions';
 export * from './sharedSkillDefinitions';
-export * from './statusEffectDefinitions'; 
-export * from './demoniconMilestoneRewards'; 
-export * from './maps/index'; // Changed from './mapData'
+export * from './statusEffectDefinitions';
+export * from './demoniconMilestoneRewards';
+export * from './maps/index';
+export * from './accountLevelBonuses';
+export * from './aethericResonanceDefinitions';
+export * from './researchDefinitions';
 // Explicitly re-export GOLD_MINE_UPGRADE_DEFINITIONS
 export { GOLD_MINE_UPGRADE_DEFINITIONS } from './goldMineUpgrades';

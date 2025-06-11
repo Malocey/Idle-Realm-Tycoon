@@ -14,17 +14,24 @@ import { handleLootAndXP } from '../reducers/combat/lootAndXPHandler';
 import { checkBattleStatus } from '../reducers/combat/battleStatusManager';
 import { calculateRunExpToNextLevel } from '../utils';
 
+interface DemoniconBattleTickResult {
+    updatedGameState: GameState;
+    deferredActions: GameAction[];
+    newlyAddedToFirstTimeDefeatsForAccXp?: string[];
+}
+
 export const processDemoniconBattleTick = (
     state: GameState,
     globalBonuses: GlobalBonuses,
     staticData: GameContextType['staticData']
-): GameState => {
+): DemoniconBattleTickResult => {
   if (!state.battleState || state.battleState.status !== 'FIGHTING' || !state.battleState.isDemoniconBattle) {
-    return state;
+    return { updatedGameState: state, deferredActions: [] };
   }
 
   const battleTickDurationMs = GAME_TICK_MS / state.gameSpeed;
   let currentBattleState = { ...state.battleState }; // Work with a mutable copy
+  let allDeferredActionsThisTick: GameAction[] = [];
 
   let currentBattleLog = [...currentBattleState.battleLog];
   // battleLootCollected & battleExpCollected are for the CURRENT RANK's rewards
@@ -47,7 +54,7 @@ export const processDemoniconBattleTick = (
   let currentBuildings = [...state.buildings];
   let currentBuildingLevelUpEventsGameState = {...state.buildingLevelUpEvents};
   let currentBuildingLevelUpEventsInBattle = [...(currentBattleState.buildingLevelUpEventsInBattle || [])];
-  let actionsToDispatch: GameAction[] = [];
+  
   let playerSharedSkillPointsFromBattle = state.playerSharedSkillPoints;
 
 
@@ -168,6 +175,7 @@ export const processDemoniconBattleTick = (
   // Update per-rank accumulators
   currentRankLootCollected = demoniconLootAndXPResult.updatedLootCollected;
   currentRankExpCollected = demoniconLootAndXPResult.updatedBattleExpCollected;
+  allDeferredActionsThisTick.push(...demoniconLootAndXPResult.deferredActions); // Collect deferred actions
 
   // Update session total accumulators for display
   newlyDefeatedThisTick.forEach(defeatedEnemy => {
@@ -209,5 +217,9 @@ export const processDemoniconBattleTick = (
   currentBattleState.sessionTotalExp = currentSessionTotalExpForDisplay;
 
 
-  return { ...state, battleState: currentBattleState, notifications: currentNotifications, playerSharedSkillPoints: playerSharedSkillPointsFromBattle };
+  return { 
+      updatedGameState: { ...state, battleState: currentBattleState, notifications: currentNotifications, playerSharedSkillPoints: playerSharedSkillPointsFromBattle },
+      deferredActions: allDeferredActionsThisTick,
+      newlyAddedToFirstTimeDefeatsForAccXp: demoniconLootAndXPResult.newlyAddedToFirstTimeDefeatsForAccXp,
+    };
 };

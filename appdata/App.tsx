@@ -16,6 +16,7 @@ import SharedSkillTreeView from './views/SharedSkillTreeView';
 import GoldMineMinigameView from './views/GoldMineMinigameView';
 import DemoniconPortalView from './views/DemoniconPortalView';
 import WorldMapView from './views/WorldMapView'; // New Import
+import AccountLevelInfoModal from './components/AccountLevelInfoModal'; // Import the new modal
 import { GameState } from './types'; 
 
 const VIEW_TRANSITION_DURATION = 400; // ms, should match CSS animation duration
@@ -23,6 +24,7 @@ const VIEW_TRANSITION_DURATION = 400; // ms, should match CSS animation duration
 const AppContentInternal: React.FC = () => {
   const context = useGameContext(); 
   const [isCheatMenuModalOpen, setIsCheatMenuModalOpen] = useState(false);
+  const [isAccountLevelModalOpen, setIsAccountLevelModalOpen] = useState(false); // State for new modal
   
   const [currentView, setCurrentView] = useState<GameState['activeView'] | null>(null);
   const [previousView, setPreviousView] = useState<GameState['activeView'] | null>(null);
@@ -67,6 +69,10 @@ const AppContentInternal: React.FC = () => {
     setIsCheatMenuModalOpen(prev => !prev);
   };
 
+  const toggleAccountLevelModal = () => { // Handler for new modal
+    setIsAccountLevelModalOpen(prev => !prev);
+  };
+
   const renderView = (viewName: GameState['activeView'] | null, isExiting: boolean) => {
     if (!viewName) return null;
     
@@ -99,7 +105,7 @@ const AppContentInternal: React.FC = () => {
   
   return (
     <div className="min-h-screen flex flex-col bg-slate-900">
-      <TopBar />
+      <TopBar onToggleAccountLevelModal={toggleAccountLevelModal} />
       <main className="flex-grow container mx-auto px-0 sm:px-4 py-4 relative overflow-y-auto fancy-scrollbar"> 
         {isTransitioning && previousView && renderView(previousView, true)}
         {currentView && renderView(currentView, false)}
@@ -113,6 +119,10 @@ const AppContentInternal: React.FC = () => {
       <CheatMenuModal 
         isOpen={isCheatMenuModalOpen}
         onClose={toggleCheatMenuModal}
+      />
+      <AccountLevelInfoModal
+        isOpen={isAccountLevelModalOpen}
+        onClose={toggleAccountLevelModal}
       />
     </div>
   );

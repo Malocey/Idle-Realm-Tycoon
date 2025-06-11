@@ -1,18 +1,19 @@
 
-import { GameState, GameAction, ResourceType, GameNotification, PlayerOwnedShard } from '../types';
+import { GameState, GameAction, ResourceType, GameNotification, PlayerOwnedShard, AccountXpGainEvent } from '../types';
 import { NOTIFICATION_ICONS, MAX_WAVE_NUMBER } from '../constants';
 import { ICONS } from '../components/Icons';
-import { HERO_DEFINITIONS, SHARD_DEFINITIONS, RUN_BUFF_DEFINITIONS } from '../gameData/index';
-import { getExpToNextHeroLevel } from '../utils'; 
+import { HERO_DEFINITIONS, SHARD_DEFINITIONS, RUN_BUFF_DEFINITIONS, calculateXPForAccountLevel } from '../gameData/index'; // Added calculateXPForAccountLevel
+import { getExpToNextHeroLevel, formatNumber } from '../utils';
 
 const generateUniqueIdMisc = () => `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
 const MAX_NOTIFICATIONS_IN_STATE = 15;
+const MAX_ACCOUNT_XP_HISTORY_LENGTH = 15;
 
 
 export const handleMiscActions = (
     state: GameState,
-    action: Extract<GameAction, { type: 'SET_ACTIVE_VIEW' | 'ADD_NOTIFICATION' | 'DISMISS_NOTIFICATION' | 'CHEAT_ADD_RESOURCES' | 'SET_GAME_SPEED' | 'CHEAT_UNLOCK_ALL_WAVES' | 'CHEAT_REVEAL_DUNGEON_FLOOR' | 'CHEAT_ADD_SPECIFIC_RUN_BUFF' | 'CHEAT_UNLOCK_MAX_ALL_RUN_BUFFS' | 'CHEAT_FORCE_BATTLE_VICTORY' | 'CHEAT_TOGGLE_GOD_MODE' | 'TOGGLE_ACTION_BATTLE_AI_SYSTEM' }>
+    action: Extract<GameAction, { type: 'SET_ACTIVE_VIEW' | 'ADD_NOTIFICATION' | 'DISMISS_NOTIFICATION' | 'CHEAT_ADD_RESOURCES' | 'SET_GAME_SPEED' | 'CHEAT_UNLOCK_ALL_WAVES' | 'CHEAT_REVEAL_DUNGEON_FLOOR' | 'CHEAT_ADD_SPECIFIC_RUN_BUFF' | 'CHEAT_UNLOCK_MAX_ALL_RUN_BUFFS' | 'CHEAT_FORCE_BATTLE_VICTORY' | 'CHEAT_TOGGLE_GOD_MODE' | 'TOGGLE_ACTION_BATTLE_AI_SYSTEM' | 'GAIN_ACCOUNT_XP' }> 
 ): GameState => {
   switch (action.type) {
     case 'SET_ACTIVE_VIEW':
@@ -36,7 +37,7 @@ export const handleMiscActions = (
     case 'CHEAT_ADD_RESOURCES': {
       const newResourcesCheat = { ...state.resources };
       let updatedHeroes = [...state.heroes];
-      let newNotifications: GameNotification[] = [...state.notifications]; // Ensure newNotifications is typed correctly from the start.
+      let newNotifications: GameNotification[] = [...state.notifications]; 
       let shardsSuccessfullyAdded = false;
       let heroNameToNotify = '';
       let addedShardsSummary = '';
@@ -112,7 +113,7 @@ export const handleMiscActions = (
         message: "Cheat: Dev Resources Added.", type: 'info', iconName: NOTIFICATION_ICONS.info, timestamp: Date.now()
       };
       newNotifications.push(resAddedNotification);
-      
+
       if (newNotifications.length > MAX_NOTIFICATIONS_IN_STATE) {
         newNotifications = newNotifications.slice(newNotifications.length - MAX_NOTIFICATIONS_IN_STATE);
       }
@@ -186,7 +187,7 @@ export const handleMiscActions = (
         }
         return { ...state, notifications: updatedNotifications};
       }
-      const buffIdToAdd = 'RUN_BUFF_COMMON_ATTACK'; 
+      const buffIdToAdd = 'RUN_BUFF_COMMON_ATTACK';
       const buffDef = RUN_BUFF_DEFINITIONS[buffIdToAdd];
       if (!buffDef) return state;
 
@@ -282,6 +283,60 @@ export const handleMiscActions = (
         ...state,
         actionBattleAISystem: newAISystem,
         notifications: updatedNotifications,
+      };
+    }
+    case 'GAIN_ACCOUNT_XP': {
+      const { amount, source } = action.payload;
+      if (amount <= 0) return state;
+
+      let newAccountXP = state.accountXP + amount;
+      let newAccountLevel = state.accountLevel;
+      let newExpToNextAccountLevel = state.expToNextAccountLevel;
+      let newNotificationsMisc = [...state.notifications];
+      let newAccountXpHistory = [...state.accountXpHistory];
+
+      const newXpEvent: AccountXpGainEvent = {
+        id: generateUniqueIdMisc(),
+        timestamp: Date.now(),
+        amount,
+        source,
+      };
+      newAccountXpHistory.push(newXpEvent);
+      if (newAccountXpHistory.length > MAX_ACCOUNT_XP_HISTORY_LENGTH) {
+        newAccountXpHistory = newAccountXpHistory.slice(newAccountXpHistory.length - MAX_ACCOUNT_XP_HISTORY_LENGTH);
+      }
+
+      while (newAccountXP >= newExpToNextAccountLevel) {
+          newAccountXP -= newExpToNextAccountLevel;
+          newAccountLevel++;
+          newExpToNextAccountLevel = calculateXPForAccountLevel(newAccountLevel);
+          newNotificationsMisc.push({
+              id: generateUniqueIdMisc(),
+              message: `Account Level Up! Reached Level ${newAccountLevel}! Global bonuses improved.`,
+              type: 'success',
+              iconName: ICONS.UPGRADE ? 'UPGRADE' : undefined,
+              timestamp: Date.now(),
+          });
+      }
+      newNotificationsMisc.push({
+          id: generateUniqueIdMisc(),
+          message: `Gained ${formatNumber(amount)} Account XP from ${source}.`,
+          type: 'info',
+          iconName: ICONS.XP_ICON ? 'XP_ICON' : undefined,
+          timestamp: Date.now(),
+      });
+
+      if (newNotificationsMisc.length > MAX_NOTIFICATIONS_IN_STATE) {
+        newNotificationsMisc = newNotificationsMisc.slice(newNotificationsMisc.length - MAX_NOTIFICATIONS_IN_STATE);
+      }
+
+      return {
+          ...state,
+          accountXP: newAccountXP,
+          accountLevel: newAccountLevel,
+          expToNextAccountLevel: newExpToNextAccountLevel,
+          notifications: newNotificationsMisc,
+          accountXpHistory: newAccountXpHistory,
       };
     }
     default:

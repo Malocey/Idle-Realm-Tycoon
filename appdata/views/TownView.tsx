@@ -14,6 +14,8 @@ import BuildingSpecificUpgradeModal from '../components/BuildingSpecificUpgradeM
 import GuildHallUpgradeModal from '../components/GuildHallUpgradeModal';
 import AlchemistLabModal from '../components/AlchemistLabModal';
 import LibraryModal from '../components/LibraryModal';
+import AltarOfConvergenceModal from '../components/AltarOfConvergenceModal';
+import AcademyModal from '../components/AcademyModal'; // Import AcademyModal
 
 // Import new tab components
 import MyBuildingsTab from './TownView/MyBuildingsTab';
@@ -27,7 +29,7 @@ const TAB_TRANSITION_DURATION = 300; // ms, should match CSS animation
 
 const TownView: React.FC = () => {
   const { gameState, dispatch, getGlobalBonuses } = useGameContext();
-  
+
   const [activeTownTab, setActiveTownTab] = useState<TownViewTab>('MY_BUILDINGS');
   const [previousTownTab, setPreviousTownTab] = useState<TownViewTab | null>(null);
   const [isTransitioningTabs, setIsTransitioningTabs] = useState(false);
@@ -39,6 +41,8 @@ const TownView: React.FC = () => {
   const [isGuildHallUpgradeModalOpen, setIsGuildHallUpgradeModalOpen] = useState(false);
   const [isAlchemistLabModalOpen, setIsAlchemistLabModalOpen] = useState(false);
   const [isLibraryModalOpen, setIsLibraryModalOpen] = useState(false);
+  const [isAltarOfConvergenceModalOpen, setIsAltarOfConvergenceModalOpen] = useState(false);
+  const [isAcademyModalOpen, setIsAcademyModalOpen] = useState(false); // State for Academy Modal
   const [selectedBuildingForSpecificUpgrades, setSelectedBuildingForSpecificUpgrades] = useState<string | null>(null);
   const [animatingCardId, setAnimatingCardId] = useState<string | null>(null);
 
@@ -75,10 +79,10 @@ const TownView: React.FC = () => {
       }, TAB_TRANSITION_DURATION);
     }
   };
-  
+
   useEffect(() => {
     if (animatingCardId) {
-      const timer = setTimeout(() => setAnimatingCardId(null), 600); 
+      const timer = setTimeout(() => setAnimatingCardId(null), 600);
       return () => clearTimeout(timer);
     }
   }, [animatingCardId]);
@@ -94,43 +98,46 @@ const TownView: React.FC = () => {
         amount: Math.max(1, Math.floor(c.amount * (1 - globalBonuses.buildingCostReduction)))
       }));
       const canAffordA = canAfford(gameState.resources, costA);
-      const isLockedA = a.unlockWaveRequirement !== undefined && gameState.currentWaveProgress < a.unlockWaveRequirement;
+      const isLockedA = (a.unlockWaveRequirement !== undefined && gameState.currentWaveProgress < a.unlockWaveRequirement) ||
+                        (a.id === 'DEMONICON_GATE' && !gameState.mapPoiCompletionStatus['demonicon_gate_unlocked']);
+
 
       const costB = b.baseCost.map(c => ({
         ...c,
         amount: Math.max(1, Math.floor(c.amount * (1 - globalBonuses.buildingCostReduction)))
       }));
       const canAffordB = canAfford(gameState.resources, costB);
-      const isLockedB = b.unlockWaveRequirement !== undefined && gameState.currentWaveProgress < b.unlockWaveRequirement;
+      const isLockedB = (b.unlockWaveRequirement !== undefined && gameState.currentWaveProgress < b.unlockWaveRequirement) ||
+                        (b.id === 'DEMONICON_GATE' && !gameState.mapPoiCompletionStatus['demonicon_gate_unlocked']);
 
-      // Scoring: Lower is better.
-      // Affordable & Unlocked: (0) + (0) = 0
-      // Affordable & Locked:   (0) + (1) = 1
-      // Unaffordable & Unlocked: (2) + (0) = 2
-      // Unaffordable & Locked:   (2) + (1) = 3
+
       const scoreA = (canAffordA ? 0 : 2) + (isLockedA ? 1 : 0);
       const scoreB = (canAffordB ? 0 : 2) + (isLockedB ? 1 : 0);
 
       if (scoreA !== scoreB) {
         return scoreA - scoreB;
       }
-
-      // If scores are equal, sort by wave requirement (lower first)
       const waveA = a.unlockWaveRequirement === undefined ? -1 : a.unlockWaveRequirement;
       const waveB = b.unlockWaveRequirement === undefined ? -1 : b.unlockWaveRequirement;
       if (waveA !== waveB) {
         return waveA - waveB;
       }
-
-      // Then by name for stability
       return a.name.localeCompare(b.name);
     });
-  }, [unbuiltBuildingsRaw, gameState.resources, gameState.currentWaveProgress, globalBonuses.buildingCostReduction]);
+  }, [unbuiltBuildingsRaw, gameState.resources, gameState.currentWaveProgress, globalBonuses.buildingCostReduction, gameState.mapPoiCompletionStatus]);
 
 
   const availableConstructionCount = useMemo(() => {
     return unbuiltBuildingsRaw.filter(def => {
-        const isUnlocked = def.unlockWaveRequirement === undefined || gameState.currentWaveProgress >= def.unlockWaveRequirement;
+        let isUnlocked = (def.unlockWaveRequirement === undefined || gameState.currentWaveProgress >= def.unlockWaveRequirement) &&
+                         !(def.id === 'DEMONICON_GATE' && !gameState.mapPoiCompletionStatus['demonicon_gate_unlocked']);
+        
+        if (def.id === 'LUMBER_MILL' && !gameState.mapPoiCompletionStatus['lumber_mill_blueprint_obtained']) isUnlocked = false;
+        if (def.id === 'FARM' && !gameState.mapPoiCompletionStatus['farm_blueprint_obtained']) isUnlocked = false;
+        if (def.id === 'GOLD_MINE' && !gameState.mapPoiCompletionStatus['gold_mine_blueprint_obtained']) isUnlocked = false;
+        if (def.id === 'STONE_QUARRY' && !gameState.mapPoiCompletionStatus['stone_quarry_blueprint_obtained']) isUnlocked = false;
+        if (def.id === 'TANNERY' && !gameState.mapPoiCompletionStatus['tannery_blueprint_obtained']) isUnlocked = false;
+
         if (!isUnlocked) return false;
         const actualBuildCost = def.baseCost.map(c => ({
             ...c,
@@ -138,14 +145,14 @@ const TownView: React.FC = () => {
           }));
         return canAfford(gameState.resources, actualBuildCost);
       }).length;
-  }, [unbuiltBuildingsRaw, gameState.currentWaveProgress, gameState.resources, globalBonuses.buildingCostReduction]);
+  }, [unbuiltBuildingsRaw, gameState.currentWaveProgress, gameState.resources, globalBonuses.buildingCostReduction, gameState.mapPoiCompletionStatus]);
 
 
   const unrecruitedHeroes = Object.values(HERO_DEFINITIONS).filter(hd => !gameState.heroes.find(h => h.definitionId === hd.id));
   const availableRecruitmentCount = unrecruitedHeroes.filter(heroDef => {
     const isUnlocked = heroDef.unlockWaveRequirement === undefined || gameState.currentWaveProgress >= heroDef.unlockWaveRequirement;
     if (!isUnlocked) return false;
-    
+
     let recruitmentCost = heroDef.recruitmentCost ? [...heroDef.recruitmentCost] : [];
     if (recruitmentCost.length > 0 && globalBonuses.heroRecruitmentCostReduction > 0) {
         recruitmentCost = recruitmentCost.map(cost => ({
@@ -180,11 +187,11 @@ const TownView: React.FC = () => {
   };
 
   const handleOpenStoneQuarryMinigame = () => {
-    dispatch({ type: 'STONE_QUARRY_MINIGAME_INIT' }); 
+    dispatch({ type: 'STONE_QUARRY_MINIGAME_INIT' });
     dispatch({ type: 'SET_ACTIVE_VIEW', payload: 'STONE_QUARRY_MINIGAME' });
   };
-  
-  const handleOpenGoldMineMinigame = () => { 
+
+  const handleOpenGoldMineMinigame = () => {
     dispatch({ type: 'GOLD_MINE_MINIGAME_INIT' });
     dispatch({ type: 'SET_ACTIVE_VIEW', payload: 'GOLD_MINE_MINIGAME' });
   };
@@ -193,7 +200,7 @@ const TownView: React.FC = () => {
     dispatch({ type: 'START_ACTION_BATTLE' });
     dispatch({ type: 'SET_ACTIVE_VIEW', payload: 'ACTION_BATTLE_VIEW' });
   };
-  
+
   const handleOpenDemoniconPortal = () => {
     dispatch({ type: 'SET_ACTIVE_VIEW', payload: 'DEMONICON_PORTAL' });
   };
@@ -214,9 +221,10 @@ const TownView: React.FC = () => {
             onOpenBuildingSpecificUpgrades={handleOpenBuildingSpecificUpgrades}
             onOpenLibrary={() => setIsLibraryModalOpen(true)}
             onOpenStoneQuarryMinigame={handleOpenStoneQuarryMinigame}
-            onOpenGoldMineMinigame={handleOpenGoldMineMinigame} 
+            onOpenGoldMineMinigame={handleOpenGoldMineMinigame}
             onEnterColosseum={handleEnterColosseum}
             onOpenDemoniconPortal={handleOpenDemoniconPortal}
+            onOpenAltarOfConvergence={() => setIsAltarOfConvergenceModalOpen(true)}
           />
         );
       case 'CONSTRUCTION':
@@ -247,62 +255,78 @@ const TownView: React.FC = () => {
 
   const getAnimationClasses = (tabKey: TownViewTab | null, isExiting: boolean): string => {
     if (!isTransitioningTabs || tabKey !== (isExiting ? previousTownTab : activeTownTab)) {
-        return ''; 
+        return '';
     }
     if (isExiting) {
         return transitionDirection === 'right' ? 'animate-tab-slide-out-left' : 'animate-tab-slide-out-right';
-    } else { 
+    } else {
         return transitionDirection === 'right' ? 'animate-tab-slide-in-right' : 'animate-tab-slide-in-left';
     }
   };
 
 
-  const tabButtonStyle = (tabName: TownViewTab, ref: React.RefObject<HTMLButtonElement>) => 
+  const tabButtonStyle = (tabName: TownViewTab, ref: React.RefObject<HTMLButtonElement>) =>
     `relative px-4 py-2 text-sm font-medium rounded-t-lg focus:outline-none transition-colors duration-150 flex items-center
-     ${activeTownTab === tabName 
+     ${activeTownTab === tabName
        ? 'text-sky-300'
        : 'bg-transparent hover:bg-slate-700/50 text-slate-400 hover:text-slate-200'}`;
 
+  // Check if Academy of Scholars is built to show the button
+  const isAcademyBuilt = gameState.buildings.some(b => b.id === 'ACADEMY_OF_SCHOLARS' && b.level > 0);
+
   return (
     <div className="p-4 space-y-6">
-      <div className="relative flex border-b border-slate-700 mb-4">
-        {TOWN_VIEW_TABS_ORDER.map(tabId => (
-            <button 
-                key={tabId}
-                ref={tabButtonRefs[tabId]} 
-                className={tabButtonStyle(tabId, tabButtonRefs[tabId])} 
-                onClick={() => handleTabChange(tabId)}
+      <div className="flex justify-between items-center"> {/* Container for tabs and Academy button */}
+        <div className="relative flex border-b border-slate-700">
+          {TOWN_VIEW_TABS_ORDER.map(tabId => (
+              <button
+                  key={tabId}
+                  ref={tabButtonRefs[tabId]}
+                  className={tabButtonStyle(tabId, tabButtonRefs[tabId])}
+                  onClick={() => handleTabChange(tabId)}
+              >
+              {tabId.replace('_', ' ')}
+              {tabId === 'CONSTRUCTION' && availableConstructionCount > 0 && (
+                  <span className="ml-2 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                  {availableConstructionCount}
+                  </span>
+              )}
+              {tabId === 'RECRUITMENT' && availableRecruitmentCount > 0 && (
+                  <span className="ml-2 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                  {availableRecruitmentCount}
+                  </span>
+              )}
+              </button>
+          ))}
+          <div
+            className="absolute bottom-0 h-0.5 bg-sky-500 transition-all duration-300 ease-in-out"
+            style={{ left: indicatorStyle.left, width: indicatorStyle.width }}
+          />
+        </div>
+        {isAcademyBuilt && (
+            <Button
+                onClick={() => setIsAcademyModalOpen(true)}
+                variant="secondary"
+                size="md"
+                icon={ICONS.BOOK_ICON && <ICONS.BOOK_ICON className="w-5 h-5" />}
             >
-            {tabId.replace('_', ' ')}
-            {tabId === 'CONSTRUCTION' && availableConstructionCount > 0 && (
-                <span className="ml-2 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
-                {availableConstructionCount}
-                </span>
-            )}
-            {tabId === 'RECRUITMENT' && availableRecruitmentCount > 0 && (
-                <span className="ml-2 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
-                {availableRecruitmentCount}
-                </span>
-            )}
-            </button>
-        ))}
-        <div
-          className="absolute bottom-0 h-0.5 bg-sky-500 transition-all duration-300 ease-in-out"
-          style={{ left: indicatorStyle.left, width: indicatorStyle.width }}
-        />
+                Academy
+            </Button>
+        )}
       </div>
-      
-      <div className="relative min-h-[300px]"> 
+
+
+      <div className="relative min-h-[300px]">
         {isTransitioningTabs && previousTownTab && (
-          <div 
-            key={`${previousTownTab}-exit`} 
+          <div
+            key={`${previousTownTab}-exit`}
             className={`tab-content-transition-wrapper ${getAnimationClasses(previousTownTab, true)}`}
           >
             {renderSingleTabContent(previousTownTab)}
           </div>
         )}
-        <div 
-          key={activeTownTab} 
+        <div
+          key={activeTownTab}
           className={isTransitioningTabs ? `tab-content-transition-wrapper ${getAnimationClasses(activeTownTab, false)}` : ''}
         >
           {renderSingleTabContent(activeTownTab)}
@@ -339,6 +363,16 @@ const TownView: React.FC = () => {
           isOpen={!!selectedBuildingForSpecificUpgrades}
           onClose={handleCloseBuildingSpecificUpgrades}
           buildingId={selectedBuildingForSpecificUpgrades}
+        />
+      )}
+      <AltarOfConvergenceModal
+        isOpen={isAltarOfConvergenceModalOpen}
+        onClose={() => setIsAltarOfConvergenceModalOpen(false)}
+      />
+      {isAcademyModalOpen && (
+        <AcademyModal
+            isOpen={isAcademyModalOpen}
+            onClose={() => setIsAcademyModalOpen(false)}
         />
       )}
     </div>

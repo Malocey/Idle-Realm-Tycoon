@@ -18,6 +18,11 @@ import { RAPID_REGENERATION_NODE } from './sharedSkills/energyShieldRechargeRate
 import { QUICK_RECOVERY_NODE } from './sharedSkills/energyShieldRechargeDelayNode';
 import { LETHAL_STRIKES_NODE } from './sharedSkills/critDamageNode';
 
+// New Skill Imports
+import { HERO_XP_BOOST_NODE } from './sharedSkills/heroXpBoostNode';
+import { HEROIC_POINTS_BOOST_NODE } from './sharedSkills/heroicPointsBoostNode';
+import { ENEMY_GOLD_BOOST_NODE } from './sharedSkills/enemyGoldBoostNode';
+
 export const SHARED_SKILL_DEFINITIONS: Record<string, SharedSkillDefinition> = {
   'SHARED_ORIGIN': ORIGIN_NODE,
   'SHARED_MAIN_ATTACK': ATTACK_FUNDAMENTALS_NODE,
@@ -34,4 +39,8 @@ export const SHARED_SKILL_DEFINITIONS: Record<string, SharedSkillDefinition> = {
   'SHARED_ES_RECHARGE_RATE_PERCENT': RAPID_REGENERATION_NODE,
   'SHARED_ES_RECHARGE_DELAY_FLAT': QUICK_RECOVERY_NODE,
   'SHARED_CRIT_DAMAGE_PERCENT': LETHAL_STRIKES_NODE,
+  // New Skills
+  'SHARED_HERO_XP_BOOST': HERO_XP_BOOST_NODE,
+  'SHARED_HEROIC_POINTS_BOOST': HEROIC_POINTS_BOOST_NODE,
+  'SHARED_ENEMY_GOLD_BOOST': ENEMY_GOLD_BOOST_NODE,
 };

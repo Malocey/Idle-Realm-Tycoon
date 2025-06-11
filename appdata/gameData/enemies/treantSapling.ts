@@ -12,26 +12,25 @@ export const TREANT_SAPLING_DEFINITION: EnemyDefinition = {
     {
       id: 'TREANT_SAPLING_GROWTH_CHANNEL',
       name: "Growing",
-      description: "Kanalisiert Wachstum. Transformiert sich bei Abschluss in einen ausgewachsenen Treant.",
-      cooldownMs: 99999999, // Effectively once per sapling for this transformation
-      initialCooldownMs: 3000, // Sapling attacks normally for 11s before this starts
+      description: "Channels growth. Transforms into an adult Treant upon completion.",
+      cooldownMs: 99999999, 
+      initialCooldownMs: 3000, 
       targetType: 'SELF',
       channelingProperties: {
-        channelDurationMs: 8000, // 8 seconds for growth
+        channelDurationMs: 8000, 
         blocksActionsWhileChanneling: true, 
         blocksMovementWhileChanneling: true,
         effects: {
           [AbilityEffectTriggerType.ON_CHANNEL_COMPLETE]: [
             { 
               type: 'TRANSFORM_INTO_ENEMY',
-              targetScope: 'SELF', // The sapling transforms itself
+              targetScope: 'SELF', 
               enemyIdToTransformInto: 'TREANT_ADULT',
-              inheritEliteStatus: true, // The adult should be elite if the sapling was
+              inheritEliteStatus: true, 
             }
           ],
         }
       }
     },
-    // TREANT_ADULT_SUMMON_CHANNEL is removed from here and will be on TREANT_ADULT
   ],
 };

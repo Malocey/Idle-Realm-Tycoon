@@ -5,13 +5,10 @@ import { PlayerHeroState, HeroDefinition, ResourceType, PlayerOwnedShard, GameNo
 import { ICONS } from '../components/Icons';
 import SkillTreeView from '../components/SkillTreeView';
 import Button from '../components/Button';
-// ShardCard is now used within ShardsTab
-// import Modal from '../components/Modal'; // Modal is now used within ShardsTab if needed
-// import { NOTIFICATION_ICONS } from '../constants'; // NOTIFICATION_ICONS might be used by ShardsTab
 import HeroStatsPanel from '../components/HeroStatsPanel';
 import ShardsTab from '../components/ShardsTab'; 
 
-type ActiveHeroAcademyTab = 'SKILL_TREE' | 'STATS' | 'SHARDS'; // Removed 'MANAGE_SHARDS'
+type ActiveHeroAcademyTab = 'SKILL_TREE' | 'STATS' | 'SHARDS'; 
 
 const HeroAcademyView: React.FC = () => {
   const { gameState, staticData, dispatch } = useGameContext();
@@ -21,7 +18,6 @@ const HeroAcademyView: React.FC = () => {
   useEffect(() => {
     if (gameState.heroes.length === 0) {
         setSelectedHeroId(null);
-         // If no heroes, default to 'SHARDS' tab as it has a message for this case.
         if (activeTab !== 'SHARDS') {
             setActiveTab('SHARDS');
         }
@@ -38,7 +34,7 @@ const HeroAcademyView: React.FC = () => {
   const selectedSkillTree = selectedHeroDef ? staticData.skillTrees[selectedHeroDef.skillTreeId] : null;
 
 
-  if (gameState.heroes.length === 0 && activeTab !== 'SHARDS') { // Keep check for initial render if no heroes
+  if (gameState.heroes.length === 0 && activeTab !== 'SHARDS') { 
     return (
       <div className="p-6 text-center">
         <h2 className="text-3xl font-bold text-sky-400 mb-4">Hero Academy</h2>

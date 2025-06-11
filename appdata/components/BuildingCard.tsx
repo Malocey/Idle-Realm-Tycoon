@@ -17,10 +17,11 @@ interface BuildingCardProps {
   onOpenGuildHallUpgrades?: () => void;
   onOpenAlchemistLab?: () => void;
   onOpenLibrary?: () => void;
-  onOpenStoneQuarryMinigame?: () => void; 
-  onEnterColosseum?: () => void; 
-  onOpenGoldMineMinigame?: () => void; 
-  onOpenDemoniconPortal?: () => void; // New prop
+  onOpenStoneQuarryMinigame?: () => void;
+  onEnterColosseum?: () => void;
+  onOpenGoldMineMinigame?: () => void;
+  onOpenDemoniconPortal?: () => void;
+  onOpenAltarOfConvergence?: () => void; // New prop
 }
 
 const BUILDING_LEVEL_UP_INDICATOR_DURATION = 10000;
@@ -37,7 +38,8 @@ const BuildingCard: React.FC<BuildingCardProps> = ({
   onOpenStoneQuarryMinigame,
   onEnterColosseum,
   onOpenGoldMineMinigame,
-  onOpenDemoniconPortal, // New
+  onOpenDemoniconPortal,
+  onOpenAltarOfConvergence, // New
 }) => {
   const { gameState, dispatch, getBuildingProduction, getBuildingUpgradeCost: getSingleLevelUpgradeCost, getGlobalBonuses } = useGameContext();
   const def = BUILDING_DEFINITIONS[buildingState.id];
@@ -45,7 +47,7 @@ const BuildingCard: React.FC<BuildingCardProps> = ({
 
   useEffect(() => {
     if (isAnimating) {
-      const timer = setTimeout(() => setIsAnimating(false), 600); 
+      const timer = setTimeout(() => setIsAnimating(false), 600);
       return () => clearTimeout(timer);
     }
   }, [isAnimating]);
@@ -55,7 +57,7 @@ const BuildingCard: React.FC<BuildingCardProps> = ({
   const globalBonuses = getGlobalBonuses();
   const Icon = ICONS[def.iconName];
 
-  const upgradeCostForNextLevel = getSingleLevelUpgradeCost(buildingState); 
+  const upgradeCostForNextLevel = getSingleLevelUpgradeCost(buildingState);
 
   const currentProductionPerTick = getBuildingProduction(buildingState);
 
@@ -107,7 +109,7 @@ const BuildingCard: React.FC<BuildingCardProps> = ({
         currentLevel: buildingState.level,
         maxLevel: def.maxLevel,
         currentMainResources: gameState.resources,
-        getMainResourceCostForNextLevel: (simLevel) => 
+        getMainResourceCostForNextLevel: (simLevel) =>
             calculateBuildingUpgradeCost(def, simLevel + 1).map(c => ({
                 ...c,
                 amount: Math.max(1, Math.floor(c.amount * (1 - globalBonuses.buildingCostReduction)))
@@ -126,7 +128,7 @@ const BuildingCard: React.FC<BuildingCardProps> = ({
           totalBatchCost: maxAffordableLevelsData.totalCost
         }
       });
-      setIsAnimating(true); 
+      setIsAnimating(true);
     }
   };
 
@@ -186,7 +188,7 @@ const BuildingCard: React.FC<BuildingCardProps> = ({
               onClick={handleMaxUpgrade}
               disabled={maxAffordableLevelsData.levels === 0}
               className="flex-1"
-              variant="success" 
+              variant="success"
               icon={ICONS.UPGRADE && <ICONS.UPGRADE className="w-4 h-4"/>}
             >
               Max (+{maxAffordableLevelsData.levels})
@@ -248,7 +250,7 @@ const BuildingCard: React.FC<BuildingCardProps> = ({
             View Buff Compendium
           </Button>
         )}
-         {def.id === 'STONE_QUARRY' && onOpenStoneQuarryMinigame && def.hasMinigame && ( 
+         {def.id === 'STONE_QUARRY' && onOpenStoneQuarryMinigame && def.hasMinigame && (
             <Button
               onClick={onOpenStoneQuarryMinigame}
               className="w-full"
@@ -258,7 +260,7 @@ const BuildingCard: React.FC<BuildingCardProps> = ({
               Excavate
             </Button>
         )}
-        {def.id === 'GOLD_MINE' && onOpenGoldMineMinigame && def.hasMinigame && ( 
+        {def.id === 'GOLD_MINE' && onOpenGoldMineMinigame && def.hasMinigame && (
             <Button
               onClick={onOpenGoldMineMinigame}
               className="w-full"
@@ -278,15 +280,25 @@ const BuildingCard: React.FC<BuildingCardProps> = ({
               Enter Colosseum
             </Button>
         )}
-        {def.id === 'DEMONICON_GATE' && onOpenDemoniconPortal && ( // New button for Demonicon Gate
+        {def.id === 'DEMONICON_GATE' && onOpenDemoniconPortal && (
             <Button
               onClick={onOpenDemoniconPortal}
               className="w-full"
-              variant="secondary" // Or a more thematic variant
-              icon={ICONS.ENEMY && <ICONS.ENEMY className="w-4 h-4"/>} // Placeholder icon
+              variant="secondary"
+              icon={ICONS.ENEMY && <ICONS.ENEMY className="w-4 h-4"/>}
             >
               Enter Demonicon
             </Button>
+        )}
+        {def.id === 'ALTAR_OF_CONVERGENCE' && onOpenAltarOfConvergence && (
+          <Button
+            onClick={onOpenAltarOfConvergence}
+            className="w-full"
+            variant="secondary"
+            icon={ICONS.ATOM_ICON && <ICONS.ATOM_ICON className="w-4 h-4"/>} // Placeholder icon
+          >
+            Open Altar
+          </Button>
         )}
       </div>
 

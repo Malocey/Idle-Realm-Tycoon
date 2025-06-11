@@ -28,7 +28,7 @@ const WARRIOR_SHIELD_BASH_DEFINITION: SpecialAttackDefinition = {
     name: 'Shield Bash',
     description: (level, data) => {
       const stunChance = 0.25 + (level - 1) * 0.05; 
-      const stunDurationMs = 1500 + (level - 1) * 200; // Keep for description consistency
+      const stunDurationMs = 1500 + (level - 1) * 200; 
       return `Slams the target with a shield, dealing ${(data.currentDamageMultiplier * 100).toFixed(0)}% of Attack Damage with a ${(stunChance * 100).toFixed(0)}% chance to Stun for ${(stunDurationMs / 1000).toFixed(1)}s. Mana: ${data.currentManaCost}. Cooldown: ${(data.currentCooldownMs / 1000).toFixed(1)}s.`;
     },
     iconName: 'SHIELD',
@@ -43,17 +43,14 @@ const WARRIOR_SHIELD_BASH_DEFINITION: SpecialAttackDefinition = {
     }],
     statusEffectsToApply: [
         {
-            // effectId: 'GENERIC_STUN', // Removed ID reference
-            inlineEffect: { // Using inlineEffect for dynamic duration
+            inlineEffect: { 
                 type: StatusEffectType.STUN,
-                name: 'Shield Bash Stun', // Specific name for clarity
+                name: 'Shield Bash Stun', 
                 iconName: 'STUNNED',
-                // durationMs is now handled by durationMsOverride, but a base could be set if needed as fallback
-                // For a purely dynamic duration, base durationMs here could be the Lvl 1 duration.
-                durationMs: 1500, // Base duration for Lvl 1 if override is not used or for display.
+                durationMs: 1500, 
             },
-            chance: 0.25, // Base chance, actual chance scaling could be part of special attack logic if needed
-            durationMsOverride: (level: number) => 1500 + (level - 1) * 200, // Dynamic duration
+            chance: 0.25, 
+            durationMsOverride: (level: number) => 1500 + (level - 1) * 200, 
         }
     ],
     maxLevel: 5,

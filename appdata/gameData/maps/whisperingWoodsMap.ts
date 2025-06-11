@@ -3,13 +3,13 @@ import { MapNode, WorldMapDefinition, ResourceType } from '../../types';
 
 const whisperingWoodsNodes: MapNode[] = [
   {
-    id: 'ww_node_1',
-    name: 'Forest Edge',
+    id: 'ww_plains_entrance', // New entry node from Plains
+    name: 'Whispering Woods Entrance',
     x: 10,
-    y: 80,
+    y: 50,
     iconName: 'WOOD',
-    description: 'The edge of a dense, ancient forest.',
-    connections: ['ww_node_2', 'ww_portal_to_plains'],
+    description: 'The air grows heavy as you step into the ancient forest.',
+    connections: ['ww_node_2', 'ww_portal_to_plains_main'], // Connect to main plains portal and deeper woods
   },
   {
     id: 'ww_node_2',
@@ -18,7 +18,7 @@ const whisperingWoodsNodes: MapNode[] = [
     y: 75,
     iconName: 'COMPASS',
     description: 'A barely visible trail winds deeper into the woods.',
-    connections: ['ww_node_1', 'ww_node_3', 'ww_node_4'],
+    connections: ['ww_plains_entrance', 'ww_node_3', 'ww_node_4', 'corrupted_shrine'], // Added connection to shrine
   },
   {
     id: 'ww_node_3',
@@ -46,7 +46,7 @@ const whisperingWoodsNodes: MapNode[] = [
     name: 'Mystic Spring',
     x: 50,
     y: 35,
-    iconName: 'EVENT_ICON', // Changed from CRYSTALS for POI
+    iconName: 'EVENT_ICON', 
     description: 'A spring surrounded by glowing flora. You feel a strange energy.',
     connections: ['ww_node_4'],
     poiType: 'EVENT', 
@@ -55,7 +55,7 @@ const whisperingWoodsNodes: MapNode[] = [
     id: 'ww_node_6',
     name: 'Abandoned Hunter\'s Camp',
     x: 10,
-    y: 50,
+    y: 30, // Adjusted position
     iconName: 'LOOT_BAG',
     description: 'A long-abandoned camp. Some supplies might still be salvageable.',
     connections: ['ww_node_3'],
@@ -83,7 +83,7 @@ const whisperingWoodsNodes: MapNode[] = [
     iconName: 'WOOD',
     description: 'Giant, moss-covered trees stand like silent guardians.',
     connections: ['ww_node_4', 'ww_node_9'],
-    poiType: 'EVENT', // Changed for POI
+    poiType: 'EVENT', 
   },
   {
     id: 'ww_node_9',
@@ -105,16 +105,27 @@ const whisperingWoodsNodes: MapNode[] = [
     poiType: 'EVENT', 
   },
   {
-    id: 'ww_portal_to_plains',
-    name: 'Path to Verdant Plains',
-    x: 10,
-    y: 90, // Adjusted slightly to be distinct from node 1
-    iconName: 'ARROW_ICON', // Changed for portal
+    id: 'ww_portal_to_plains_main', // Main portal back
+    name: 'Return to Verdant Plains',
+    x: 5, // Positioned near entry
+    y: 50,
+    iconName: 'PORTAL', 
     description: 'A worn path leading back to the open plains.',
-    connections: ['ww_node_1'],
+    connections: ['ww_plains_entrance'],
     poiType: 'MAP_PORTAL',
     targetMapId: 'verdant_plains',
-    targetNodeId: 'deep_woods_encounter', // Node on Verdant Plains this portal leads to
+    targetNodeId: 'to_whispering_woods_portal', 
+  },
+  { // Corrupted Shrine for Demonicon unlock
+    id: 'corrupted_shrine',
+    name: 'Corrupted Shrine',
+    x: 40, // Example position
+    y: 20, // Example position
+    iconName: 'EVENT_ICON',
+    description: 'An ancient shrine crackles with dark energy. Clearing it might reveal new possibilities.',
+    connections: ['ww_node_2'], // Connect to a suitable node
+    isBattleNode: true,
+    customWaveDefinitionIds: ['map_corrupted_shrine_wave_1', 'map_corrupted_shrine_wave_2', 'map_corrupted_shrine_wave_3'],
   },
 ];
 
@@ -123,5 +134,5 @@ export const WHISPERING_WOODS_MAP: WorldMapDefinition = {
   name: 'Whispering Woods',
   description: 'An ancient forest, rumored to hold many secrets and dangers.',
   nodes: whisperingWoodsNodes,
-  entryNodeId: 'ww_node_1', // Player enters at Forest Edge
+  entryNodeId: 'ww_plains_entrance', 
 };

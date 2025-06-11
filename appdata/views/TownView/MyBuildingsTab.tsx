@@ -15,8 +15,9 @@ interface MyBuildingsTabProps {
   onOpenLibrary: () => void;
   onOpenStoneQuarryMinigame: () => void;
   onEnterColosseum: () => void;
-  onOpenGoldMineMinigame: () => void; 
-  onOpenDemoniconPortal: () => void; // New prop
+  onOpenGoldMineMinigame: () => void;
+  onOpenDemoniconPortal: () => void;
+  onOpenAltarOfConvergence: () => void; // New prop
 }
 
 const MyBuildingsTab: React.FC<MyBuildingsTabProps> = ({
@@ -30,8 +31,9 @@ const MyBuildingsTab: React.FC<MyBuildingsTabProps> = ({
   onOpenLibrary,
   onOpenStoneQuarryMinigame,
   onEnterColosseum,
-  onOpenGoldMineMinigame, 
-  onOpenDemoniconPortal, // New
+  onOpenGoldMineMinigame,
+  onOpenDemoniconPortal,
+  onOpenAltarOfConvergence, // New
 }) => {
   return (
     <div>
@@ -55,7 +57,8 @@ const MyBuildingsTab: React.FC<MyBuildingsTabProps> = ({
             onOpenStoneQuarryMinigame={b.id === 'STONE_QUARRY' ? onOpenStoneQuarryMinigame : undefined}
             onOpenGoldMineMinigame={b.id === 'GOLD_MINE' ? onOpenGoldMineMinigame : undefined}
             onEnterColosseum={b.id === 'COLOSSEUM' ? onEnterColosseum : undefined}
-            onOpenDemoniconPortal={b.id === 'DEMONICON_GATE' ? onOpenDemoniconPortal : undefined} // Pass to card
+            onOpenDemoniconPortal={b.id === 'DEMONICON_GATE' ? onOpenDemoniconPortal : undefined}
+            onOpenAltarOfConvergence={b.id === 'ALTAR_OF_CONVERGENCE' ? onOpenAltarOfConvergence : undefined} // Pass to card
           />
         ))}
         {buildings.length === 0 && (

@@ -16,31 +16,33 @@ const GRID_GAP_X = 40;
 const GRID_GAP_Y = 30;
 const EXPANDED_NODE_WIDTH_HERO = 320; 
 const EXPANDED_NODE_HEIGHT_HERO = 300;
-const CURVE_FACTOR_SKILL_TREE = 30; // For curving diagonal lines
+const CURVE_FACTOR_SKILL_TREE = 30; 
 
 const SkillTreeView: React.FC<SkillTreeViewProps> = ({ heroDefinitionId, skillTreeDefinition }) => {
   const { gameState, dispatch, staticData } = useGameContext();
   const heroState = gameState.heroes.find(h => h.definitionId === heroDefinitionId);
   const [expandedSkillId, setExpandedSkillId] = useState<string | null>(null);
   const scrollableContainerRef = useRef<HTMLDivElement>(null);
+  const treeContentRef = useRef<HTMLDivElement>(null);
 
 
   useEffect(() => {
-    if (expandedSkillId && scrollableContainerRef.current) {
-      const expandedNodeElement = document.getElementById(`hero-skill-node-${expandedSkillId}`);
-      if (expandedNodeElement && scrollableContainerRef.current) {
-        const container = scrollableContainerRef.current;
+    if (expandedSkillId && scrollableContainerRef.current && treeContentRef.current) {
+      const nodeElement = document.getElementById(`hero-skill-node-${expandedSkillId}`);
+      const container = scrollableContainerRef.current;
+      
+      if (nodeElement && container) {
+        const nodeRect = nodeElement.getBoundingClientRect();
         const containerRect = container.getBoundingClientRect();
-        const nodeRect = expandedNodeElement.getBoundingClientRect();
+        const treeContentRect = treeContentRef.current.getBoundingClientRect();
 
-        const scrollTop = container.scrollTop;
-        const scrollLeft = container.scrollLeft;
-        
-        const nodeTopInContainer = nodeRect.top - containerRect.top + scrollTop;
-        const nodeLeftInContainer = nodeRect.left - containerRect.left + scrollLeft;
+        // Calculate node's position relative to the scrollable content (treeContentRef)
+        const nodeOffsetTopInContent = nodeRect.top - treeContentRect.top;
+        const nodeOffsetLeftInContent = nodeRect.left - treeContentRect.left;
 
-        const targetScrollTop = nodeTopInContainer - (containerRect.height / 2) + (nodeRect.height / 2);
-        const targetScrollLeft = nodeLeftInContainer - (containerRect.width / 2) + (nodeRect.width / 2);
+        // Calculate the scroll position to center the node
+        const targetScrollTop = nodeOffsetTopInContent + (nodeRect.height / 2) - (containerRect.height / 2);
+        const targetScrollLeft = nodeOffsetLeftInContent + (nodeRect.width / 2) - (containerRect.width / 2);
         
         container.scrollTo({
           top: Math.max(0, targetScrollTop),
@@ -49,7 +51,7 @@ const SkillTreeView: React.FC<SkillTreeViewProps> = ({ heroDefinitionId, skillTr
         });
       }
     }
-  }, [expandedSkillId]);
+  }, [expandedSkillId, heroDefinitionId, skillTreeDefinition]);
 
 
   if (!heroState) return <p>Hero data not found.</p>;
@@ -63,8 +65,8 @@ const SkillTreeView: React.FC<SkillTreeViewProps> = ({ heroDefinitionId, skillTr
     }
   });
 
-  const treeCanvasWidth = (maxX + 1) * (COMPACT_NODE_WIDTH + GRID_GAP_X) + EXPANDED_NODE_WIDTH_HERO; // Add padding for expanded nodes
-  const treeCanvasHeight = (maxY + 1) * (COMPACT_NODE_HEIGHT + GRID_GAP_Y) + EXPANDED_NODE_HEIGHT_HERO; // Add padding
+  const treeCanvasWidth = (maxX + 1) * (COMPACT_NODE_WIDTH + GRID_GAP_X) + EXPANDED_NODE_WIDTH_HERO; 
+  const treeCanvasHeight = (maxY + 1) * (COMPACT_NODE_HEIGHT + GRID_GAP_Y) + EXPANDED_NODE_HEIGHT_HERO; 
 
   const getNodePositionAndDimensions = (node: SkillNodeDefinition): { x: number, y: number, top: number, left: number, width: number, height: number } => {
     const isExpandedNode = expandedSkillId === node.id;
@@ -73,7 +75,6 @@ const SkillTreeView: React.FC<SkillTreeViewProps> = ({ heroDefinitionId, skillTr
 
     if (!node.position) return { x: 0, y: 0, top: 0, left: 0, width: currentWidth, height: currentHeight };
     
-    // Add a fixed offset to center the tree content within the larger canvas
     const offsetX = EXPANDED_NODE_WIDTH_HERO / 2;
     const offsetY = EXPANDED_NODE_HEIGHT_HERO / 2;
 
@@ -103,61 +104,51 @@ const SkillTreeView: React.FC<SkillTreeViewProps> = ({ heroDefinitionId, skillTr
   
   const getEdgeCoordinates = (
     sourceNodeCenter: { x: number; y: number }, 
-    targetNodeCenter: { x: number; y: number }
+    targetNodeCenter: { x: number; y: number },
+    sourceWidth: number = COMPACT_NODE_WIDTH,
+    sourceHeight: number = COMPACT_NODE_HEIGHT,
+    targetWidth: number = COMPACT_NODE_WIDTH,
+    targetHeight: number = COMPACT_NODE_HEIGHT
   ): { x1: number; y1: number; x2: number; y2: number } => {
     const dx = targetNodeCenter.x - sourceNodeCenter.x;
     const dy = targetNodeCenter.y - sourceNodeCenter.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist === 0) return { x1: sourceNodeCenter.x, y1: sourceNodeCenter.y, x2: targetNodeCenter.x, y2: targetNodeCenter.y };
-
-    const halfWidth = COMPACT_NODE_WIDTH / 2;
-    const halfHeight = COMPACT_NODE_HEIGHT / 2;
-    
-    let t1 = 0, t2 = dist;
-    // Calculate intersection times for source and target assuming line from center to center
-    const ndx = dx / dist;
-    const ndy = dy / dist;
-
-    if (Math.abs(ndx) > 1e-6) t1 = Math.max(t1, halfWidth / Math.abs(ndx));
-    if (Math.abs(ndy) > 1e-6) t1 = Math.max(t1, halfHeight / Math.abs(ndy));
-    
-    // This is tricky. The correct way is to find intersection of ray with rectangle.
-    // Simplified approach:
+  
     let x1 = sourceNodeCenter.x;
     let y1 = sourceNodeCenter.y;
     let x2 = targetNodeCenter.x;
     let y2 = targetNodeCenter.y;
-
-    // Angle of the line
+  
     const angle = Math.atan2(dy, dx);
+  
+    // Source node edge point
+    if (Math.abs(dx * sourceHeight / 2) > Math.abs(dy * sourceWidth / 2)) { // Intersects with vertical sides
+      x1 += (sourceWidth / 2) * Math.sign(dx);
+      y1 += Math.tan(angle) * (sourceWidth / 2) * Math.sign(dx);
+    } else { // Intersects with horizontal sides
+      y1 += (sourceHeight / 2) * Math.sign(dy);
+      x1 += (1 / Math.tan(angle)) * (sourceHeight / 2) * Math.sign(dy);
+    }
+  
+    // Target node edge point
+    if (Math.abs(dx * targetHeight / 2) > Math.abs(dy * targetWidth / 2)) { // Intersects with vertical sides
+      x2 -= (targetWidth / 2) * Math.sign(dx);
+      y2 -= Math.tan(angle) * (targetWidth / 2) * Math.sign(dx);
+    } else { // Intersects with horizontal sides
+      y2 -= (targetHeight / 2) * Math.sign(dy);
+      x2 -= (1 / Math.tan(angle)) * (targetHeight / 2) * Math.sign(dy);
+    }
 
-    // Source point on edge
-    if (Math.abs(Math.cos(angle) * halfHeight) > Math.abs(Math.sin(angle) * halfWidth)) { // Intersects left/right
-        x1 = sourceNodeCenter.x + halfWidth * Math.sign(Math.cos(angle));
-        y1 = sourceNodeCenter.y + halfWidth * Math.tan(angle) * Math.sign(Math.cos(angle));
-    } else { // Intersects top/bottom
-        y1 = sourceNodeCenter.y + halfHeight * Math.sign(Math.sin(angle));
-        x1 = sourceNodeCenter.x + halfHeight / Math.tan(angle) * Math.sign(Math.sin(angle));
-    }
-    // Target point on edge
-    if (Math.abs(Math.cos(angle) * halfHeight) > Math.abs(Math.sin(angle) * halfWidth)) {
-        x2 = targetNodeCenter.x - halfWidth * Math.sign(Math.cos(angle));
-        y2 = targetNodeCenter.y - halfWidth * Math.tan(angle) * Math.sign(Math.cos(angle));
-    } else {
-        y2 = targetNodeCenter.y - halfHeight * Math.sign(Math.sin(angle));
-        x2 = targetNodeCenter.x - halfHeight / Math.tan(angle) * Math.sign(Math.sin(angle));
-    }
-    // Fallback for pure horizontal/vertical to avoid NaN from tan(0) or tan(PI/2) issues
+    // Handle perfectly horizontal or vertical lines to avoid NaN from tan(0) or 1/tan(PI/2)
     if (Math.abs(dy) < 1e-6) { // Horizontal
         y1 = sourceNodeCenter.y; y2 = targetNodeCenter.y;
-        x1 = sourceNodeCenter.x + halfWidth * Math.sign(dx);
-        x2 = targetNodeCenter.x - halfWidth * Math.sign(dx);
+        x1 = sourceNodeCenter.x + (sourceWidth / 2) * Math.sign(dx);
+        x2 = targetNodeCenter.x - (targetWidth / 2) * Math.sign(dx);
     } else if (Math.abs(dx) < 1e-6) { // Vertical
         x1 = sourceNodeCenter.x; x2 = targetNodeCenter.x;
-        y1 = sourceNodeCenter.y + halfHeight * Math.sign(dy);
-        y2 = targetNodeCenter.y - halfHeight * Math.sign(dy);
+        y1 = sourceNodeCenter.y + (sourceHeight / 2) * Math.sign(dy);
+        y2 = targetNodeCenter.y - (targetHeight / 2) * Math.sign(dy);
     }
-
+  
     return { x1, y1, x2, y2 };
   };
   
@@ -184,7 +175,7 @@ const SkillTreeView: React.FC<SkillTreeViewProps> = ({ heroDefinitionId, skillTr
   return (
     <div className="flex w-full bg-slate-800 rounded-lg h-full"> 
       <div ref={scrollableContainerRef} className="flex-grow relative fancy-scrollbar overflow-auto p-4 h-full">
-        <div style={{ width: treeCanvasWidth, height: treeCanvasHeight, position: 'relative', margin: 'auto' }}>
+        <div ref={treeContentRef} style={{ width: treeCanvasWidth, height: treeCanvasHeight, position: 'relative', margin: 'auto' }}>
           <svg 
             width={treeCanvasWidth} 
             height={treeCanvasHeight} 
@@ -192,63 +183,65 @@ const SkillTreeView: React.FC<SkillTreeViewProps> = ({ heroDefinitionId, skillTr
             aria-hidden="true"
           >
             {skillTreeDefinition.nodes.map(node => {
-              const sourceNodeInfo = getNodePositionAndDimensions(node);
-              if (!sourceNodeInfo || !node.prerequisites) return null;
+              const targetNodeInfo = getNodePositionAndDimensions(node);
+              if (!targetNodeInfo || !node.prerequisites) return null;
 
               return node.prerequisites.map(prereq => {
-                const targetNodeDef = skillTreeDefinition.nodes.find(n => n.id === prereq.skillId);
-                if (!targetNodeDef) return null;
-                const targetNodeInfo = getNodePositionAndDimensions(targetNodeDef);
-                if (!targetNodeInfo) return null;
+                const sourceNodeDef = skillTreeDefinition.nodes.find(n => n.id === prereq.skillId);
+                if (!sourceNodeDef) return null;
+                const sourceNodeInfo = getNodePositionAndDimensions(sourceNodeDef);
+                if (!sourceNodeInfo) return null;
 
-                const prerequisiteFulfilled = isPrerequisiteMetForNode(node);
+                const isMet = (heroState.skillLevels[prereq.skillId] || 0) >= prereq.level;
                 
-                const sourceCenter = { x: targetNodeInfo.x, y: targetNodeInfo.y }; 
-                const targetCenter = { x: sourceNodeInfo.x, y: sourceNodeInfo.y }; 
+                const sourceCenter = { x: sourceNodeInfo.x, y: sourceNodeInfo.y }; 
+                const targetCenter = { x: targetNodeInfo.x, y: targetNodeInfo.y }; 
 
                 const { x1, y1, x2, y2 } = getEdgeCoordinates(sourceCenter, targetCenter);
                 
                 const dx = x2 - x1;
                 const dy = y2 - y1;
 
-                const lineStroke = prerequisiteFulfilled ? 'rgba(59, 130, 246, 0.9)' : 'rgba(100, 116, 139, 0.4)';
-                const lineStrokeWidth = prerequisiteFulfilled ? "3" : "2";
-                const lineStrokeDasharray = prerequisiteFulfilled ? 'none' : '4,4';
+                const lineStroke = isMet ? 'rgba(59, 130, 246, 0.9)' : 'rgba(100, 116, 139, 0.4)';
+                const lineStrokeWidth = isMet ? "3" : "2";
+                const lineStrokeDasharray = isMet ? 'none' : '4,4';
+                const lineClass = isMet ? "skill-tree-line line-active-flow" : "skill-tree-line";
 
-                if (dx !== 0 && dy !== 0) { 
+
+                if (Math.abs(dx) > 5 && Math.abs(dy) > 5) { 
                     const midX = (x1 + x2) / 2;
                     const midY = (y1 + y2) / 2;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const length = Math.sqrt(dx * dx + dy * dy);
                     
-                    let curveFactor = CURVE_FACTOR_SKILL_TREE;
-                    if (Math.abs(dx) > Math.abs(dy) * 2.5 || Math.abs(dy) > Math.abs(dx) * 2.5) {
-                        curveFactor *= 0.5;
-                    }
-                    // Perpendicular offset
-                    const controlX = midX - (dy / dist) * curveFactor; 
-                    const controlY = midY + (dx / dist) * curveFactor;
+                    let curveFactorAdjusted = CURVE_FACTOR_SKILL_TREE;
+                    // Adjust curve for nearly horizontal/vertical lines to prevent extreme bowing
+                    if (Math.abs(dx) > Math.abs(dy) * 3) curveFactorAdjusted *= 0.3;
+                    else if (Math.abs(dy) > Math.abs(dx) * 3) curveFactorAdjusted *= 0.3;
+
+                    const controlX = midX - (dy / length) * curveFactorAdjusted; 
+                    const controlY = midY + (dx / length) * curveFactorAdjusted;
                     
                     return (
                         <path
-                            key={`${targetNodeDef.id}-${node.id}-path`}
+                            key={`${sourceNodeDef.id}-${node.id}-path`}
                             d={`M ${x1} ${y1} Q ${controlX} ${controlY} ${x2} ${y2}`}
                             stroke={lineStroke}
                             strokeWidth={lineStrokeWidth}
                             strokeDasharray={lineStrokeDasharray}
                             fill="none"
-                            className="skill-tree-line"
+                            className={lineClass}
                         />
                     );
                 } else { 
                     return (
                         <line
-                            key={`${targetNodeDef.id}-${node.id}-line`}
+                            key={`${sourceNodeDef.id}-${node.id}-line`}
                             x1={x1} y1={y1}
                             x2={x2} y2={y2}
                             stroke={lineStroke}
                             strokeWidth={lineStrokeWidth}
                             strokeDasharray={lineStrokeDasharray}
-                            className="skill-tree-line"
+                            className={lineClass}
                         />
                     );
                 }
@@ -272,7 +265,6 @@ const SkillTreeView: React.FC<SkillTreeViewProps> = ({ heroDefinitionId, skillTr
                   minHeight: `${posInfo.height}px`, 
                   height: isExpandedNode ? 'auto' : `${posInfo.height}px`,
                   zIndex: isExpandedNode ? 20 : 10, 
-                  transition: 'all 0.3s ease-in-out', 
                 }}
               >
                 <GenericSkillNode
@@ -288,7 +280,7 @@ const SkillTreeView: React.FC<SkillTreeViewProps> = ({ heroDefinitionId, skillTr
                   isPrerequisiteMet={isPrerequisiteMetForNode(nodeDef)}
                   expandedNodeWidth={EXPANDED_NODE_WIDTH_HERO}
                   expandedNodeHeight={EXPANDED_NODE_HEIGHT_HERO}
-                  nodeIdForLayout={nodeDef.id} 
+                  nodeIdForLayout={`hero-skill-node-${nodeDef.id}`}
                 />
               </div>
             );

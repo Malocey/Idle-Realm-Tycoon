@@ -7,7 +7,7 @@ const goldMineDepthsNodes: MapNode[] = [
     name: 'Mine Entrance (Depths)',
     x: 50,
     y: 90,
-    iconName: 'ARROW_UP', // Icon indicating exit/entry
+    iconName: 'ARROW_UP', 
     description: 'The passage back to the upper mine area.',
     connections: ['gmd_tunnel_1'],
     poiType: 'MAP_PORTAL',
@@ -21,7 +21,7 @@ const goldMineDepthsNodes: MapNode[] = [
     y: 70,
     iconName: 'COMPASS',
     description: 'A narrow, dusty tunnel winds deeper.',
-    connections: ['gmd_entry', 'gmd_battle_1', 'gmd_crystal_vein'],
+    connections: ['gmd_entry', 'gmd_battle_1', 'gmd_crystal_vein', 'gmd_blueprint_battle_approach'], // Added connection
   },
   {
     id: 'gmd_battle_1',
@@ -47,6 +47,26 @@ const goldMineDepthsNodes: MapNode[] = [
     grantsShardLevel: 1,
   },
   {
+    id: 'gmd_blueprint_battle_approach', // New node to lead to blueprint battle
+    name: 'Echoing Chamber',
+    x: 50,
+    y: 40,
+    iconName: 'COMPASS',
+    description: 'Faint clanking sounds echo from deeper within this chamber.',
+    connections: ['gmd_tunnel_1', 'gmd_blueprint_battle'],
+  },
+  {
+    id: 'gmd_blueprint_battle', // New Battle Node for Blueprint
+    name: 'Mine Foremen',
+    x: 50,
+    y: 20,
+    iconName: 'FIGHT',
+    description: 'The ghostly foremen of this mine guard its original plans.',
+    connections: ['gmd_blueprint_battle_approach'],
+    isBattleNode: true,
+    customWaveDefinitionIds: ['map_gold_mine_blueprint_wave_1', 'map_gold_mine_blueprint_wave_2'], // Waves difficulty 4-6
+  },
+  {
     id: 'gmd_collapsed_passage',
     name: 'Collapsed Passage',
     x: 70,
@@ -55,7 +75,7 @@ const goldMineDepthsNodes: MapNode[] = [
     description: 'This passage has caved in. Nothing more to see here.',
     connections: ['gmd_crystal_vein'],
     poiType: 'RESOURCE',
-    resourceType: ResourceType.GOLD, // Small gold find
+    resourceType: ResourceType.GOLD, 
     resourceAmount: 25,
   },
 ];

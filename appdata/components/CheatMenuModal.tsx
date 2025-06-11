@@ -32,6 +32,7 @@ const CheatMenuModal: React.FC<CheatMenuModalProps> = ({ isOpen, onClose }) => {
         [ResourceType.AETHERIUM]: 10,
         [ResourceType.META_CURRENCY]: 10,
         [ResourceType.CATACOMB_KEY]: 10,
+        [ResourceType.RESEARCH_POINTS]: 10000, // Forschungspunkte hinzugefügt
       }
     });
   };

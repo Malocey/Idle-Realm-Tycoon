@@ -28,25 +28,68 @@ const SharedSkillDetailPanel: React.FC<SharedSkillDetailPanelProps> = ({
 }) => {
   const Icon = ICONS[skillDef.iconName];
   const SharedPointsIcon = ICONS.UPGRADE;
-  const HeroicPointsIcon = ICONS.HEROIC_POINTS; // Changed from HeroXPIcon
+  const HeroicPointsIcon = ICONS.HEROIC_POINTS; 
 
   const currentMajorLevel = skillProgress?.currentMajorLevel || 0;
   const currentMinorLevel = skillProgress?.currentMinorLevel || 0;
 
-  let currentTotalBonus = 0;
   const effect = skillDef.effects && skillDef.effects.length > 0 ? skillDef.effects[0] : null;
+  let currentTotalBonusForDesc: number | { flat: number; percent: number };
+  let nextMinorBonusForDesc: number | { flat: number; percent: number } | null = null;
+  let nextMajorBonusForDesc: number | { flat: number; percent: number } | null = null;
 
   if (effect) {
-    for (let i = 0; i < currentMajorLevel; i++) {
-      currentTotalBonus += effect.baseValuePerMajorLevel[i] || 0;
-      if (i < currentMajorLevel -1 ) { // Sum minor levels from *completed* major tiers
-          currentTotalBonus += (effect.minorValuePerMinorLevel[i] || 0) * (skillDef.minorLevelsPerMajorTier[i] || 0);
-      }
+    if (skillDef.id === 'SHARED_HP_FLAT') {
+        let flat = 0; let percent = 0;
+        for (let i = 0; i < currentMajorLevel; i++) {
+            const majorVal = effect.baseValuePerMajorLevel[i] as { flat?: number; percent?: number };
+            flat += majorVal.flat || 0;
+            percent += majorVal.percent || 0;
+            if (i < currentMajorLevel - 1) {
+                const minorVal = effect.minorValuePerMinorLevel[i] as { flat?: number; percent?: number };
+                flat += (minorVal.flat || 0) * (skillDef.minorLevelsPerMajorTier[i] || 0);
+                percent += (minorVal.percent || 0) * (skillDef.minorLevelsPerMajorTier[i] || 0);
+            }
+        }
+        if (currentMajorLevel > 0) {
+            const minorValCurrent = effect.minorValuePerMinorLevel[currentMajorLevel - 1] as { flat?: number; percent?: number };
+            flat += (minorValCurrent.flat || 0) * currentMinorLevel;
+            percent += (minorValCurrent.percent || 0) * currentMinorLevel;
+        }
+        currentTotalBonusForDesc = { flat, percent };
+
+        if (currentMajorLevel > 0 && currentMinorLevel < (skillDef.minorLevelsPerMajorTier[currentMajorLevel - 1] || 0)) {
+            const nextMinorVal = effect.minorValuePerMinorLevel[currentMajorLevel - 1] as { flat?: number; percent?: number };
+            nextMinorBonusForDesc = { flat: nextMinorVal.flat || 0, percent: nextMinorVal.percent || 0};
+        }
+        if (currentMajorLevel < skillDef.maxMajorLevels) {
+            const nextMajorVal = effect.baseValuePerMajorLevel[currentMajorLevel] as { flat?: number; percent?: number };
+             nextMajorBonusForDesc = { flat: nextMajorVal.flat || 0, percent: nextMajorVal.percent || 0 };
+        }
+    } else {
+        let totalNumericBonus = 0;
+        for (let i = 0; i < currentMajorLevel; i++) {
+            totalNumericBonus += (effect.baseValuePerMajorLevel[i] as number) || 0;
+            if (i < currentMajorLevel - 1) {
+                totalNumericBonus += ((effect.minorValuePerMinorLevel[i] as number) || 0) * (skillDef.minorLevelsPerMajorTier[i] || 0);
+            }
+        }
+        if (currentMajorLevel > 0) {
+            totalNumericBonus += ((effect.minorValuePerMinorLevel[currentMajorLevel - 1] as number) || 0) * currentMinorLevel;
+        }
+        currentTotalBonusForDesc = totalNumericBonus;
+
+        if (currentMajorLevel > 0 && currentMinorLevel < (skillDef.minorLevelsPerMajorTier[currentMajorLevel - 1] || 0)) {
+            nextMinorBonusForDesc = (effect.minorValuePerMinorLevel[currentMajorLevel - 1] as number) || 0;
+        }
+        if (currentMajorLevel < skillDef.maxMajorLevels) {
+            nextMajorBonusForDesc = (effect.baseValuePerMajorLevel[currentMajorLevel] as number) || 0;
+        }
     }
-    if (currentMajorLevel > 0) { // Add minor levels from the *current* active major tier
-        currentTotalBonus += (effect.minorValuePerMinorLevel[currentMajorLevel - 1] || 0) * currentMinorLevel;
-    }
+  } else {
+    currentTotalBonusForDesc = 0; // Fallback if no effect
   }
+
 
   const isOriginNodeActive = skillDef.id === 'SHARED_ORIGIN' && currentMajorLevel >= 1;
   const isMaxMajorLevel = currentMajorLevel >= skillDef.maxMajorLevels;
@@ -66,19 +109,13 @@ const SharedSkillDetailPanel: React.FC<SharedSkillDetailPanelProps> = ({
 
   let canUpgradeMinor = false;
   let minorUpgradeCost = 0;
-  let nextMinorBonus = null;
+  
   if (effect && currentMajorLevel > 0 && !isMaxMinorLevelForCurrentTier && skillDef.minorLevelsPerMajorTier[currentMajorLevel-1] > 0 && !isOriginNodeActive) {
     minorUpgradeCost = skillDef.costHeroXpPoolPerMinorLevel(currentMajorLevel, currentMinorLevel);
     canUpgradeMinor = heroXpPool >= minorUpgradeCost;
-    nextMinorBonus = effect.minorValuePerMinorLevel[currentMajorLevel - 1] || 0;
   }
 
-  let nextMajorBonusUnlock = null;
-  if(effect && !isMaxMajorLevel && skillDef.maxMajorLevels > 0 && !isOriginNodeActive){
-      nextMajorBonusUnlock = effect.baseValuePerMajorLevel[currentMajorLevel] || 0;
-  }
-
-  const description = skillDef.description(currentTotalBonus, nextMinorBonus, nextMajorBonusUnlock, effect?.isPercentage || false);
+  const description = skillDef.description(currentTotalBonusForDesc, nextMinorBonusForDesc, nextMajorBonusForDesc, effect?.isPercentage || false);
   const titleColorClass = isCompletelyMaxed && skillDef.maxMajorLevels > 0 && !isOriginNodeActive ? 'text-green-300' : 'text-amber-300';
   const minorProgressPercentage = minorLevelsInCurrentTier > 0 ? (currentMinorLevel / minorLevelsInCurrentTier) * 100 : 0;
 
@@ -94,8 +131,7 @@ const SharedSkillDetailPanel: React.FC<SharedSkillDetailPanelProps> = ({
 
 
   return (
-    <div className="flex flex-col h-full p-3"> {/* Removed bg, shadow, border - parent node provides this */}
-      {/* Header for Expanded View */}
+    <div className="flex flex-col h-full p-3"> 
       <div className="flex items-start justify-between mb-2 flex-shrink-0">
         <div className="flex items-center">
           <div className="p-1 bg-slate-700/50 rounded-md mr-2.5 flex-shrink-0">
@@ -112,12 +148,10 @@ const SharedSkillDetailPanel: React.FC<SharedSkillDetailPanelProps> = ({
         <Button onClick={onClose} variant="ghost" size="sm" className="p-0.5 -mr-1 -mt-1 text-xl leading-none hover:text-red-400">&times;</Button>
       </div>
 
-      {/* Scrollable Content Area */}
       <div className="flex-grow overflow-y-auto fancy-scrollbar pr-1 mb-2">
         <p className="text-sm text-slate-300 mb-2 leading-normal">{description}</p>
       </div>
 
-      {/* Action Buttons Area */}
       <div className="mt-auto space-y-2.5 pt-2.5 border-t border-slate-700/50 flex-shrink-0">
         {effect && currentMajorLevel > 0 && !isMaxMinorLevelForCurrentTier && !isCompletelyMaxed && minorLevelsInCurrentTier > 0 && !isOriginNodeActive && (
           <div>
@@ -137,7 +171,7 @@ const SharedSkillDetailPanel: React.FC<SharedSkillDetailPanelProps> = ({
               <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-amber-600 to-amber-500 rounded-md transition-all duration-300 ease-out" style={{ width: `${minorProgressPercentage}%` }} aria-hidden="true"></div>
               <div className="relative z-10 flex items-center justify-center space-x-1 text-white">
                 {ICONS.UPGRADE && <ICONS.UPGRADE className="w-3 h-3"/>}
-                <span>Level Up (+{(nextMinorBonus !== null ? (nextMinorBonus * (effect.isPercentage ? 100 : 1)).toFixed(1) : '0')}{effect.isPercentage ? '%' : ''})</span>
+                <span>Level Up (+{((nextMinorBonusForDesc as number) * (effect.isPercentage ? 100 : 1)).toFixed(1)}{effect.isPercentage ? '%' : ''})</span>
               </div>
             </div>
           </div>

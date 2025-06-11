@@ -7,7 +7,7 @@ const stoneQuarryExcavationNodes: MapNode[] = [
     name: 'Quarry Excavation Entrance',
     x: 50,
     y: 10,
-    iconName: 'ARROW_DOWN', // Icon indicating entry/exit
+    iconName: 'ARROW_DOWN', 
     description: 'The path leading back to the quarry approach.',
     connections: ['sqe_path_1'],
     poiType: 'MAP_PORTAL',
@@ -21,7 +21,7 @@ const stoneQuarryExcavationNodes: MapNode[] = [
     y: 30,
     iconName: 'COMPASS',
     description: 'A path littered with loose stones.',
-    connections: ['sqe_entry', 'sqe_battle_1', 'sqe_geode_discovery'],
+    connections: ['sqe_entry', 'sqe_battle_1', 'sqe_geode_discovery', 'sqe_blueprint_battle_approach'], // Added connection
   },
   {
     id: 'sqe_battle_1',
@@ -39,12 +39,32 @@ const stoneQuarryExcavationNodes: MapNode[] = [
     name: 'Large Geode',
     x: 30,
     y: 50,
-    iconName: 'CRYSTALS', // Or a specific Geode icon if available
+    iconName: 'CRYSTALS', 
     description: 'A massive geode, cracked open to reveal valuable shards.',
     connections: ['sqe_path_1', 'sqe_unstable_tunnel'],
     poiType: 'RESOURCE', 
     grantsShardId: 'DEFENSE_SHARD_BASIC',
     grantsShardLevel: 1,
+  },
+   {
+    id: 'sqe_blueprint_battle_approach', // New node to lead to blueprint battle
+    name: 'Ancient Overlook',
+    x: 50,
+    y: 60,
+    iconName: 'COMPASS',
+    description: 'From here, you can see a heavily guarded section of the quarry.',
+    connections: ['sqe_path_1', 'sqe_blueprint_battle'],
+  },
+  {
+    id: 'sqe_blueprint_battle', // New Battle Node for Blueprint
+    name: 'Quarry Masters',
+    x: 50,
+    y: 80,
+    iconName: 'FIGHT',
+    description: 'The spirits of the original quarry masters protect their designs.',
+    connections: ['sqe_blueprint_battle_approach'],
+    isBattleNode: true,
+    customWaveDefinitionIds: ['map_stone_quarry_blueprint_wave_1', 'map_stone_quarry_blueprint_wave_2'], // Waves difficulty 4-6
   },
   {
     id: 'sqe_unstable_tunnel',

@@ -29,7 +29,24 @@ const ConstructionTab: React.FC<ConstructionTabProps> = ({
     if (def.id === 'FARM' && !gameState.mapPoiCompletionStatus['farm_blueprint_obtained']) {
         return false;
     }
-    // Add other building unlock checks here if needed
+    if (def.id === 'GOLD_MINE' && !gameState.mapPoiCompletionStatus['gold_mine_blueprint_obtained']) {
+      return false;
+    }
+    if (def.id === 'STONE_QUARRY' && !gameState.mapPoiCompletionStatus['stone_quarry_blueprint_obtained']) {
+      return false;
+    }
+    if (def.id === 'TANNERY' && !gameState.mapPoiCompletionStatus['tannery_blueprint_obtained']) {
+      return false;
+    }
+    if (def.id === 'DEMONICON_GATE' && !gameState.mapPoiCompletionStatus['demonicon_gate_unlocked']) {
+      return false;
+    }
+    // Original wave requirement check (for buildings not covered by blueprints)
+    if (def.unlockWaveRequirement && gameState.currentWaveProgress < def.unlockWaveRequirement && 
+        !gameState.mapPoiCompletionStatus[`${def.id.toLowerCase()}_blueprint_obtained`] && // Double check for generic blueprint pattern
+        !(def.id === 'DEMONICON_GATE' && gameState.mapPoiCompletionStatus['demonicon_gate_unlocked']) ) {
+      return false;
+    }
     return true;
   });
 
@@ -47,24 +64,44 @@ const ConstructionTab: React.FC<ConstructionTabProps> = ({
               amount: Math.max(1, Math.floor(c.amount * (1 - globalBonuses.buildingCostReduction)))
             }));
             const canAffordBuild = canAfford(gameState.resources, actualBuildCost);
-            const isLockedByWave = def.unlockWaveRequirement !== undefined && gameState.currentWaveProgress < def.unlockWaveRequirement;
+            
+            let isLocked = false;
+            let lockMessage = "";
+
+            if (def.id === 'GOLD_MINE' && !gameState.mapPoiCompletionStatus['gold_mine_blueprint_obtained']) {
+              isLocked = true;
+              lockMessage = "Requires Gold Mine Blueprint obtained from the Gold Mine Depths.";
+            } else if (def.id === 'STONE_QUARRY' && !gameState.mapPoiCompletionStatus['stone_quarry_blueprint_obtained']) {
+              isLocked = true;
+              lockMessage = "Requires Stone Quarry Blueprint obtained from the Quarry Excavation.";
+            } else if (def.id === 'TANNERY' && !gameState.mapPoiCompletionStatus['tannery_blueprint_obtained']) {
+              isLocked = true;
+              lockMessage = "Requires Tannery Blueprint obtained from the Tannery Outpost.";
+            } else if (def.id === 'DEMONICON_GATE' && !gameState.mapPoiCompletionStatus['demonicon_gate_unlocked']) {
+              isLocked = true;
+              lockMessage = "Requires the Corrupted Shrine on the World Map to be cleansed.";
+            } else if (def.unlockWaveRequirement && gameState.currentWaveProgress < def.unlockWaveRequirement) {
+              isLocked = true;
+              lockMessage = `Unlocks after completing Wave ${def.unlockWaveRequirement}.`;
+            }
+
             const isAnimatingThisCard = animatingCardId === def.id;
 
             return (
               <div 
                   key={def.id} 
                   className={`bg-slate-800 p-4 rounded-lg shadow-md glass-effect border border-slate-700 
-                              ${isLockedByWave ? 'opacity-60' : 'animate-card-cascade-enter'} 
+                              ${isLocked ? 'opacity-60' : 'animate-card-cascade-enter'} 
                               ${isAnimatingThisCard ? 'animate-special-cast hero-cast-pulse' : ''}`}
-                  style={{ animationDelay: isLockedByWave ? undefined : `${index * 0.075}s` }}
+                  style={{ animationDelay: isLocked ? undefined : `${index * 0.075}s` }}
               >
                 <div className="flex items-center mb-2">
                   {Icon && <Icon className="w-8 h-8 mr-3 text-green-400" />}
                   <h3 className="text-xl font-semibold text-green-300">{def.name}</h3>
                 </div>
                 <p className="text-sm text-slate-400 mb-2">{def.description}</p>
-                {isLockedByWave ? (
-                  <p className="text-sm text-amber-400 font-semibold mt-3">Unlocks after completing Wave {def.unlockWaveRequirement}.</p>
+                {isLocked ? (
+                  <p className="text-sm text-amber-400 font-semibold mt-3">{lockMessage}</p>
                 ) : (
                   <>
                     <h4 className="text-xs text-slate-500 uppercase font-semibold mb-1">Build Cost</h4>

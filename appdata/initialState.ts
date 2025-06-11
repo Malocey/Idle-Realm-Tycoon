@@ -1,23 +1,20 @@
 
 import { GameState, ResourceType, PlayerHeroState, StoneQuarryMinigameState, ActionBattleState, PlayerSharedSkillProgress, GoldMineMinigameState, ActiveDemoniconChallenge, PerMapState } from './types';
 import { INITIAL_RESOURCES, INITIAL_HEROES as INITIAL_UNLOCKED_HEROES, SQMG_GRID_SIZE, SQMG_DIRT_CLICK_YIELD, SQMG_INITIAL_GOLEM_CLICK_POWER, SQMG_INITIAL_GOLEM_CLICK_SPEED_MS, SQMG_INITIAL_GOLEM_MOVE_SPEED_MS, SQMG_ESSENCE_DROP_CHANCE, SQMG_PLAYER_MULTI_CLICK_CHANCE_BASE, SQMG_GOLEM_ESSENCE_AFFINITY_BASE, SQMG_PLAYER_CRYSTAL_FIND_CHANCE_BASE, SQMG_GOLEM_CRYSTAL_SIFTERS_BASE, SQMG_PLAYER_ADVANCED_EXCAVATION_BASE_CHANCE, BASE_GOLD_MINE_GRID_ROWS, BASE_GOLD_MINE_GRID_COLS, INITIAL_GOLD_MINE_PLAYER_STATS } from './constants';
-import { getExpToNextHeroLevel, calculateGoldMinePlayerStats } from './utils'; 
-import { RUN_BUFF_DEFINITIONS } from './gameData/index';
-import { worldMapDefinitions } from './gameData/maps/index'; 
+import { getExpToNextHeroLevel, calculateGoldMinePlayerStats } from './utils';
+import { RUN_BUFF_DEFINITIONS, ACCOUNT_LEVEL_DEFINITIONS, calculateXPForAccountLevel as calculateXPForAccountLevelUtil } from './gameData/index'; 
+import { worldMapDefinitions } from './gameData/maps/index';
 
-export const INITIAL_STARTING_BUILDINGS: string[] = ['TOWN_HALL']; // FARM and LUMBER_MILL removed
+export const INITIAL_STARTING_BUILDINGS: string[] = ['TOWN_HALL']; 
 
-// Archer is no longer initially unlocked
 const CUSTOM_INITIAL_UNLOCKED_HEROES = INITIAL_UNLOCKED_HEROES.filter(id => id !== 'ARCHER');
 
-const initialMapId = 'verdant_plains'; 
-const initialPlayerNodeId = 'hometown'; 
+const initialMapId = 'verdant_plains';
+const initialPlayerNodeId = 'hometown';
 const initialMapDefinition = worldMapDefinitions[initialMapId];
 
-// Only hometown and its direct connection (goblin_camp_early) are initially revealed.
-// Wood Clearing (archer unlock) and other POIs are revealed by moving.
 const initialRevealedMapNodeIds = initialMapDefinition?.nodes.find(node => node.id === initialPlayerNodeId)
-  ? [initialPlayerNodeId, 'goblin_camp_early'] 
+  ? [initialPlayerNodeId, 'goblin_camp_early']
   : [];
 
 const initialMapStates: Record<string, PerMapState> = {
@@ -25,20 +22,21 @@ const initialMapStates: Record<string, PerMapState> = {
     playerCurrentNodeId: initialPlayerNodeId,
     revealedMapNodeIds: initialRevealedMapNodeIds,
     mapPoiCompletionStatus: {
-        // Initialize all POIs for the starting map to false or based on initial game logic
         'archer_unlocked_verdant_plains': false,
         'lumber_mill_blueprint_obtained': false,
         'farm_blueprint_obtained': false,
         'damaged_gold_mine_access_granted': false,
-        'tannery_blueprint_obtained': false,
+        'tannery_blueprint_obtained': false, // Neu
         'cleric_recruitment_unlocked': false,
-        'stone_quarry_blueprint_obtained': false,
+        'stone_quarry_blueprint_obtained': false, // Neu
         'goblin_camp_early_battle_won': false,
         'lumber_mill_battle_battle_won': false,
         'farm_battle_battle_won': false,
         'gold_mine_access_battle_battle_won': false,
-        'tannery_guardians_battle_won': false,
-        'stone_quarry_guards_battle_won': false,
+        'tannery_guardians_battle_won': false, // Bezieht sich auf den *alten* Knoten, wird jetzt Portal
+        'stone_quarry_guards_battle_won': false, // Bezieht sich auf den *alten* Knoten, wird jetzt Portal
+        'gold_mine_blueprint_obtained': false, // Neu
+        'demonicon_gate_unlocked': false, // Neu
     }
   }
 };
@@ -47,7 +45,7 @@ const initialMapStates: Record<string, PerMapState> = {
 export const initialGameState: GameState = {
   resources: { ...INITIAL_RESOURCES },
   buildings: INITIAL_STARTING_BUILDINGS.map(id => ({ id, level: 1 })),
-  heroes: CUSTOM_INITIAL_UNLOCKED_HEROES.map(id => ({ // Use CUSTOM_INITIAL_UNLOCKED_HEROES
+  heroes: CUSTOM_INITIAL_UNLOCKED_HEROES.map(id => ({ 
     definitionId: id,
     level: 1,
     currentExp: 0,
@@ -59,7 +57,7 @@ export const initialGameState: GameState = {
     permanentBuffs: [],
     ownedShards: [],
   })),
-  unlockedHeroDefinitions: [...CUSTOM_INITIAL_UNLOCKED_HEROES], // Use CUSTOM_INITIAL_UNLOCKED_HEROES
+  unlockedHeroDefinitions: [...CUSTOM_INITIAL_UNLOCKED_HEROES], 
   currentWaveProgress: 0,
   activeView: 'TOWN',
   battleState: null,
@@ -84,7 +82,7 @@ export const initialGameState: GameState = {
                         .map(buff => buff.id),
   runBuffLibraryLevels: {},
   godModeActive: false,
-  stoneQuarryMinigame: { 
+  stoneQuarryMinigame: {
       gridInitialized: false,
       gridCells: [],
       resources: {
@@ -128,18 +126,18 @@ export const initialGameState: GameState = {
       golemSynchronizationLevel: 0,
       activeMinigameEvent: null,
       popupEvents: [],
-      dirtGolemsCraftedCount: 0, 
+      dirtGolemsCraftedCount: 0,
   },
   goldMineMinigame: {
     status: 'IDLE_AT_SURFACE',
     grid: [],
-    gridRows: BASE_GOLD_MINE_GRID_ROWS, 
-    gridCols: BASE_GOLD_MINE_GRID_COLS, 
+    gridRows: BASE_GOLD_MINE_GRID_ROWS,
+    gridCols: BASE_GOLD_MINE_GRID_COLS,
     playerGridPos: { r: 0, c: 0 },
     currentStamina: INITIAL_GOLD_MINE_PLAYER_STATS.maxStamina,
-    playerStats: calculateGoldMinePlayerStats(INITIAL_GOLD_MINE_PLAYER_STATS, {}), 
+    playerStats: calculateGoldMinePlayerStats(INITIAL_GOLD_MINE_PLAYER_STATS, {}),
     currentDepth: 1,
-    maxUnlockedDepth: 1, 
+    maxUnlockedDepth: 1,
     resourcesCollectedThisRun: {},
     permanentUpgradeLevels: {},
     popupEvents: [],
@@ -148,21 +146,36 @@ export const initialGameState: GameState = {
   },
   playerSharedSkillPoints: 5,
   playerSharedSkills: {
-    'SHARED_ORIGIN': { currentMajorLevel: 1, currentMinorLevel: 0 } 
+    'SHARED_ORIGIN': { currentMajorLevel: 1, currentMinorLevel: 0 }
   },
-  actionBattleAISystem: 'legacy', 
+  actionBattleAISystem: 'legacy',
   currentMapId: initialMapId,
-  playerCurrentNodeId: initialPlayerNodeId, 
+  playerCurrentNodeId: initialPlayerNodeId,
   revealedMapNodeIds: initialRevealedMapNodeIds,
-  mapPoiCompletionStatus: initialMapStates[initialMapId].mapPoiCompletionStatus, // Initialize from initialMapStates
-  mapStates: initialMapStates, // Initialize mapStates
-  
-  // Demonicon State
+  mapPoiCompletionStatus: initialMapStates[initialMapId].mapPoiCompletionStatus,
+
+  mapStates: initialMapStates,
+
   defeatedEnemyTypes: [],
   demoniconHighestRankCompleted: {},
   activeDemoniconChallenge: null,
   globalDemoniconLevel: 1,
   globalDemoniconXP: 0,
-  expToNextGlobalDemoniconLevel: 20, 
-  achievedDemoniconMilestoneRewards: [], 
+  expToNextGlobalDemoniconLevel: 20,
+  achievedDemoniconMilestoneRewards: [],
+
+  accountLevel: 1,
+  accountXP: 0,
+  expToNextAccountLevel: calculateXPForAccountLevelUtil(1),
+  firstTimeEnemyDefeatsAccountXP: [],
+  accountXpHistory: [],
+  achievedBuildingLevelAccXpThresholds: {},
+
+  aethericResonanceBonuses: {},
+  resonanceMotes: {}, 
+  lastAppliedResonanceMote: null,
+  researchProgress: {},
+  completedResearch: {},
+  researchSlots: 1,
+  researchQueue: [],
 };

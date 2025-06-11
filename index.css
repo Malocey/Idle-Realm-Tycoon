@@ -1,3 +1,4 @@
+
 html, body {
       height: 100%;
       margin: 0;
@@ -64,16 +65,16 @@ html, body {
       top: 10%;
       left: 50%;
       transform: translateX(-50%);
-      border-radius: 5px; 
+      border-radius: 5px;
       font-size: 1em;
       font-weight: bold;
       pointer-events: none;
       animation: damage-popup-animation 1.5s ease-out forwards;
-      text-shadow: 0 0 4px rgba(0,0,0,0.9), 1px 1px 5px rgba(0,0,0,0.6); 
+      text-shadow: 0 0 4px rgba(0,0,0,0.9), 1px 1px 5px rgba(0,0,0,0.6);
     }
     .damage-popup.crit {
       color: #f87171; /* Tailwind red-400 */
-      font-size: 1.2em; 
+      font-size: 1.2em;
     }
     .damage-popup:not(.crit) {
       color: #f1f5f9; /* Tailwind slate-100 - good */
@@ -341,13 +342,13 @@ html, body {
       50% { box-shadow: inset 0 0 var(--flash-blur, 10px) var(--flash-spread, 3px) var(--flash-color-mid, rgba(0,0,0,0.5)); }
     }
     .target-hit-flash {
-      --flash-color-start: rgba(239, 68, 68, 0); 
-      --flash-color-mid: rgba(239, 68, 68, 0.6); 
+      --flash-color-start: rgba(239, 68, 68, 0);
+      --flash-color-mid: rgba(239, 68, 68, 0.6);
       animation: target-flash 0.3s ease-out;
     }
     .target-crit-flash {
-      --flash-color-start: rgba(249, 115, 22, 0); 
-      --flash-color-mid: rgba(249, 115, 22, 0.7); 
+      --flash-color-start: rgba(249, 115, 22, 0);
+      --flash-color-mid: rgba(249, 115, 22, 0.7);
       --flash-blur: 12px;
       --flash-spread: 4px;
       animation: target-flash 0.4s ease-out;
@@ -360,8 +361,8 @@ html, body {
       animation: target-flash 0.25s ease-out;
     }
     .target-healed-flash {
-      --flash-color-start: rgba(34, 197, 94, 0); 
-      --flash-color-mid: rgba(34, 197, 94, 0.6); 
+      --flash-color-start: rgba(34, 197, 94, 0);
+      --flash-color-mid: rgba(34, 197, 94, 0.6);
       animation: target-flash 0.3s ease-out;
     }
 
@@ -492,7 +493,7 @@ html, body {
         transform: translate(var(--translateX), var(--translateY)) scale(0.2) rotate(var(--rotateEnd));
       }
     }
-    
+
     /* Shield Break/Recharge Particles */
     /* .particle-shield-shatter and @keyframes shield-shatter-particle-animate REMOVED */
 
@@ -515,7 +516,7 @@ html, body {
             transform: translate(calc(var(--startX, -50%) + var(--translateX)), calc(var(--startY, -50%) + var(--translateY))) scale(0.2);
         }
     }
-    
+
     /* Shield Bar Animations - REMOVED as bar is now canvas based */
     /* .animate-shield-break-bar .shield-bar-fill {} */
     /* .animate-shield-recharge-bar .shield-bar-fill {} */
@@ -772,11 +773,11 @@ html, body {
     .shared-skill-node-container {
       transition: width 0.3s ease-in-out, height 0.3s ease-in-out, min-height 0.3s ease-in-out, transform 0.3s ease-in-out, border-radius 0.3s ease-in-out;
       will-change: width, height, min-height, transform, border-radius;
-      position: absolute; 
+      position: absolute;
       z-index: 10;
-      display: flex; 
-      align-items: center; 
-      justify-content: center; 
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     .shared-skill-node-container.expanded {
       z-index: 20;
@@ -804,7 +805,7 @@ html, body {
       text-align: center;
       width: 100%;
       height: 100%;
-      padding: 4px; 
+      padding: 4px;
       position: relative; /* Needed for SVG to be absolute inside */
       z-index: 5; /* Content above SVG background track */
     }
@@ -824,16 +825,11 @@ html, body {
       transition: opacity 0.2s ease-out 0.15s, transform 0.2s ease-out 0.15s;
       width: 100%;
       height: 100%;
-      display: flex; 
-      flex-direction: column; 
-      overflow-y: auto; 
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
       overflow-x: hidden;
     }
-
-    /* SVG progress styles are now handled inline in the component or Tailwind */
-    /* Minor Level Progress Bar for Shared Skills - REMOVED */
-    /* .minor-progress-bar-container {} */
-    /* .minor-progress-bar-fill {} */
 
     .circular-progress-svg {
       position: absolute;
@@ -848,3 +844,23 @@ html, body {
 
     /* Text on Stat Bars - REMOVED, handled by Tailwind in BattleStatBars.tsx */
     /* .text-on-bar {} */
+
+    /* Aetheric Resonance Altar Pulse Animation */
+    @keyframes stat-upgrade-pulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.4); /* Tailwind yellow-400/40 */
+        transform: scale(1);
+      }
+      50% {
+        box-shadow: 0 0 10px 5px rgba(250, 204, 21, 0.7); /* Tailwind yellow-400/70 */
+        transform: scale(1.02);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.4);
+        transform: scale(1);
+      }
+    }
+    .stat-upgrade-pulse {
+      animation: stat-upgrade-pulse 0.6s ease-out;
+    }
+

@@ -9,7 +9,7 @@ export const PALADIN_SKILL_TREE_DEFINITION: SkillTreeDefinition = {
       { id: 'PSK001', name: 'Steadfast Challenge', description: (level) => `The Paladin draws enemy attention, forcing them to attack the Paladin. (Passive: Active at Lvl 1)`, iconName: 'SHIELD_BADGE', maxLevel: 1, costPerLevel: () => ({ skillPoints: 1 }), statBonuses: () => ({}), prerequisites: [], position: { x: 0, y: 1 }, isPassiveEffect: true },
       { id: 'PSK002', name: 'Reinforced Armor', description: (level) => `Increases the Paladin's Max HP by ${level * 15} and Defense by ${level * 1}.`, iconName: 'SHIELD', maxLevel: 10, costPerLevel: (lvl) => ({ skillPoints: 1, resources: [{resource: ResourceType.IRON, amount: (lvl+1)*10}] }), statBonuses: (lvl) => ({ maxHp: lvl * 15, defense: lvl * 1 }), prerequisites: [{skillId: 'PSK001', level: 1}], position: { x: 1, y: 1 } },
       { id: 'PSK003', name: 'Holy Strike', description: (level) => `Adds ${level * 2} to the Paladin's base damage.`, iconName: 'SWORD', maxLevel: 10, costPerLevel: (lvl) => ({ skillPoints: 1, resources: [{resource: ResourceType.GOLD, amount: (lvl+1)*15}]}), statBonuses: (lvl) => ({ damage: lvl * 2 }), prerequisites: [{skillId: 'PSK001', level: 1}], position: { x: 0, y: 2 }},
-      { id: 'PSK004', name: "Guardian's Resolve", description: (level) => `Further enhances Max HP by ${level * 18} and Defense by ${level * 2}.`, iconName: 'SHIELD_BADGE', maxLevel: 5, costPerLevel: (lvl) => ({ skillPoints: 2, heroicPointsCost: 80 + lvl * 30, resources: [{resource: ResourceType.STONE, amount: (lvl+1)*20}]}), statBonuses: (lvl) => ({ maxHp: lvl * 18, defense: lvl * 2 }), prerequisites: [{skillId: 'PSK002', level: 3}], position: { x: 2, y: 1 }},
+      { id: 'PSK004', name: "Guardian's Resolve", description: (level) => `Further enhances Max HP by ${level * 18} and Defense by ${level * 2}.`, iconName: 'SHIELD_BADGE', maxLevel: 5, costPerLevel: (lvl) => ({ skillPoints: 2, heroicPointsCost: 80 + lvl * 30, resources: [{resource: ResourceType.STONE, amount: (lvl+1)*20}]}), statBonuses: (lvl) => ({ maxHp: lvl * 18, defense: lvl * 2 }), prerequisites: [{skillId: 'PSK002', level: 3}], position: { x: 2, y: 1 } },
       {
         id: 'PSK_SA_DIVINE_STORM', specialAttackId: 'PALADIN_DIVINE_STORM', name: 'Learn Divine Storm',
         description: (level, data) => {
@@ -49,6 +49,30 @@ export const PALADIN_SKILL_TREE_DEFINITION: SkillTreeDefinition = {
         costPerLevel: (lvl) => ({ heroicPointsCost: 70 + lvl * 30, resources: [{resource: ResourceType.STONE, amount: (lvl+1)*20}] }),
         statBonuses: (lvl) => ({ maxHp: lvl * 20 }),
         prerequisites: [{ skillId: 'PSK004', level: 2 }], position: { x: 3, y: 1 }
-      }
+      },
+      {
+        id: 'PALADIN_PASSIVE_AVENGERSHIELD_01', name: 'Avenger\'s Shield',
+        description: (level) => `On Block/Hit: ${(10 + level * 2)}% chance to deal damage to the attacker equal to ${(15 + level * 5)}% of the Paladin's Defense.`,
+        iconName: 'SHIELD', maxLevel: 5,
+        costPerLevel: (lvl) => ({ skillPoints: 1, resources: [{ resource: ResourceType.IRON, amount: (lvl + 1) * 10 }] }),
+        prerequisites: [{ skillId: 'PSK002', level: 2 }], position: { x: 1, y: 2 }, 
+        isPassiveEffect: true, statBonuses: () => ({})
+      },
+      {
+        id: 'PALADIN_PASSIVE_STEADFASTDEFENDER_01', name: 'Steadfast Defender',
+        description: (level) => `When a nearby ally is hit: ${(8 + level * 2)}% chance to grant the ally a +${(10 + level * 4)}% Defense buff for 4s.`,
+        iconName: 'SHIELD_BADGE', maxLevel: 5,
+        costPerLevel: (lvl) => ({ skillPoints: 1, heroicPointsCost: 90 + lvl * 25 }),
+        prerequisites: [{ skillId: 'PSK004', level: 1 }], position: { x: 2, y: 2 },
+        isPassiveEffect: true, statBonuses: () => ({})
+      },
+      {
+        id: 'PALADIN_PASSIVE_PERSEVERANCEAURA_01', name: 'Aura of Perseverance',
+        description: (level) => `Passive: Small chance (${(1 + level * 0.5).toFixed(1)}%) per tick for all party members to regenerate ${(1 + Math.floor(level/2))} Mana.`,
+        iconName: 'ATOM_ICON', maxLevel: 5,
+        costPerLevel: (lvl) => ({ skillPoints: 1, resources: [{ resource: ResourceType.CRYSTALS, amount: (lvl + 1) * 12 }] }),
+        prerequisites: [{ skillId: 'PSK_SA_DIVINE_STORM', level: 1 }], position: { x: 0, y: 0 },
+        isPassiveEffect: true, statBonuses: () => ({})
+      },
     ] as SkillNodeDefinition[],
 };

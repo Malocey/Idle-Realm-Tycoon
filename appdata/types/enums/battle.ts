@@ -21,4 +21,5 @@ export enum AbilityEffectTriggerType {
   ON_CHANNEL_TICK = 'ON_CHANNEL_TICK',
   ON_CHANNEL_COMPLETE = 'ON_CHANNEL_COMPLETE',
   ON_CHANNEL_INTERRUPT = 'ON_CHANNEL_INTERRUPT',
+  ON_HEAL_ALLY = 'ON_HEAL_ALLY', // New: For Cleric's Divine Favor/Wave of Light
 }

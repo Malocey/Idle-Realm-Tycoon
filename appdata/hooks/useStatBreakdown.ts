@@ -1,12 +1,14 @@
 
 import { useMemo } from 'react';
 import { useGameContext } from '../context';
-import { PlayerHeroState, HeroStats, StatBreakdownItem, TownHallUpgradeEffectType, GlobalEffectTarget, BattleHero, RunBuffEffect } from '../types'; // Added BattleHero and RunBuffEffect
+import { PlayerHeroState, HeroStats, StatBreakdownItem, TownHallUpgradeEffectType, GlobalEffectTarget, BattleHero, RunBuffEffect, StatusEffectType } from '../types'; 
 import { formatNumber, getShardDisplayValueUtil, getTownHallUpgradeEffectValue, getTotalEquipmentStatBonus } from '../utils';
-// Corrected import path for SHARED_SKILL_DEFINITIONS (now accessed via staticData)
+// FIX: Corrected import path for game data definitions
+import { TOWN_HALL_UPGRADE_DEFINITIONS, GUILD_HALL_UPGRADE_DEFINITIONS, EQUIPMENT_DEFINITIONS, SHARD_DEFINITIONS, HERO_DEFINITIONS, SKILL_TREES, SHARED_SKILL_DEFINITIONS, STATUS_EFFECT_DEFINITIONS, DEMONICON_MILESTONE_REWARDS, AETHERIC_RESONANCE_STAT_CONFIGS } from '../gameData/index';
+
 
 export const useStatBreakdown = (
-  heroState: PlayerHeroState | null,
+  heroState: PlayerHeroState | BattleHero | null, // Allow BattleHero for status effects
   statKey: keyof HeroStats | null
 ): StatBreakdownItem[] => {
   const { gameState, staticData, getGlobalBonuses } = useGameContext();
@@ -23,7 +25,7 @@ export const useStatBreakdown = (
     const baseStatValue = heroDef.baseStats[statKey] || 0;
     let levelScaledBase = baseStatValue;
 
-    // 1. Base Stat + Level Scaling
+    // Level Scaling for Base Stats
     if (statKey === 'maxHp') levelScaledBase = Math.floor(baseStatValue * (1 + (heroState.level - 1) * 0.1));
     else if (statKey === 'damage') levelScaledBase = baseStatValue * (1 + (heroState.level - 1) * 0.1);
     else if (statKey === 'defense') levelScaledBase = Math.floor(baseStatValue * (1 + (heroState.level - 1) * 0.05));
@@ -35,8 +37,9 @@ export const useStatBreakdown = (
     breakdown.push({ source: `Basiswert (Lvl ${heroState.level})`, value: levelScaledBase, isFlat: true });
 
     let initialFlatSum = levelScaledBase;
+    const percentageBonusSources: StatBreakdownItem[] = [];
 
-    // 2. Skill Tree Bonuses (Flat)
+    // Hero Skills (Flat Bonuses)
     const skillTree = staticData.skillTrees[heroDef.skillTreeId];
     if (skillTree) {
       Object.entries(heroState.skillLevels).forEach(([skillId, skillLevel]) => {
@@ -51,7 +54,7 @@ export const useStatBreakdown = (
       });
     }
 
-    // 3. Town Hall Global Additive Bonuses
+    // Town Hall Upgrades (Flat Bonuses)
     Object.entries(gameState.townHallUpgradeLevels).forEach(([upgradeId, level]) => {
       if (level > 0) {
         const upgradeDef = staticData.townHallUpgradeDefinitions[upgradeId];
@@ -69,7 +72,7 @@ export const useStatBreakdown = (
       }
     });
     
-    // 4. Equipment Bonuses (Flat)
+    // Equipment (Flat Bonuses)
     if (heroState.equipmentLevels) {
       Object.entries(heroState.equipmentLevels).forEach(([equipmentId, equipmentLevel]) => {
         if (equipmentLevel > 0) {
@@ -85,7 +88,7 @@ export const useStatBreakdown = (
       });
     }
 
-    // 5. Permanent Buffs (Flat)
+    // Permanent Buffs (Flat Bonuses)
     if (heroState.permanentBuffs) {
       heroState.permanentBuffs.forEach(buff => {
         if (buff.stat === statKey && buff.value !== 0) {
@@ -95,7 +98,7 @@ export const useStatBreakdown = (
       });
     }
 
-    // 6. Shards (Flat)
+    // Shards (Flat Bonuses)
     if (heroState.ownedShards) {
       heroState.ownedShards.forEach(shardInstance => {
         const shardDef = staticData.shardDefinitions[shardInstance.definitionId];
@@ -109,22 +112,38 @@ export const useStatBreakdown = (
       });
     }
     
-    // 7. Shared Passive Skills - Flat Bonuses
+    // Shared Passive Skills - Flat Contributions
     Object.entries(gameState.playerSharedSkills).forEach(([skillId, progress]) => {
       if (progress.currentMajorLevel > 0) {
         const skillDef = staticData.sharedSkillDefinitions[skillId];
         if (skillDef && skillDef.effects) {
           skillDef.effects.forEach(effect => {
-            if (!effect.isPercentage && effect.stat === statKey) {
+            if (effect.stat === statKey && !effect.isPercentage) { // Check if effect.stat is the one we're breaking down
               let totalEffectValueFlat = 0;
               for (let i = 0; i < progress.currentMajorLevel; i++) {
-                totalEffectValueFlat += effect.baseValuePerMajorLevel[i] || 0;
-                if (i < progress.currentMajorLevel -1 ) {
-                    totalEffectValueFlat += (effect.minorValuePerMinorLevel[i] || 0) * (skillDef.minorLevelsPerMajorTier[i] || 0);
+                const majorValue = effect.baseValuePerMajorLevel[i];
+                if (typeof majorValue === 'number') {
+                    totalEffectValueFlat += majorValue;
+                } else if (majorValue) {
+                    totalEffectValueFlat += majorValue.flat || 0;
+                }
+                if (i < progress.currentMajorLevel - 1) {
+                    const minorValue = effect.minorValuePerMinorLevel[i];
+                    const numMinors = skillDef.minorLevelsPerMajorTier[i] || 0;
+                    if (typeof minorValue === 'number') {
+                        totalEffectValueFlat += minorValue * numMinors;
+                    } else if (minorValue) {
+                        totalEffectValueFlat += (minorValue.flat || 0) * numMinors;
+                    }
                 }
               }
-              if (progress.currentMajorLevel > 0) {
-                  totalEffectValueFlat += (effect.minorValuePerMinorLevel[progress.currentMajorLevel - 1] || 0) * progress.currentMinorLevel;
+              if (progress.currentMajorLevel > 0 && progress.currentMinorLevel > 0) {
+                const minorValueCurrentTier = effect.minorValuePerMinorLevel[progress.currentMajorLevel - 1];
+                if (typeof minorValueCurrentTier === 'number') {
+                    totalEffectValueFlat += minorValueCurrentTier * progress.currentMinorLevel;
+                } else if (minorValueCurrentTier) {
+                    totalEffectValueFlat += (minorValueCurrentTier.flat || 0) * progress.currentMinorLevel;
+                }
               }
               if (totalEffectValueFlat !== 0) {
                 breakdown.push({ source: `Shared: ${skillDef.name}`, value: totalEffectValueFlat, isFlat: true });
@@ -136,11 +155,21 @@ export const useStatBreakdown = (
       }
     });
 
-    // --- Percentage Bonuses Section ---
-    const percentageBonusSources: StatBreakdownItem[] = [];
-    // const townAndGuildGlobalBonuses = getGlobalBonuses(); // Not used directly here for iteration, individual sources are preferred for breakdown
+    // Aetherische Resonanz (Flache Boni)
+    const aetherResonanceForStat = gameState.aethericResonanceBonuses[statKey];
+    if (aetherResonanceForStat && aetherResonanceForStat.flat !== 0) {
+        const flatBonusFromAR = aetherResonanceForStat.flat;
+        const arStatConfig = staticData.aethericResonanceStatConfigs.find(conf => conf.id === statKey);
+        const arLabel = arStatConfig?.label || statKey.toString();
+        breakdown.push({ source: `Aetherische Resonanz (${arLabel}, Flach)`, value: flatBonusFromAR, isFlat: true });
+        initialFlatSum += flatBonusFromAR;
+    }
 
-    // Town Hall Percentage Effects (applied to specific stats, not via GlobalEffectTarget enum for these hero stats)
+
+    // Sum of all flat bonuses applied
+    let sumAffectedByPercentage = initialFlatSum;
+
+    // Percentage bonuses from Town Hall
     Object.entries(gameState.townHallUpgradeLevels).forEach(([upgradeId, level]) => {
         if (level > 0) {
             const thUpgradeDef = staticData.townHallUpgradeDefinitions[upgradeId];
@@ -157,7 +186,7 @@ export const useStatBreakdown = (
         }
     });
     
-    // Guild Hall Percentage Bonuses (Hero Specific)
+    // Percentage bonuses from Guild Hall (specific to hero class)
     Object.entries(gameState.guildHallUpgradeLevels).forEach(([upgradeId, level]) => {
         if (level > 0) {
             const ghUpgradeDef = staticData.guildHallUpgradeDefinitions[upgradeId];
@@ -174,37 +203,53 @@ export const useStatBreakdown = (
         }
     });
     
-    // Shared Passive Skills - Percentage Bonuses
+    // Percentage bonuses from Shared Skills
     Object.entries(gameState.playerSharedSkills).forEach(([skillId, progress]) => {
       if (progress.currentMajorLevel > 0) {
         const skillDef = staticData.sharedSkillDefinitions[skillId];
         if (skillDef && skillDef.effects) {
           skillDef.effects.forEach(effect => {
-            if (effect.isPercentage && effect.stat === statKey) {
-              let totalEffectValuePercentage = 0;
-             for (let i = 0; i < progress.currentMajorLevel; i++) {
-              totalEffectValuePercentage += effect.baseValuePerMajorLevel[i] || 0;
-               if (i < progress.currentMajorLevel -1) { 
-                  totalEffectValuePercentage += (effect.minorValuePerMinorLevel[i] || 0) * (skillDef.minorLevelsPerMajorTier[i] || 0);
-              }
-            }
-            if (progress.currentMajorLevel > 0) { 
-                totalEffectValuePercentage += (effect.minorValuePerMinorLevel[progress.currentMajorLevel - 1] || 0) * progress.currentMinorLevel;
-            }
-              if (totalEffectValuePercentage !== 0) {
-                   percentageBonusSources.push({ 
-                      source: `Shared: ${skillDef.name}`, 
-                      value: totalEffectValuePercentage, 
-                      isPercentage: true 
-                  });
-              }
+             // Check if effect.stat is a key of HeroStats AND if it's the statKey we're interested in
+             if (effect.stat === statKey && effect.isPercentage) {
+                let totalEffectValuePercentage = 0;
+                for (let i = 0; i < progress.currentMajorLevel; i++) {
+                    const majorValue = effect.baseValuePerMajorLevel[i];
+                    if (typeof majorValue === 'number') totalEffectValuePercentage += majorValue;
+                    else if (majorValue) totalEffectValuePercentage += majorValue.percent || 0;
+                    
+                    if (i < progress.currentMajorLevel -1) { 
+                        const minorValue = effect.minorValuePerMinorLevel[i];
+                        const numMinors = skillDef.minorLevelsPerMajorTier[i] || 0;
+                        if (typeof minorValue === 'number') totalEffectValuePercentage += minorValue * numMinors;
+                        else if (minorValue) totalEffectValuePercentage += (minorValue.percent || 0) * numMinors;
+                    }
+                }
+                if (progress.currentMajorLevel > 0 && progress.currentMinorLevel > 0) { 
+                    const minorValueCurrentTier = effect.minorValuePerMinorLevel[progress.currentMajorLevel - 1];
+                     if (typeof minorValueCurrentTier === 'number') totalEffectValuePercentage += minorValueCurrentTier * progress.currentMinorLevel;
+                     else if (minorValueCurrentTier) totalEffectValuePercentage += (minorValueCurrentTier.percent || 0) * progress.currentMinorLevel;
+                }
+                if (totalEffectValuePercentage !== 0) {
+                    percentageBonusSources.push({ 
+                        source: `Shared: ${skillDef.name}`, 
+                        value: totalEffectValuePercentage, 
+                        isPercentage: true 
+                    });
+                }
             }
           });
         }
       }
     });
 
-    // Run Buffs - Percentage Additive
+    // Aetherische Resonanz (Prozentuale Boni)
+    if (aetherResonanceForStat && aetherResonanceForStat.percentage !== 0) {
+        const arStatConfig = staticData.aethericResonanceStatConfigs.find(conf => conf.id === statKey);
+        const arLabel = arStatConfig?.label || statKey.toString();
+        percentageBonusSources.push({ source: `Aetherische Resonanz (${arLabel}, %)`, value: aetherResonanceForStat.percentage, isPercentage: true });
+    }
+
+    // Run Buffs (Percentage Additive)
     if (gameState.activeDungeonRun && gameState.activeDungeonRun.activeRunBuffs) {
         gameState.activeDungeonRun.activeRunBuffs.forEach(activeBuff => {
             const buffDef = staticData.runBuffDefinitions[activeBuff.definitionId];
@@ -225,7 +270,7 @@ export const useStatBreakdown = (
         });
     }
     
-    // Temporary Buffs - Percentage (from BattleHero state if applicable)
+    // Temporary Buffs (BattleHero only) (Percentage)
     if ('temporaryBuffs' in heroState && heroState.temporaryBuffs) {
         (heroState as BattleHero).temporaryBuffs.forEach(buff => {
             if (buff.effectType === 'TEMPORARY_STAT_MODIFIER' && buff.stat === statKey && buff.modifierType === 'PERCENTAGE' && buff.value !== 0) {
@@ -234,22 +279,69 @@ export const useStatBreakdown = (
         });
     }
     
-    // Process and display percentage bonuses
-    let sumAffectedByPercentage = initialFlatSum;
+    // Apply percentage bonuses to the sumAffectedByPercentage
     percentageBonusSources.forEach(pBonus => {
         const numericPBonusValue = Number(pBonus.value);
-        const baseForThisBonus = sumAffectedByPercentage; // Percentage bonuses usually apply to the sum of flat bonuses
+        const baseForThisBonus = sumAffectedByPercentage; 
         const bonusAmountFromThisSource = baseForThisBonus * numericPBonusValue;
         
         breakdown.push({ 
             source: pBonus.source, 
             value: numericPBonusValue, 
             isPercentage: true,
+            // Displaying how much flat value this percentage bonus contributed
             valueDisplay: `+${(numericPBonusValue * 100).toFixed(1)}% (von ${formatNumber(baseForThisBonus)}) \u2248 ${formatNumber(bonusAmountFromThisSource)}` 
         });
         
-        sumAffectedByPercentage += bonusAmountFromThisSource; // Add to the sum for subsequent percentage bonuses to apply to
+        sumAffectedByPercentage += bonusAmountFromThisSource; 
     });
+
+    // Status Effects (Flat and Percentage Additive for now)
+    if ('statusEffects' in heroState && heroState.statusEffects && staticData.statusEffectDefinitions) {
+        (heroState as BattleHero).statusEffects.forEach(activeEffect => {
+            const effectDefinition = activeEffect.definitionId ? staticData.statusEffectDefinitions[activeEffect.definitionId] : activeEffect;
+            if (effectDefinition && effectDefinition.statAffected === statKey && effectDefinition.value !== undefined &&
+                (effectDefinition.type === StatusEffectType.BUFF || effectDefinition.type === StatusEffectType.DEBUFF)) {
+                if (effectDefinition.modifierType === 'FLAT') {
+                    breakdown.push({ source: `Effekt: ${effectDefinition.name}`, value: effectDefinition.value, isFlat: true });
+                } else if (effectDefinition.modifierType === 'PERCENTAGE_ADDITIVE') {
+                     const baseForThisStatusEffect = sumAffectedByPercentage; // Apply to the current sum after all other percentages
+                     const bonusAmountFromStatusEffect = baseForThisStatusEffect * effectDefinition.value;
+                     breakdown.push({
+                         source: `Effekt: ${effectDefinition.name}`,
+                         value: effectDefinition.value,
+                         isPercentage: true,
+                         valueDisplay: `${effectDefinition.value > 0 ? '+' : ''}${(effectDefinition.value * 100).toFixed(1)}% (von ${formatNumber(baseForThisStatusEffect)}) \u2248 ${formatNumber(bonusAmountFromStatusEffect)}`
+                     });
+                }
+            }
+        });
+    }
+
+
+    // Demonicon Milestone Bonuses (Percentage)
+    if (gameState.achievedDemoniconMilestoneRewards && gameState.achievedDemoniconMilestoneRewards.length > 0 && gameState.battleState?.isDemoniconBattle) {
+      gameState.achievedDemoniconMilestoneRewards.forEach(rewardId => {
+        Object.values(DEMONICON_MILESTONE_REWARDS).flat().forEach(milestoneDef => {
+          if (milestoneDef.id === rewardId) {
+            milestoneDef.rewards.forEach(rewardEffect => {
+              if (rewardEffect.type === 'GLOBAL_STAT_MODIFIER' && rewardEffect.stat === statKey && rewardEffect.isPercentage) {
+                const baseForThisBonus = sumAffectedByPercentage; 
+                const bonusAmount = baseForThisBonus * rewardEffect.value;
+                breakdown.push({
+                  source: `Demonicon: ${milestoneDef.enemyId} Rank ${milestoneDef.rankToAchieve+1}`,
+                  value: rewardEffect.value,
+                  isPercentage: true,
+                  valueDisplay: `+${(rewardEffect.value * 100).toFixed(1)}% (von ${formatNumber(baseForThisBonus)}) \u2248 ${formatNumber(bonusAmount)}`
+                });
+                // Note: actual application of demonicon bonuses to stats is in heroStatsCalculator
+              }
+            });
+          }
+        });
+      });
+    }
+
 
     return breakdown;
   }, [heroState, statKey, gameState, staticData, getGlobalBonuses]);

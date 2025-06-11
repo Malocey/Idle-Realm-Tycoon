@@ -22,6 +22,10 @@ interface TopBarResourceDisplayConfig {
   condition?: (gameState: GameState, globalBonuses: ReturnType<typeof useGameContext>['getGlobalBonuses']) => boolean;
 }
 
+interface TopBarProps {
+  onToggleAccountLevelModal: () => void; // New prop for modal
+}
+
 const getContextualResources = (
   activeView: GameState['activeView'],
   battleState: GameState['battleState'],
@@ -38,7 +42,7 @@ const getContextualResources = (
       } else if (battleState?.isDungeonGridBattle || battleState?.isDungeonBattle) {
         return [ResourceType.HEROIC_POINTS, ResourceType.GOLD, ResourceType.CATACOMB_KEY];
       }
-      return [ResourceType.HEROIC_POINTS, ResourceType.GOLD]; 
+      return [ResourceType.HEROIC_POINTS, ResourceType.GOLD];
     case 'HERO_ACADEMY':
       return [ResourceType.HEROIC_POINTS, ResourceType.GOLD];
     case 'DUNGEON_EXPLORE': {
@@ -59,14 +63,14 @@ const getContextualResources = (
       ];
     case 'GOLD_MINE_MINIGAME':
         return [ResourceType.GOLD, ResourceType.GOLD_ORE, ResourceType.DIAMOND_ORE, ResourceType.DIRT, ResourceType.STONE];
-    case 'ACTION_BATTLE_VIEW': 
+    case 'ACTION_BATTLE_VIEW':
       return [ResourceType.GOLD, ResourceType.HEROIC_POINTS];
     case 'SHARED_SKILL_TREE':
-      return [ResourceType.HEROIC_POINTS, ResourceType.GOLD]; 
+      return [ResourceType.HEROIC_POINTS, ResourceType.GOLD];
     case 'DEMONICON_PORTAL':
       return [ResourceType.DEMONIC_COIN, ResourceType.GOLD, ResourceType.HEROIC_POINTS];
     case 'DUNGEON_REWARD':
-      return [ResourceType.GOLD, ResourceType.HEROIC_POINTS]; 
+      return [ResourceType.GOLD, ResourceType.HEROIC_POINTS];
     case 'WORLD_MAP': // Add case for World Map
       return [ResourceType.GOLD, ResourceType.FOOD, ResourceType.HEROIC_POINTS]; // Example resources for world map
     default:
@@ -74,7 +78,7 @@ const getContextualResources = (
   }
 };
 
-const TopBar: React.FC = () => {
+const TopBar: React.FC<TopBarProps> = ({ onToggleAccountLevelModal }) => {
   const { gameState, dispatch, getGlobalBonuses, staticData } = useGameContext();
   const [showAllResources, setShowAllResources] = useState(false);
   const [isDungeonModalOpen, setIsDungeonModalOpen] = useState(false);
@@ -85,6 +89,7 @@ const TopBar: React.FC = () => {
     const currentGlobalBonuses = getGlobalBonuses();
 
     gameState.buildings.forEach(b => {
+      if (b.level === 0) return;
       const def = BUILDING_DEFINITIONS[b.id];
       if (def && def.isProducer) {
         const prod = calculateBuildingProduction(def, b.level);
@@ -96,11 +101,20 @@ const TopBar: React.FC = () => {
               p.resource !== ResourceType.AETHERIUM) {
              amountPerTickWithBonus *= (1 + currentGlobalBonuses.allResourceProductionBonus);
           }
-          rates[p.resource] = (rates[p.resource] || 0) + amountPerTickWithBonus;
+
+          if (p.resource === ResourceType.TOWN_XP) {
+            // Town XP is handled by totalTownXp
+          } else if (p.resource === ResourceType.HEROIC_POINTS) {
+            amountPerTickWithBonus *= (1 + currentGlobalBonuses.heroXpGainBonus); // Apply hero XP gain bonus
+            rates[p.resource] = (rates[p.resource] || 0) + amountPerTickWithBonus;
+          }
+          else {
+            rates[p.resource] = (rates[p.resource] || 0) + amountPerTickWithBonus;
+          }
         });
       }
     });
-    
+
     const farmHerbUpgrade = staticData.buildingSpecificUpgradeDefinitions['FARM']?.find(upg => upg.id === 'FARM_HERB_CULTIVATION');
     const farmHerbLevel = gameState.buildingSpecificUpgradeLevels['FARM']?.['FARM_HERB_CULTIVATION'] || 0;
     if (farmHerbUpgrade && farmHerbLevel > 0) {
@@ -146,7 +160,7 @@ const TopBar: React.FC = () => {
       dispatch({ type: 'SET_ACTIVE_VIEW', payload: 'TOWN' });
     }
   };
-  
+
   const heroAcademyActionableCount = useMemo(() => {
     if (!gameState || !staticData) return 0;
     let actionableHeroes = 0;
@@ -199,7 +213,7 @@ const TopBar: React.FC = () => {
       const isMaxMajorLevel = currentMajorLevel >= skillDef.maxMajorLevels;
       const minorLevelsInCurrentTier = currentMajorLevel > 0 && skillDef.minorLevelsPerMajorTier.length >= currentMajorLevel ? (skillDef.minorLevelsPerMajorTier[currentMajorLevel - 1] || 0) : (currentMajorLevel === 0 ? (skillDef.minorLevelsPerMajorTier[0] || 0) : 0);
       const isMaxMinorLevelForCurrentTier = currentMajorLevel > 0 && currentMinorLevel >= minorLevelsInCurrentTier;
-      
+
       let canUpgradeThisSkill = false;
 
       if (!isMaxMajorLevel && (currentMajorLevel === 0 || isMaxMinorLevelForCurrentTier)) {
@@ -241,9 +255,22 @@ const TopBar: React.FC = () => {
   return (
     <>
       <div className="bg-slate-800/80 backdrop-blur-md p-3 shadow-lg flex justify-between items-center sticky top-0 z-40 flex-wrap gap-2">
-        <div className="flex items-center space-x-2 sm:space-x-4 flex-wrap gap-2">
+        <div className="flex items-center space-x-2 sm:space-x-4 flex-wrap gap-y-1">
+           <div
+            className="flex items-center space-x-1 p-1.5 rounded-md bg-slate-700/50 hover:bg-slate-600/70 cursor-pointer transition-colors"
+            title={`Account Level: ${gameState.accountLevel}. Click for details.`}
+            onClick={onToggleAccountLevelModal} // Added onClick
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onToggleAccountLevelModal(); }}
+           >
+                {ICONS.XP_ICON && <ICONS.XP_ICON className="w-5 h-5 text-yellow-400" />}
+                <span className="text-yellow-300 font-semibold">Acc. Lvl:</span>
+                <span className="text-slate-100 font-bold">{gameState.accountLevel}</span>
+                <span className="text-xs text-slate-400">({formatNumber(gameState.accountXP)}/{formatNumber(gameState.expToNextAccountLevel)} XP)</span>
+            </div>
           {displayedResourceTypes.map(resType => {
-             
+
             const isMinigameView = gameState.activeView === 'STONE_QUARRY_MINIGAME' || gameState.activeView === 'GOLD_MINE_MINIGAME';
             const value = resType === ResourceType.TOWN_XP ? gameState.totalTownXp : (gameState.resources[resType] || 0);
             const rate = productionRates[resType];
@@ -253,7 +280,7 @@ const TopBar: React.FC = () => {
             } else if (!isMinigameView && value === 0 && !rate && ![ResourceType.GOLD, ResourceType.TOWN_XP, ResourceType.HEROIC_POINTS].includes(resType)) {
                 return null;
             }
-             
+
             if (resType === ResourceType.DEMONIC_COIN && !gameState.buildings.some(b => b.id === 'DEMONICON_GATE' && b.level > 0)) {
                 return null;
             }
@@ -329,7 +356,7 @@ const TopBar: React.FC = () => {
           {allGameResourceTypes.map(rt => {
             let rate: number | undefined = productionRates[rt];
             const displayValue = rt === ResourceType.TOWN_XP ? gameState.totalTownXp : (gameState.resources[rt] || 0);
-             
+
             if (rt === ResourceType.DEMONIC_COIN && !gameState.buildings.some(b => b.id === 'DEMONICON_GATE' && b.level > 0)) {
                 return null;
             }

@@ -8,28 +8,28 @@ import {
   CalculatedSpecialAttackData,
   Cost,
   GameState,
-  HeroDefinition, // Added import
+  HeroDefinition, 
 } from '../types';
 import { ICONS } from './Icons';
 import Button from './Button';
 import { formatNumber, canAfford, calculateSpecialAttackData, calculateMaxAffordableLevels } from '../utils';
 import { SPECIAL_ATTACK_DEFINITIONS, SKILL_TREES } from '../gameData/index';
 import { useGameContext } from '../context';
-import { RESOURCE_COLORS } from '../constants'; // Added import
+import { RESOURCE_COLORS } from '../constants'; 
 
 interface GenericSkillNodeProps {
   skillDefinition: SkillNodeDefinition | SharedSkillDefinition;
   skillType: 'hero' | 'shared';
-  heroDefinitionId?: string; // Required for hero skills
+  heroDefinitionId?: string; 
 
   currentLevel: number;
   currentMinorLevel?: number;
 
-  primaryUpgradePoints: number; // Hero Skill Points or Shared Skill Points
-  secondaryUpgradeResourcePool?: GameState['resources']; // Main game resources for hero skills, or Heroic Points for shared skills
+  primaryUpgradePoints: number; 
+  secondaryUpgradeResourcePool?: GameState['resources']; 
 
   onUpgradePrimary: (skillId: string, specialAttackId?: string) => void;
-  onUpgradeSecondary?: (skillId: string) => void; // For shared minor upgrades
+  onUpgradeSecondary?: (skillId: string) => void; 
 
   onClick: () => void;
   isExpanded: boolean;
@@ -60,7 +60,7 @@ const GenericSkillNode: React.FC<GenericSkillNodeProps> = React.memo(({
   expandedNodeHeight,
   nodeIdForLayout,
 }) => {
-  const { gameState, staticData, dispatch } = useGameContext(); // Access full context for hero data if needed
+  const { gameState, staticData, dispatch } = useGameContext(); 
   const [isAnimating, setIsAnimating] = useState(false);
 
   const heroState = skillType === 'hero' && heroDefinitionId ? gameState.heroes.find(h => h.definitionId === heroDefinitionId) : null;
@@ -77,7 +77,7 @@ const GenericSkillNode: React.FC<GenericSkillNodeProps> = React.memo(({
   let descriptionText = "";
   let costDisplayElements: React.JSX.Element[] = [];
   let isMaxedOut = false;
-  let meetsAllPrerequisites = isPrerequisiteMet; // Initial assumption
+  let meetsAllPrerequisites = isPrerequisiteMet; 
 
   // Hero Skill Specific Logic
   if (skillType === 'hero' && heroState) {
@@ -174,43 +174,75 @@ const GenericSkillNode: React.FC<GenericSkillNodeProps> = React.memo(({
     const currentMajorLvlShared = skillProgress.currentMajorLevel;
     const currentMinorLvlShared = skillProgress.currentMinorLevel;
 
-    let currentTotalBonusShared = 0;
     const effectShared = sharedSkillDef.effects[0];
-    for (let i = 0; i < currentMajorLvlShared; i++) {
-        currentTotalBonusShared += effectShared.baseValuePerMajorLevel[i] || 0;
-        if (i < currentMajorLvlShared -1 ) {
-            currentTotalBonusShared += (effectShared.minorValuePerMinorLevel[i] || 0) * (sharedSkillDef.minorLevelsPerMajorTier[i] || 0);
+    let currentTotalBonusForDesc: number | { flat: number; percent: number };
+    let nextMinorBonusForDesc: number | { flat: number; percent: number } | null = null;
+    let nextMajorBonusForDesc: number | { flat: number; percent: number } | null = null;
+
+
+    if (sharedSkillDef.id === 'SHARED_HP_FLAT') {
+        let flat = 0; let percent = 0;
+        for (let i = 0; i < currentMajorLvlShared; i++) {
+            const majorVal = effectShared.baseValuePerMajorLevel[i] as { flat?: number; percent?: number };
+            flat += majorVal.flat || 0;
+            percent += majorVal.percent || 0;
+            if (i < currentMajorLvlShared - 1) {
+                const minorVal = effectShared.minorValuePerMinorLevel[i] as { flat?: number; percent?: number };
+                flat += (minorVal.flat || 0) * (sharedSkillDef.minorLevelsPerMajorTier[i] || 0);
+                percent += (minorVal.percent || 0) * (sharedSkillDef.minorLevelsPerMajorTier[i] || 0);
+            }
+        }
+        if (currentMajorLvlShared > 0) {
+            const minorValCurrent = effectShared.minorValuePerMinorLevel[currentMajorLvlShared - 1] as { flat?: number; percent?: number };
+            flat += (minorValCurrent.flat || 0) * currentMinorLvlShared;
+            percent += (minorValCurrent.percent || 0) * currentMinorLvlShared;
+        }
+        currentTotalBonusForDesc = { flat, percent };
+
+        if (currentMajorLvlShared > 0 && currentMinorLvlShared < (sharedSkillDef.minorLevelsPerMajorTier[currentMajorLvlShared - 1] || 0)) {
+            const nextMinorVal = effectShared.minorValuePerMinorLevel[currentMajorLvlShared - 1] as { flat?: number; percent?: number };
+            nextMinorBonusForDesc = { flat: nextMinorVal.flat || 0, percent: nextMinorVal.percent || 0};
+        }
+        if (currentMajorLvlShared < sharedSkillDef.maxMajorLevels) {
+            const nextMajorVal = effectShared.baseValuePerMajorLevel[currentMajorLvlShared] as { flat?: number; percent?: number };
+             nextMajorBonusForDesc = { flat: nextMajorVal.flat || 0, percent: nextMajorVal.percent || 0 };
+        }
+    } else {
+        let totalNumericBonus = 0;
+        for (let i = 0; i < currentMajorLvlShared; i++) {
+            totalNumericBonus += (effectShared.baseValuePerMajorLevel[i] as number) || 0;
+            if (i < currentMajorLvlShared - 1) {
+                totalNumericBonus += ((effectShared.minorValuePerMinorLevel[i] as number) || 0) * (sharedSkillDef.minorLevelsPerMajorTier[i] || 0);
+            }
+        }
+        if (currentMajorLvlShared > 0) {
+            totalNumericBonus += ((effectShared.minorValuePerMinorLevel[currentMajorLvlShared - 1] as number) || 0) * currentMinorLvlShared;
+        }
+        currentTotalBonusForDesc = totalNumericBonus;
+
+        if (currentMajorLvlShared > 0 && currentMinorLvlShared < (sharedSkillDef.minorLevelsPerMajorTier[currentMajorLvlShared - 1] || 0)) {
+            nextMinorBonusForDesc = (effectShared.minorValuePerMinorLevel[currentMajorLvlShared - 1] as number) || 0;
+        }
+        if (currentMajorLvlShared < sharedSkillDef.maxMajorLevels) {
+            nextMajorBonusForDesc = (effectShared.baseValuePerMajorLevel[currentMajorLvlShared] as number) || 0;
         }
     }
-    if (currentMajorLvlShared > 0) {
-        currentTotalBonusShared += (effectShared.minorValuePerMinorLevel[currentMajorLvlShared - 1] || 0) * currentMinorLvlShared;
-    }
     
-    let nextMinorBonusShared = null;
-    if (currentMajorLvlShared > 0 && currentMinorLvlShared < (sharedSkillDef.minorLevelsPerMajorTier[currentMajorLvlShared -1] || 0)) {
-        nextMinorBonusShared = effectShared.minorValuePerMinorLevel[currentMajorLvlShared - 1] || 0;
-    }
-    let nextMajorBonusUnlockShared = null;
-    if (currentMajorLvlShared < sharedSkillDef.maxMajorLevels) {
-        nextMajorBonusUnlockShared = effectShared.baseValuePerMajorLevel[currentMajorLvlShared] || 0;
-    }
-
-    descriptionText = sharedSkillDef.description(currentTotalBonusShared, nextMinorBonusShared, nextMajorBonusUnlockShared, effectShared.isPercentage);
+    descriptionText = sharedSkillDef.description(currentTotalBonusForDesc, nextMinorBonusForDesc, nextMajorBonusForDesc, effectShared.isPercentage);
     isMaxedOut = currentMajorLvlShared >= sharedSkillDef.maxMajorLevels && (currentMajorLvlShared === 0 ? true : currentMinorLvlShared >= (sharedSkillDef.minorLevelsPerMajorTier[currentMajorLvlShared-1] || 0));
 
-    // Costs for Shared Skills
     const minorLevelsInCurrentTierShared = currentMajorLvlShared > 0 ? sharedSkillDef.minorLevelsPerMajorTier[currentMajorLvlShared - 1] : (sharedSkillDef.isPassiveEffect ? 0 : sharedSkillDef.minorLevelsPerMajorTier[0]);
     const isMaxMinorLevelForCurrentTierShared = currentMajorLvlShared > 0 && currentMinorLvlShared >= minorLevelsInCurrentTierShared;
 
     if (!isMaxedOut) {
-      if (currentMajorLvlShared === 0 || isMaxMinorLevelForCurrentTierShared) { // Show Major Upgrade Cost
+      if (currentMajorLvlShared === 0 || isMaxMinorLevelForCurrentTierShared) { 
         const majorCost = sharedSkillDef.costSharedSkillPointsPerMajorLevel[currentMajorLvlShared] || Infinity;
         costDisplayElements.push(
           <span key="sharedSpCost" className={`text-xs ${primaryUpgradePoints < majorCost ? 'text-red-400' : 'text-amber-300'}`}>
             {majorCost} SP / {primaryUpgradePoints}
           </span>
         );
-      } else if (currentMajorLvlShared > 0) { // Show Minor Upgrade Cost
+      } else if (currentMajorLvlShared > 0) { 
         const minorCost = sharedSkillDef.costHeroXpPoolPerMinorLevel(currentMajorLvlShared, currentMinorLvlShared);
         costDisplayElements.push(
           <span key="sharedHeroicPointsCost" className={`text-xs ${(secondaryUpgradeResourcePool?.[ResourceType.HEROIC_POINTS] || 0) < minorCost ? 'text-red-400' : 'text-violet-400'}`}>
@@ -267,7 +299,6 @@ const GenericSkillNode: React.FC<GenericSkillNodeProps> = React.memo(({
             },
         });
     }
-    // TODO: Add logic for Shared Skills if this component is to be fully generic
     return { levels: 0, totalCost: [] };
   }, [skillType, heroState, heroDefinitionId, skillDefinition, currentLevel, meetsAllPrerequisites, gameState.resources, primaryUpgradePoints]);
 
@@ -285,9 +316,27 @@ const GenericSkillNode: React.FC<GenericSkillNodeProps> = React.memo(({
              (heroicPointsCost > 0 ? (secondaryUpgradeResourcePool?.[ResourceType.HEROIC_POINTS] || 0) >= heroicPointsCost : true) &&
              (resCosts.length > 0 && secondaryUpgradeResourcePool ? canAfford(secondaryUpgradeResourcePool, resCosts) : true);
     }
-    // TODO: Add logic for Shared Skills
+    // Logic for Shared Skills affordability
+    if (skillType === 'shared') {
+        const sharedSkillDef = skillDefinition as SharedSkillDefinition;
+        const skillProgress = gameState.playerSharedSkills[sharedSkillDef.id] || { currentMajorLevel: 0, currentMinorLevel: 0 };
+        const currentMajorLvlShared = skillProgress.currentMajorLevel;
+        const currentMinorLvlShared = skillProgress.currentMinorLevel;
+        const minorLevelsInCurrentTierShared = currentMajorLvlShared > 0 ? sharedSkillDef.minorLevelsPerMajorTier[currentMajorLvlShared - 1] : (sharedSkillDef.isPassiveEffect ? 0 : sharedSkillDef.minorLevelsPerMajorTier[0]);
+        const isMaxMinorLevelForCurrentTierShared = currentMajorLvlShared > 0 && currentMinorLvlShared >= minorLevelsInCurrentTierShared;
+
+        if (isMaxedOut || !meetsAllPrerequisites) return false;
+
+        if (currentMajorLvlShared === 0 || isMaxMinorLevelForCurrentTierShared) { // Check Major Upgrade
+            const majorCost = sharedSkillDef.costSharedSkillPointsPerMajorLevel[currentMajorLvlShared] || Infinity;
+            return primaryUpgradePoints >= majorCost;
+        } else if (currentMajorLvlShared > 0) { // Check Minor Upgrade
+            const minorCost = sharedSkillDef.costHeroXpPoolPerMinorLevel(currentMajorLvlShared, currentMinorLvlShared);
+            return (secondaryUpgradeResourcePool?.[ResourceType.HEROIC_POINTS] || 0) >= minorCost;
+        }
+    }
     return false;
-  }, [skillType, heroState, skillDefinition, currentLevel, primaryUpgradePoints, secondaryUpgradeResourcePool, meetsAllPrerequisites, isMaxedOut]);
+  }, [skillType, heroState, skillDefinition, currentLevel, primaryUpgradePoints, secondaryUpgradeResourcePool, meetsAllPrerequisites, isMaxedOut, gameState.playerSharedSkills, gameState.resources]);
 
   const nodeContainerStyle: React.CSSProperties = isExpanded
     ? { width: `${expandedNodeWidth}px`, minHeight: `${expandedNodeHeight}px`, height: 'auto' }
@@ -300,7 +349,7 @@ const GenericSkillNode: React.FC<GenericSkillNodeProps> = React.memo(({
   `;
 
   let baseBorderColorClass = 'border-slate-600';
-  let currentIconColor = 'text-slate-400'; // Changed variable name to avoid conflict
+  let currentIconColor = 'text-slate-400'; 
   let bgColor = 'bg-slate-700/80 hover:bg-slate-600/90';
   let opacityClass = 'opacity-100';
   let pulseAnimationClass = '';
@@ -390,6 +439,7 @@ const GenericSkillNode: React.FC<GenericSkillNodeProps> = React.memo(({
                         <h3 className={`text-lg font-semibold ${titleColor} leading-tight`}>{skillDefinition.name}</h3>
                         <span className="text-xs text-slate-400">
                         Lvl {currentLevel}{finalMaxLevelDisplayValue !== -1 && `/${finalMaxLevelDisplayValue}`}
+                        {skillType === 'shared' && (skillDefinition as SharedSkillDefinition).minorLevelsPerMajorTier[(gameState.playerSharedSkills[skillDefinition.id]?.currentMajorLevel || 1) -1] > 0 && ` (Minor ${currentMinorLevel}/${(skillDefinition as SharedSkillDefinition).minorLevelsPerMajorTier[(gameState.playerSharedSkills[skillDefinition.id]?.currentMajorLevel || 1) -1]})`}
                         </span>
                     </div>
                     </div>
@@ -460,6 +510,42 @@ const GenericSkillNode: React.FC<GenericSkillNodeProps> = React.memo(({
                             )}
                         </div>
                       </>
+                    )}
+                    {skillType === 'shared' && !isMaxedOut && meetsAllPrerequisites && onUpgradeSecondary && (
+                        <>
+                         {(() => {
+                            const sharedSkillDef = skillDefinition as SharedSkillDefinition;
+                            const skillProgress = gameState.playerSharedSkills[sharedSkillDef.id] || { currentMajorLevel: 0, currentMinorLevel: 0 };
+                            const currentMajorLvlShared = skillProgress.currentMajorLevel;
+                            const currentMinorLvlShared = skillProgress.currentMinorLevel;
+                            const minorLevelsInCurrentTierShared = currentMajorLvlShared > 0 ? sharedSkillDef.minorLevelsPerMajorTier[currentMajorLvlShared - 1] : (sharedSkillDef.isPassiveEffect ? 0 : sharedSkillDef.minorLevelsPerMajorTier[0]);
+                            const isMaxMinorLevelForCurrentTierShared = currentMajorLvlShared > 0 && currentMinorLvlShared >= minorLevelsInCurrentTierShared;
+                            
+                            const showMajorUpgrade = (currentMajorLvlShared === 0 || isMaxMinorLevelForCurrentTierShared) && currentMajorLvlShared < sharedSkillDef.maxMajorLevels;
+                            const showMinorUpgrade = currentMajorLvlShared > 0 && !isMaxMinorLevelForCurrentTierShared && minorLevelsInCurrentTierShared > 0;
+                            
+                            const majorCost = showMajorUpgrade ? (sharedSkillDef.costSharedSkillPointsPerMajorLevel[currentMajorLvlShared] || Infinity) : 0;
+                            const canAffordMajor = primaryUpgradePoints >= majorCost;
+                            
+                            const minorCost = showMinorUpgrade ? sharedSkillDef.costHeroXpPoolPerMinorLevel(currentMajorLvlShared, currentMinorLvlShared) : 0;
+                            const canAffordMinor = (secondaryUpgradeResourcePool?.[ResourceType.HEROIC_POINTS] || 0) >= minorCost;
+
+                            return (
+                                <div className="flex flex-col space-y-2">
+                                    {showMinorUpgrade && (
+                                        <Button onClick={handleSecondaryUpgradeClick} disabled={!canAffordMinor} size="sm" variant={canAffordMinor ? "primary" : "secondary"} className="w-full">
+                                            Level Minor (+{((sharedSkillDef.effects[0].minorValuePerMinorLevel[currentMajorLvlShared - 1] as number) * (sharedSkillDef.effects[0].isPercentage ? 100 : 1)).toFixed(1)}{sharedSkillDef.effects[0].isPercentage ? '%' : ''})
+                                        </Button>
+                                    )}
+                                    {showMajorUpgrade && (
+                                        <Button onClick={handlePrimaryUpgradeClick} disabled={!canAffordMajor} size="sm" variant={canAffordMajor ? "success" : "secondary"} className="w-full">
+                                             {currentMajorLvlShared === 0 ? 'Unlock Skill' : 'Upgrade Rank'}
+                                        </Button>
+                                    )}
+                                </div>
+                            );
+                        })()}
+                        </>
                     )}
                     {isMaxedOut && <p className="text-sm text-center text-green-400 py-2 w-full">Max Level Reached</p>}
                     {!meetsAllPrerequisites && <p className="text-sm text-center text-red-500 py-2 w-full">Locked</p>}

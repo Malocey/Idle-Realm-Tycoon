@@ -54,5 +54,29 @@ export const ELEMENTAL_MAGE_SKILL_TREE_DEFINITION: SkillTreeDefinition = {
         prerequisites: [{ skillId: 'EMSK003', level: 1 }], position: { x: 1, y: 1 },
         statBonuses: () => ({})
       },
+      {
+        id: 'MAGE_PASSIVE_ELEMENTALDISCHARGE_01', name: 'Elemental Discharge',
+        description: (level) => `On Spell Cast: ${(8 + level * 2)}% chance to trigger an additional, smaller elemental explosion at the target location (Fire, Ice, Lightning depending on spell) for ${(20 + level * 5)}% of spell damage.`,
+        iconName: 'ATOM_ICON', maxLevel: 5,
+        costPerLevel: (lvl) => ({ skillPoints: 1, resources: [{ resource: ResourceType.CRYSTALS, amount: (lvl + 1) * 10 }] }),
+        prerequisites: [{ skillId: 'EMSK_SA_FIREBALL', level: 1 }], position: { x: 2, y: 1 }, 
+        isPassiveEffect: true, statBonuses: () => ({})
+      },
+      {
+        id: 'MAGE_PASSIVE_ARCANEABSORPTION_01', name: 'Arcane Absorption',
+        description: (level) => `On Magical Damage Taken: ${(5 + level * 1)}% chance to regain ${(15 + level * 5)}% of the magical damage taken as Mana.`,
+        iconName: 'SHIELD_BADGE', maxLevel: 5, 
+        costPerLevel: (lvl) => ({ skillPoints: 1, heroicPointsCost: 80 + lvl * 22 }),
+        prerequisites: [{ skillId: 'EMSK002', level: 2 }], position: { x: 2, y: 0 },
+        isPassiveEffect: true, statBonuses: () => ({})
+      },
+      {
+        id: 'MAGE_PASSIVE_UNSTABLEMAGIC_01', name: 'Unstable Magic',
+        description: (level) => `On Spell Cast: ${(3 + level * 1)}% chance for the spell to have no Mana cost, but its cooldown is increased by ${(30 - level * 2)}%.`,
+        iconName: 'WIZARD_HAT', maxLevel: 5,
+        costPerLevel: (lvl) => ({ skillPoints: 1, resources: [{ resource: ResourceType.AETHERIUM, amount: Math.max(1, 1 + Math.floor(lvl/2)) }] }),
+        prerequisites: [{ skillId: 'EMSK_SA_FIREBALL', level: 2 }], position: { x: 0, y: 2 },
+        isPassiveEffect: true, statBonuses: () => ({})
+      },
     ] as SkillNodeDefinition[],
 };

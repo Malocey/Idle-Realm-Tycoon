@@ -30,9 +30,10 @@ export const INITIAL_RESOURCES: Record<ResourceType, number> = {
   [ResourceType.DIAMOND_ORE]: 0,
   [ResourceType.EMPTY]: 0,
   [ResourceType.SKILL_POINTS_TEMP]: 0,
-  [ResourceType.DIRT]: 0, // Added
-  [ResourceType.OBSTACLE]: 0, // Added
-  [ResourceType.DEMONIC_COIN]: 0, // Initialized
+  [ResourceType.DIRT]: 0,
+  [ResourceType.OBSTACLE]: 0,
+  [ResourceType.DEMONIC_COIN]: 0,
+  [ResourceType.RESEARCH_POINTS]: 0,
 };
 
 export const RESOURCE_COLORS: Record<ResourceType, string> = {
@@ -64,7 +65,8 @@ export const RESOURCE_COLORS: Record<ResourceType, string> = {
   [ResourceType.DIAMOND_ORE]: 'text-blue-200',
   [ResourceType.EMPTY]: 'text-slate-500',
   [ResourceType.SKILL_POINTS_TEMP]: 'text-orange-300',
-  [ResourceType.DIRT]: 'text-orange-700', // Added
-  [ResourceType.OBSTACLE]: 'text-gray-800', // Added
-  [ResourceType.DEMONIC_COIN]: 'text-rose-500', // Added color
+  [ResourceType.DIRT]: 'text-orange-700',
+  [ResourceType.OBSTACLE]: 'text-gray-800',
+  [ResourceType.DEMONIC_COIN]: 'text-rose-500',
+  [ResourceType.RESEARCH_POINTS]: 'text-teal-400',
 };

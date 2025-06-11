@@ -31,4 +31,5 @@ export enum ResourceType {
   DIRT = 'DIRT', // Added for Gold Mine Cell Type
   OBSTACLE = 'OBSTACLE', // Added for Gold Mine Cell Type
   DEMONIC_COIN = 'DEMONIC_COIN', // New currency for Demonicon
+  RESEARCH_POINTS = 'RESEARCH_POINTS', // New currency for Research
 }

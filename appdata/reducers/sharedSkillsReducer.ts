@@ -1,14 +1,14 @@
 
 import { GameState, GameAction, GlobalBonuses, ResourceType, PlayerSharedSkillProgress, GameNotification } from '../types';
 import { SHARED_SKILL_DEFINITIONS } from '../gameData/index';
-import { NOTIFICATION_ICONS } from '../constants'; // Corrected import path
+import { NOTIFICATION_ICONS } from '../constants'; 
 import { canAfford, formatNumber } from '../utils';
 import { ICONS } from '../components/Icons';
 
 export const handleSharedSkillsActions = (
     state: GameState,
     action: Extract<GameAction, { type: 'UPGRADE_SHARED_SKILL_MAJOR' | 'UPGRADE_SHARED_SKILL_MINOR' }>,
-    globalBonuses: GlobalBonuses // For consistency, though not directly used for shared skill cost calculation yet
+    globalBonuses: GlobalBonuses 
 ): GameState => {
   switch (action.type) {
     case 'UPGRADE_SHARED_SKILL_MAJOR': {
@@ -28,7 +28,6 @@ export const handleSharedSkillsActions = (
         return { ...state, notifications: [...state.notifications, notification] };
       }
 
-      // Check if all minor levels in the current tier are completed (if not the first major level)
       if (currentMajorLevel > 0) {
         const minorLevelsInCurrentTier = skillDef.minorLevelsPerMajorTier[currentMajorLevel - 1] || 0;
         if (currentMinorLevel < minorLevelsInCurrentTier) {
@@ -46,7 +45,7 @@ export const handleSharedSkillsActions = (
       const newSharedSkillPoints = state.playerSharedSkillPoints - costSkillPoints;
       const newProgress: PlayerSharedSkillProgress = {
         currentMajorLevel: currentMajorLevel + 1,
-        currentMinorLevel: 0, // Reset minor levels on major upgrade
+        currentMinorLevel: 0, 
       };
 
       const newPlayerSharedSkills = {
@@ -105,8 +104,17 @@ export const handleSharedSkillsActions = (
       };
 
       const effect = skillDef.effects[0];
-      const minorBonusValue = effect.minorValuePerMinorLevel[currentMajorLevel -1] || 0;
-      const successNotification: GameNotification = { id: Date.now().toString(), message: `${skillDef.name} minor level up! (+${(minorBonusValue * (effect.isPercentage ? 100 : 1)).toFixed(1)}${effect.isPercentage ? '%' : ''})`, type: 'success', iconName: skillDef.iconName, timestamp: Date.now() };
+      const minorBonusValueRaw = effect.minorValuePerMinorLevel[currentMajorLevel -1];
+      let minorBonusDisplayValue: number;
+      if (typeof minorBonusValueRaw === 'number') {
+        minorBonusDisplayValue = minorBonusValueRaw;
+      } else if (skillDef.id === 'SHARED_HP_FLAT' && minorBonusValueRaw && minorBonusValueRaw.flat !== undefined) {
+        minorBonusDisplayValue = minorBonusValueRaw.flat; 
+      } else {
+        minorBonusDisplayValue = 0; 
+      }
+      
+      const successNotification: GameNotification = { id: Date.now().toString(), message: `${skillDef.name} minor level up! (+${(minorBonusDisplayValue * (effect.isPercentage && skillDef.id !== 'SHARED_HP_FLAT' ? 100 : 1)).toFixed(1)}${effect.isPercentage && skillDef.id !== 'SHARED_HP_FLAT' ? '%' : ''})`, type: 'success', iconName: skillDef.iconName, timestamp: Date.now() };
 
       return {
         ...state,

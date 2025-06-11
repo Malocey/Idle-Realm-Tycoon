@@ -1,5 +1,5 @@
 
-import { BuildingDefinition, ResourceType } from '../types';
+import { BuildingDefinition, ResourceType } from '../../types';
 
 // Import individual building definitions
 import { TOWN_HALL_DEFINITION } from './buildings/townHall';
@@ -18,7 +18,9 @@ import { COLOSSEUM_DEFINITION } from './buildings/colosseum';
 import { ALTAR_OF_ASCENSION_DEFINITION } from './buildings/altarOfAscension';
 import { PLANETARY_MARKET_DEFINITION } from './buildings/planetaryMarket';
 import { AETHERIUM_SYNTHESIZER_DEFINITION } from './buildings/aetheriumSynthesizer';
-import { DEMONICON_GATE_DEFINITION } from './buildings/demoniconGate'; // New
+import { DEMONICON_GATE_DEFINITION } from './buildings/demoniconGate';
+import { ALTAR_OF_CONVERGENCE_DEFINITION } from './buildings/altarOfConvergence';
+import { ACADEMY_OF_SCHOLARS_DEFINITION } from './buildings/academyOfScholars';
 
 export const BUILDING_DEFINITIONS: Record<string, BuildingDefinition> = {
   'TOWN_HALL': TOWN_HALL_DEFINITION,
@@ -37,5 +39,7 @@ export const BUILDING_DEFINITIONS: Record<string, BuildingDefinition> = {
   'ALTAR_OF_ASCENSION': ALTAR_OF_ASCENSION_DEFINITION,
   'PLANETARY_MARKET': PLANETARY_MARKET_DEFINITION,
   'AETHERIUM_SYNTHESIZER': AETHERIUM_SYNTHESIZER_DEFINITION,
-  'DEMONICON_GATE': DEMONICON_GATE_DEFINITION, // New
+  'DEMONICON_GATE': DEMONICON_GATE_DEFINITION,
+  'ALTAR_OF_CONVERGENCE': ALTAR_OF_CONVERGENCE_DEFINITION,
+  'ACADEMY_OF_SCHOLARS': ACADEMY_OF_SCHOLARS_DEFINITION,
 };

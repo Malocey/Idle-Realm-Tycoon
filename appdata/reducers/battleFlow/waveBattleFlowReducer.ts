@@ -1,6 +1,6 @@
 
 import { GameState, GameAction, GlobalBonuses, BattleHero, BattleEnemy, Cost, ResourceType, GameNotification, BattleState, BuildingLevelUpEventInBattle, WaveDefinition } from '../../types';
-import { HERO_DEFINITIONS, SKILL_TREES, WAVE_DEFINITIONS, ENEMY_DEFINITIONS, TOWN_HALL_UPGRADE_DEFINITIONS, EQUIPMENT_DEFINITIONS, GUILD_HALL_UPGRADE_DEFINITIONS, SHARD_DEFINITIONS, RUN_BUFF_DEFINITIONS, STATUS_EFFECT_DEFINITIONS, worldMapDefinitions } from '../../gameData/index';
+import { HERO_DEFINITIONS, SKILL_TREES, WAVE_DEFINITIONS, ENEMY_DEFINITIONS, TOWN_HALL_UPGRADE_DEFINITIONS, EQUIPMENT_DEFINITIONS, GUILD_HALL_UPGRADE_DEFINITIONS, SHARD_DEFINITIONS, RUN_BUFF_DEFINITIONS, STATUS_EFFECT_DEFINITIONS, worldMapDefinitions, calculateXPForAccountLevel as calculateXPForAccountLevelUtil } from '../../gameData/index';
 import { calculateHeroStats, calculateWaveEnemyStats, getExpToNextHeroLevel, formatNumber } from '../../utils';
 import { MAX_WAVE_NUMBER, NOTIFICATION_ICONS } from '../../constants';
 import { ICONS } from '../../components/Icons';
@@ -12,12 +12,18 @@ type WaveBattleFlowAction =
   | { type: 'START_WAVE_BATTLE_PREPARATION'; payload: StartWaveBattlePreparationPayload }
   | { type: 'END_WAVE_BATTLE_RESULT'; payload: EndWaveBattleResultPayload };
 
+interface WaveBattleFlowResult {
+  updatedState: GameState;
+  deferredActions: GameAction[];
+}
 
 export const waveBattleFlowReducer = (
   state: GameState,
   action: WaveBattleFlowAction,
   globalBonuses: GlobalBonuses
-): GameState => {
+): WaveBattleFlowResult => {
+  let deferredAccountXpActions: GameAction[] = [];
+
   switch (action.type) {
     case 'START_WAVE_BATTLE_PREPARATION': {
       const {
@@ -73,11 +79,11 @@ export const waveBattleFlowReducer = (
         }
         console.error(errorMsg);
         const errorNotification: GameNotification = { id: Date.now().toString(), message: errorMsg, type: 'error', iconName: NOTIFICATION_ICONS.error, timestamp: Date.now()};
-        return { ...state, notifications: [...state.notifications, errorNotification] };
+        return { updatedState: { ...state, notifications: [...state.notifications, errorNotification] }, deferredActions: [] };
       }
       if (state.heroes.length === 0) {
         const noHeroesNotification: GameNotification = { id: Date.now().toString(), message: "Cannot start battle: No heroes available.", type: 'warning', iconName: NOTIFICATION_ICONS.warning, timestamp: Date.now()};
-        return { ...state, notifications: [...state.notifications, noHeroesNotification] };
+        return { updatedState: { ...state, notifications: [...state.notifications, noHeroesNotification] }, deferredActions: [] };
       }
 
 
@@ -89,10 +95,16 @@ export const waveBattleFlowReducer = (
       let newSessionTotalLoot: Cost[] = (isAutoProgression && state.battleState?.sessionTotalLoot) ? [...state.battleState.sessionTotalLoot] : [];
       let newSessionTotalExp: number = (isAutoProgression && state.battleState?.sessionTotalExp) ? state.battleState.sessionTotalExp : 0;
       let newSessionTotalBuildingLevelUps = (isAutoProgression && state.battleState?.sessionTotalBuildingLevelUps) ? [...state.battleState.sessionTotalBuildingLevelUps] : [];
+      // Removed: let deferredAccountXpActions: GameAction[] = [];
 
 
       if (isAutoProgression && previousWaveNumberCleared !== undefined) {
           const effectivePrevWaveForProgress = actualCustomWaveSequenceForState ? (previousWaveNumberCleared +1) : previousWaveNumberCleared;
+          
+          if (!actualCustomWaveSequenceForState && previousWaveNumberCleared > state.currentWaveProgress) {
+            const accountXpForWave = previousWaveNumberCleared * 10;
+             deferredAccountXpActions.push({ type: 'GAIN_ACCOUNT_XP', payload: { amount: accountXpForWave, source: `Wave ${previousWaveNumberCleared} First Clear` } });
+          }
           tempCurrentWaveProgress = Math.max(state.currentWaveProgress, effectivePrevWaveForProgress || 0);
           
           if (rewardsForPreviousWave) {
@@ -168,7 +180,7 @@ export const waveBattleFlowReducer = (
       });
       if (battleHeroes.length === 0) {
          tempNotifications.push({id: Date.now().toString(), message: 'Auto-progression failed: No heroes for next wave. Returning to Town.', type: 'error', iconName: NOTIFICATION_ICONS.error, timestamp: Date.now()});
-         return { ...state, resources: tempNewResources, heroes: tempUpdatedHeroes, currentWaveProgress: tempCurrentWaveProgress, activeView: 'TOWN', battleState: null, notifications: tempNotifications, playerSharedSkillPoints: state.playerSharedSkillPoints + sharedSkillPointsGainedFromWaveXP };
+         return { updatedState: { ...state, resources: tempNewResources, heroes: tempUpdatedHeroes, currentWaveProgress: tempCurrentWaveProgress, activeView: 'TOWN', battleState: null, notifications: tempNotifications, playerSharedSkillPoints: state.playerSharedSkillPoints + sharedSkillPointsGainedFromWaveXP }, deferredActions: deferredAccountXpActions };
       }
       const battleEnemies: BattleEnemy[] = [];
       waveDefToUse.enemies.forEach((ew, i_outer) => ENEMY_DEFINITIONS[ew.enemyId] && Array.from({length: ew.count}).forEach((_, i_inner) => {
@@ -179,7 +191,7 @@ export const waveBattleFlowReducer = (
             calculatedStats: finalStats, uniqueBattleId: `${ew.enemyId}_${i_outer}_${i_inner}_enemy_wave${actualBattleTitleWaveNumber}`,
             currentHp: finalStats.maxHp, currentEnergyShield: finalStats.maxEnergyShield || 0, shieldRechargeDelayTicksRemaining: 0,
             attackCooldown: (1000 / finalStats.attackSpeed), attackCooldownRemainingTicks: 0,
-            movementSpeed: 0, x: 0, y: 0, statusEffects: [], temporaryBuffs: [], isElite: false, specialAttackCooldownsRemaining: {},
+            movementSpeed: 0, x: 0, y: 0, statusEffects: [], temporaryBuffs: [], isElite: ew.isElite || false, specialAttackCooldownsRemaining: {},
             summonStrengthModifier: enemyDef.summonAbility ? 1.0 : undefined,
             currentShieldHealCooldownMs: enemyDef.shieldHealAbility?.initialCooldownMs ?? enemyDef.shieldHealAbility?.cooldownMs,
         };
@@ -201,22 +213,43 @@ export const waveBattleFlowReducer = (
         battleLootCollected: [], defeatedEnemiesWithLoot: {}, battleExpCollected: 0, buildingLevelUpEventsInBattle: [], activePotionIdForUsage: null,
         sessionTotalLoot: newSessionTotalLoot, sessionTotalExp: newSessionTotalExp, sessionTotalBuildingLevelUps: newSessionTotalBuildingLevelUps,
       };
-      return { ...state, resources: tempNewResources, heroes: tempUpdatedHeroes, currentWaveProgress: tempCurrentWaveProgress, activeView: 'BATTLEFIELD', battleState: newBattleState, notifications: tempNotifications, playerSharedSkillPoints: state.playerSharedSkillPoints + sharedSkillPointsGainedFromWaveXP };
+      
+      return { updatedState: { ...state, resources: tempNewResources, heroes: tempUpdatedHeroes, currentWaveProgress: tempCurrentWaveProgress, activeView: 'BATTLEFIELD', battleState: newBattleState, notifications: tempNotifications, playerSharedSkillPoints: state.playerSharedSkillPoints + sharedSkillPointsGainedFromWaveXP }, deferredActions: deferredAccountXpActions };
     }
     case 'END_WAVE_BATTLE_RESULT': {
-      // This case remains as is, handling the immediate aftermath of a wave.
-      // The useBattleProgression hook will then use this state to decide the next step.
       const { outcome, battleStateFromEnd } = action.payload;
       let finalResources = { ...state.resources };
       let finalUpdatedHeroes = [...state.heroes];
       let finalCurrentWaveProgress = state.currentWaveProgress;
       let finalNotificationsArr = [...state.notifications];
       let sharedSkillPointsGainedThisBattleEnd = 0;
+      // Removed: let deferredAccountXpActions: GameAction[] = [];
 
       if (outcome === 'VICTORY') {
         const currentWaveBattleNum = battleStateFromEnd.waveNumber || 0;
-        if (!battleStateFromEnd.customWaveSequence) { 
+        
+        if (!battleStateFromEnd.customWaveSequence) { // Normal Wave
+            if (currentWaveBattleNum > state.currentWaveProgress) { // First time clear
+                const accountXpForWave = currentWaveBattleNum * 10;
+                deferredAccountXpActions.push({ type: 'GAIN_ACCOUNT_XP', payload: { amount: accountXpForWave, source: `Wave ${currentWaveBattleNum} First Clear` } });
+            }
             finalCurrentWaveProgress = Math.max(state.currentWaveProgress, currentWaveBattleNum);
+        } else if (battleStateFromEnd.customWaveSequence && battleStateFromEnd.currentCustomWaveIndex !== undefined && battleStateFromEnd.sourceMapNodeId) { // Custom Map Sequence Wave
+            const mapNodeKey = `${battleStateFromEnd.sourceMapNodeId}_battle_won`;
+            if (battleStateFromEnd.currentCustomWaveIndex === battleStateFromEnd.customWaveSequence.length - 1 && !state.mapPoiCompletionStatus[mapNodeKey]) {
+                // This is the *final* wave of the custom sequence, and it's a first-time clear for the POI
+                const waveDef = WAVE_DEFINITIONS.find(w => w.id === battleStateFromEnd.customWaveSequence![battleStateFromEnd.currentCustomWaveIndex!]);
+                let totalBaseExpForWave = 0;
+                waveDef?.enemies.forEach(ew => {
+                    const enemyDef = ENEMY_DEFINITIONS[ew.enemyId];
+                    if(enemyDef) totalBaseExpForWave += (enemyDef.expReward * ew.count);
+                });
+                const accountXpForMapNode = Math.floor(totalBaseExpForWave * 0.5); 
+                if (accountXpForMapNode > 0) {
+                    const mapNodeName = worldMapDefinitions[state.currentMapId]?.nodes.find(n => n.id === battleStateFromEnd.sourceMapNodeId)?.name || battleStateFromEnd.sourceMapNodeId;
+                    deferredAccountXpActions.push({ type: 'GAIN_ACCOUNT_XP', payload: { amount: accountXpForMapNode, source: `${mapNodeName} First Clear` } });
+                }
+            }
         }
         
         (battleStateFromEnd.sessionTotalLoot || []).forEach(r => finalResources[r.resource] = (finalResources[r.resource] || 0) + Math.floor(r.amount));
@@ -241,12 +274,6 @@ export const waveBattleFlowReducer = (
         
         if (!battleStateFromEnd.customWaveSequence && (battleStateFromEnd.waveNumber || 0) >= MAX_WAVE_NUMBER) {
             finalNotificationsArr.push({id: `${Date.now()}-maxwave-end`, message: `Congratulations! You've cleared the final wave!`, type: 'success', iconName: NOTIFICATION_ICONS.success, timestamp: Date.now()});
-            // No auto-progression beyond max wave. END_BATTLE will be dispatched by useBattleProgression
-        } else if (!battleStateFromEnd.customWaveSequence) { 
-            // For normal waves not yet at max, useBattleProgression will handle auto-start.
-            // This END_WAVE_BATTLE_RESULT just processes the current wave's direct outcome.
-        } else { // Custom map sequence victory (individual wave)
-             // useBattleProgression will check if it's the final wave of the custom sequence or dispatch START_BATTLE_PREPARATION for the next custom wave.
         }
       } else { // DEFEAT
         (battleStateFromEnd.battleLootCollected || []).forEach(r => finalResources[r.resource] = (finalResources[r.resource] || 0) + Math.floor(r.amount));
@@ -264,19 +291,20 @@ export const waveBattleFlowReducer = (
       if (sharedSkillPointsGainedThisBattleEnd > 0) {
         finalNotificationsArr.push({ id: Date.now().toString() + "-sspBattleEndFlow", message: `Gained ${sharedSkillPointsGainedThisBattleEnd} Shared Skill Point(s)!`, type: 'success', iconName: ICONS.UPGRADE ? 'UPGRADE' : undefined, timestamp: Date.now() });
       }
-      // The battleState is *not* set to null here. useBattleProgression uses this completed state.
-      // The final END_BATTLE action (for town return) or the next START_BATTLE_PREPARATION will set it.
+      
       return { 
-        ...state, 
-        resources: finalResources, 
-        heroes: finalUpdatedHeroes, 
-        currentWaveProgress: finalCurrentWaveProgress, 
-        // battleState remains as is for useBattleProgression to read
-        notifications: finalNotificationsArr, 
-        playerSharedSkillPoints: state.playerSharedSkillPoints + sharedSkillPointsGainedThisBattleEnd 
+        updatedState: { 
+            ...state, 
+            resources: finalResources, 
+            heroes: finalUpdatedHeroes, 
+            currentWaveProgress: finalCurrentWaveProgress, 
+            notifications: finalNotificationsArr, 
+            playerSharedSkillPoints: state.playerSharedSkillPoints + sharedSkillPointsGainedThisBattleEnd,
+        },
+        deferredActions: deferredAccountXpActions
       };
     }
     default:
-      return state;
+      return { updatedState: state, deferredActions: [] };
   }
 };

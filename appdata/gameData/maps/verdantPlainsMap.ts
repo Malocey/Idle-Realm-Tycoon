@@ -34,7 +34,7 @@ const verdantPlainsNodes: MapNode[] = [
     y: 50,
     iconName: 'WOOD',
     description: 'A small clearing with some harvestable wood. Resources found here may attract new allies.',
-    connections: ['goblin_camp_early', 'lumber_mill_battle', 'farm_battle'],
+    connections: ['goblin_camp_early', 'lumber_mill_battle', 'farm_battle', 'to_whispering_woods_portal'], // Changed connection from corrupted_shrine
     poiType: 'RESOURCE',
     resourceType: ResourceType.WOOD,
     resourceAmount: 10,
@@ -89,46 +89,34 @@ const verdantPlainsNodes: MapNode[] = [
     y: 50,
     iconName: 'PICKAXE_ICON',
     description: 'An old gold mine. A passage seems to lead deeper within.',
-    connections: ['gold_mine_access_battle', 'woods_entrance', 'quarry_approach'],
+    connections: ['gold_mine_access_battle', 'quarry_approach'], // Removed 'woods_entrance' as it's now part of the path to the portal
     poiType: 'MAP_PORTAL', 
     targetMapId: 'gold_mine_depths_map',
     targetNodeId: 'gmd_entry',
   },
   {
-    id: 'woods_entrance',
-    name: 'Whispering Woods Path', 
-    x: 80, 
-    y: 25, 
-    iconName: 'PORTAL', // Change icon to portal
-    description: 'A winding path leading into the shadowy Whispering Woods.',
-    connections: ['damaged_gold_mine', 'tannery_guardians'],
-    poiType: 'MAP_PORTAL', // Make this a portal to the new map series
-    targetMapId: 'wispering_woods_path_edge_map', // New map
-    targetNodeId: 'ww_edge_entry', // Entry node of the new map
+    id: 'to_whispering_woods_portal', // New Portal Node
+    name: 'Path to Whispering Woods',
+    x: 45, 
+    y: 15, 
+    iconName: 'PORTAL',
+    description: 'A path leading into the eerie Whispering Woods.',
+    connections: ['wood_clearing', 'tannery_guardians'], // Connects from wood_clearing, and leads to where old woods_entrance/tannery was
+    poiType: 'MAP_PORTAL',
+    targetMapId: 'whispering_woods', // ID of the Whispering Woods map
+    targetNodeId: 'ww_plains_entrance', // Entry node ID on the Whispering Woods map
   },
   {
-    id: 'tannery_guardians',
-    name: 'Tannery Guardians',
+    id: 'tannery_guardians', 
+    name: 'Path to Tannery Outpost',
     x: 70,
     y: 10,
-    iconName: 'FIGHT',
-    description: 'Fierce creatures guard a hidden path. Defeat them to find plans for a Tannery.',
-    connections: ['woods_entrance', 'deep_woods_encounter'],
-    isBattleNode: true,
-    battleWaveStart: 3,
-    battleWaveEnd: 5,
-  },
-  {
-    id: 'deep_woods_encounter', // This remains the portal to the OLD whispering woods
-    name: 'Gateway to the Old Whispering Woods', 
-    x: 55,
-    y: 10,
     iconName: 'PORTAL', 
-    description: 'An ancient archway hums with power, leading to the old Whispering Woods.',
-    connections: ['tannery_guardians'],
-    poiType: 'MAP_PORTAL',
-    targetMapId: 'whispering_woods', // Original target
-    targetNodeId: 'ww_node_1', // Original target node
+    description: 'A hidden path leading to a secluded tannery. Venture forth to learn the secrets of leatherworking.',
+    connections: ['to_whispering_woods_portal'], // Connects back to the portal hub or another appropriate node
+    poiType: 'MAP_PORTAL', 
+    targetMapId: 'verdant_plains_tannery_outpost_map', 
+    targetNodeId: 'tannery_outpost_entry', 
     isBattleNode: false, 
   },
   {

@@ -2,12 +2,11 @@
 import {
     PlayerHeroState, BattleHero, HeroDefinition, SkillTreeDefinition, HeroStats, SpecialAttackDefinition, CalculatedSpecialAttackData,
     HeroEquipmentDefinition, GameState, GlobalBonuses, ShardDefinition, RunBuffDefinition, RunBuffEffect, TownHallUpgradeEffectType,
-    TownHallUpgradeDefinition, GuildHallUpgradeDefinition, SharedSkillDefinition, SharedSkillEffect, StatusEffectDefinition, StatusEffect, StatusEffectType, // Added StatusEffectType
-    DemoniconMilestoneRewardDefinition // New Import
+    TownHallUpgradeDefinition, GuildHallUpgradeDefinition, SharedSkillDefinition, SharedSkillEffect, StatusEffectDefinition, StatusEffect, StatusEffectType,
+    DemoniconMilestoneRewardDefinition
 } from '../../types';
 import { getShardDisplayValueUtil, getTownHallUpgradeEffectValue } from '../gameLogicUtils';
-// Corrected import path for SHARED_SKILL_DEFINITIONS
-import { TOWN_HALL_UPGRADE_DEFINITIONS, GUILD_HALL_UPGRADE_DEFINITIONS, EQUIPMENT_DEFINITIONS, SHARD_DEFINITIONS, RUN_BUFF_DEFINITIONS, HERO_DEFINITIONS, SKILL_TREES, SHARED_SKILL_DEFINITIONS, STATUS_EFFECT_DEFINITIONS, DEMONICON_MILESTONE_REWARDS } from '../../gameData/index';
+import { TOWN_HALL_UPGRADE_DEFINITIONS, GUILD_HALL_UPGRADE_DEFINITIONS, EQUIPMENT_DEFINITIONS, SHARD_DEFINITIONS, RUN_BUFF_DEFINITIONS, HERO_DEFINITIONS, SKILL_TREES, SHARED_SKILL_DEFINITIONS, STATUS_EFFECT_DEFINITIONS, DEMONICON_MILESTONE_REWARDS, AETHERIC_RESONANCE_STAT_CONFIGS } from '../../gameData/index';
 import { formatNumber } from '../formatters';
 import { DEFAULT_ENERGY_SHIELD_RECHARGE_DELAY_TICKS, DEFAULT_ENERGY_SHIELD_RECHARGE_RATE_PER_TICK } from '../../constants';
 
@@ -24,7 +23,7 @@ export const calculateHeroStats = (
   shardDefinitions: Record<string, ShardDefinition>,
   runBuffDefinitions?: Record<string, RunBuffDefinition>,
   statusEffectDefinitionsParam?: Record<string, StatusEffectDefinition>,
-  isDemoniconBattle?: boolean, 
+  isDemoniconBattle?: boolean,
   achievedDemoniconMilestoneRewards?: string[]
 ): HeroStats => {
   let stats: HeroStats = {
@@ -61,10 +60,11 @@ export const calculateHeroStats = (
     if (stats.energyShieldRechargeRate) stats.energyShieldRechargeRate = stats.energyShieldRechargeRate * (1 + (heroState.level - 1) * 0.03);
   }
 
+  // Accumulate all flat bonuses
   if (skillTree) {
     Object.entries(heroState.skillLevels).forEach(([skillId, skillLevel]) => {
       const skillDef = skillTree.nodes.find(s => s.id === skillId);
-      if (skillDef && skillDef.statBonuses && skillLevel > 0) {
+      if (skillDef?.statBonuses && skillLevel > 0) {
         const bonuses = skillDef.statBonuses(skillLevel);
         (Object.keys(bonuses) as Array<keyof HeroStats>).forEach(statKey => {
           if (statKey === 'maxEnergyShield' || statKey === 'energyShieldRechargeRate' || statKey === 'energyShieldRechargeDelay') {
@@ -77,34 +77,6 @@ export const calculateHeroStats = (
     });
   }
 
-  Object.entries(gameState.playerSharedSkills).forEach(([skillId, progress]) => {
-    if (progress.currentMajorLevel > 0) {
-      const skillDef = SHARED_SKILL_DEFINITIONS[skillId];
-      if (skillDef && skillDef.effects) {
-        skillDef.effects.forEach(effect => {
-          if (!effect.isPercentage && stats[effect.stat] !== undefined) {
-            let totalEffectValue = 0;
-            for (let i = 0; i < progress.currentMajorLevel; i++) {
-              totalEffectValue += effect.baseValuePerMajorLevel[i] || 0;
-              if (i < progress.currentMajorLevel -1) {
-                  totalEffectValue += (effect.minorValuePerMinorLevel[i] || 0) * (skillDef.minorLevelsPerMajorTier[i] || 0);
-              }
-            }
-            if (progress.currentMajorLevel > 0) {
-                totalEffectValue += (effect.minorValuePerMinorLevel[progress.currentMajorLevel - 1] || 0) * progress.currentMinorLevel;
-            }
-            if (effect.stat === 'maxEnergyShield' || effect.stat === 'energyShieldRechargeRate' || effect.stat === 'energyShieldRechargeDelay') {
-                if (mageTowerBuilt) (stats[effect.stat] as number) += totalEffectValue;
-            } else {
-                (stats[effect.stat] as number) += totalEffectValue;
-            }
-          }
-        });
-      }
-    }
-  });
-
-  const townHallAdditiveBonuses: Partial<HeroStats> = {};
   Object.entries(gameState.townHallUpgradeLevels).forEach(([upgradeId, level]) => {
     if (level > 0) {
       const upgradeDef = townHallUpgradeDefinitions[upgradeId];
@@ -112,73 +84,11 @@ export const calculateHeroStats = (
         upgradeDef.effects.forEach(effectDef => {
           if (effectDef.stat && !effectDef.globalEffectTarget && effectDef.effectParams.type === TownHallUpgradeEffectType.Additive) {
             const effectValue = getTownHallUpgradeEffectValue(effectDef, level);
-            townHallAdditiveBonuses[effectDef.stat] = (townHallAdditiveBonuses[effectDef.stat] || 0) + effectValue;
-          }
-        });
-      }
-    }
-  });
-  (Object.keys(townHallAdditiveBonuses) as Array<keyof HeroStats>).forEach(statKey => {
-    if (statKey === 'maxEnergyShield' || statKey === 'energyShieldRechargeRate' || statKey === 'energyShieldRechargeDelay') {
-        if (mageTowerBuilt) stats[statKey] = (stats[statKey] || 0) + (townHallAdditiveBonuses[statKey] || 0);
-    } else {
-        stats[statKey] = (stats[statKey] || 0) + (townHallAdditiveBonuses[statKey] || 0);
-    }
-  });
-
-  if (stats.damage !== undefined && globalBonuses.heroDamageBonus > 0) stats.damage *= (1 + globalBonuses.heroDamageBonus);
-  if (stats.maxHp !== undefined && globalBonuses.heroHpBonus > 0) stats.maxHp *= (1 + globalBonuses.heroHpBonus);
-  if (stats.maxMana !== undefined && globalBonuses.heroManaBonus > 0) stats.maxMana *= (1 + globalBonuses.heroManaBonus);
-  if (stats.manaRegen !== undefined && globalBonuses.heroManaRegenBonus > 0) stats.manaRegen *= (1 + globalBonuses.heroManaRegenBonus);
-
-  if (mageTowerBuilt) {
-    if (stats.maxEnergyShield && globalBonuses.allHeroMaxEnergyShieldBonus > 0) stats.maxEnergyShield *= (1 + globalBonuses.allHeroMaxEnergyShieldBonus);
-    if (stats.energyShieldRechargeRate && globalBonuses.allHeroEnergyShieldRechargeRateBonus > 0) stats.energyShieldRechargeRate *= (1 + globalBonuses.allHeroEnergyShieldRechargeRateBonus);
-    if (stats.energyShieldRechargeDelay && globalBonuses.allHeroEnergyShieldRechargeDelayReduction > 0) {
-         stats.energyShieldRechargeDelay = Math.max(0, stats.energyShieldRechargeDelay * (1 - globalBonuses.allHeroEnergyShieldRechargeDelayReduction));
-    }
-  }
-
-  Object.entries(gameState.guildHallUpgradeLevels).forEach(([upgradeId, level]) => {
-    if (level > 0) {
-        const ghUpgradeDef = guildHallUpgradeDefinitions[upgradeId];
-        if (ghUpgradeDef) {
-            ghUpgradeDef.effects.forEach(effectDef => {
-                if (effectDef.stat && effectDef.heroClassTarget === heroDef.id && effectDef.effectParams.type === TownHallUpgradeEffectType.PercentageBonus) {
-                    const effectValue = getTownHallUpgradeEffectValue(effectDef, level);
-                    if (stats[effectDef.stat!] !== undefined) {
-                        if (effectDef.stat === 'maxEnergyShield' || effectDef.stat === 'energyShieldRechargeRate' || effectDef.stat === 'energyShieldRechargeDelay') {
-                            if (mageTowerBuilt) (stats[effectDef.stat!] as number) *= (1 + effectValue);
-                        } else {
-                            (stats[effectDef.stat!] as number) *= (1 + effectValue);
-                        }
-                    }
-                }
-            });
-        }
-    }
-  });
-
-  Object.entries(gameState.playerSharedSkills).forEach(([skillId, progress]) => {
-    if (progress.currentMajorLevel > 0) {
-      const skillDef = SHARED_SKILL_DEFINITIONS[skillId];
-      if (skillDef && skillDef.effects) {
-        skillDef.effects.forEach(effect => {
-          if (effect.isPercentage && stats[effect.stat] !== undefined) {
-            let totalEffectValuePercentage = 0;
-             for (let i = 0; i < progress.currentMajorLevel; i++) {
-              totalEffectValuePercentage += effect.baseValuePerMajorLevel[i] || 0;
-               if (i < progress.currentMajorLevel -1) {
-                  totalEffectValuePercentage += (effect.minorValuePerMinorLevel[i] || 0) * (skillDef.minorLevelsPerMajorTier[i] || 0);
-              }
-            }
-            if (progress.currentMajorLevel > 0) {
-                totalEffectValuePercentage += (effect.minorValuePerMinorLevel[progress.currentMajorLevel - 1] || 0) * progress.currentMinorLevel;
-            }
-            if (effect.stat === 'maxEnergyShield' || effect.stat === 'energyShieldRechargeRate' || effect.stat === 'energyShieldRechargeDelay') {
-                if (mageTowerBuilt) (stats[effect.stat] as number) *= (1 + totalEffectValuePercentage);
+            const statKey = effectDef.stat;
+            if (statKey === 'maxEnergyShield' || statKey === 'energyShieldRechargeRate' || statKey === 'energyShieldRechargeDelay') {
+                if (mageTowerBuilt) (stats[statKey] as number) = (stats[statKey] || 0) + effectValue;
             } else {
-                (stats[effect.stat] as number) *= (1 + totalEffectValuePercentage);
+                (stats[statKey] as number) = (stats[statKey] || 0) + effectValue;
             }
           }
         });
@@ -232,8 +142,132 @@ export const calculateHeroStats = (
     });
   }
 
+  // Apply flat bonuses from Aetheric Resonance
+  (Object.keys(gameState.aethericResonanceBonuses) as Array<keyof HeroStats>).forEach(statKey => {
+    if (stats[statKey] !== undefined) {
+      const resonanceBonus = gameState.aethericResonanceBonuses[statKey];
+      if (resonanceBonus) {
+        if (statKey === 'maxEnergyShield' || statKey === 'energyShieldRechargeRate' || statKey === 'energyShieldRechargeDelay') {
+            if (mageTowerBuilt) (stats[statKey] as number) += resonanceBonus.flat || 0;
+        } else {
+            (stats[statKey] as number) += resonanceBonus.flat || 0;
+        }
+      }
+    }
+  });
+
+  // Now apply all percentage bonuses based on the sum of flat bonuses
+  // Global bonuses (like TH global damage%, HP%)
+  if (stats.damage !== undefined && globalBonuses.heroDamageBonus > 0) stats.damage *= (1 + globalBonuses.heroDamageBonus);
+  if (stats.maxHp !== undefined && globalBonuses.heroHpBonus > 0) stats.maxHp *= (1 + globalBonuses.heroHpBonus);
+  if (stats.maxMana !== undefined && globalBonuses.heroManaBonus > 0) stats.maxMana *= (1 + globalBonuses.heroManaBonus);
+  if (stats.manaRegen !== undefined && globalBonuses.heroManaRegenBonus > 0) stats.manaRegen *= (1 + globalBonuses.heroManaRegenBonus);
+
+  if (mageTowerBuilt) {
+    if (stats.maxEnergyShield && globalBonuses.allHeroMaxEnergyShieldBonus > 0) stats.maxEnergyShield *= (1 + globalBonuses.allHeroMaxEnergyShieldBonus);
+    if (stats.energyShieldRechargeRate && globalBonuses.allHeroEnergyShieldRechargeRateBonus > 0) stats.energyShieldRechargeRate *= (1 + globalBonuses.allHeroEnergyShieldRechargeRateBonus);
+    if (stats.energyShieldRechargeDelay && globalBonuses.allHeroEnergyShieldRechargeDelayReduction > 0) {
+         stats.energyShieldRechargeDelay = Math.max(0, stats.energyShieldRechargeDelay * (1 - globalBonuses.allHeroEnergyShieldRechargeDelayReduction));
+    }
+  }
+
+  // Town Hall Percentage Bonuses (Stat Specific)
+  Object.entries(gameState.townHallUpgradeLevels).forEach(([upgradeId, level]) => {
+    if (level > 0) {
+      const upgradeDef = townHallUpgradeDefinitions[upgradeId];
+      if (upgradeDef) {
+        upgradeDef.effects.forEach(effectDef => {
+          if (effectDef.stat && !effectDef.globalEffectTarget && effectDef.effectParams.type === TownHallUpgradeEffectType.PercentageBonus) {
+            const effectValue = getTownHallUpgradeEffectValue(effectDef, level);
+            const statKey = effectDef.stat;
+            if (stats[statKey] !== undefined) {
+                if (statKey === 'maxEnergyShield' || statKey === 'energyShieldRechargeRate' || statKey === 'energyShieldRechargeDelay') {
+                    if (mageTowerBuilt) (stats[statKey] as number) *= (1 + effectValue);
+                } else {
+                    (stats[statKey] as number) *= (1 + effectValue);
+                }
+            }
+          }
+        });
+      }
+    }
+  });
+
+  // Guild Hall Percentage Bonuses (Class Specific)
+  Object.entries(gameState.guildHallUpgradeLevels).forEach(([upgradeId, level]) => {
+    if (level > 0) {
+        const ghUpgradeDef = guildHallUpgradeDefinitions[upgradeId];
+        if (ghUpgradeDef) {
+            ghUpgradeDef.effects.forEach(effectDef => {
+                if (effectDef.stat && effectDef.heroClassTarget === heroDef.id && effectDef.effectParams.type === TownHallUpgradeEffectType.PercentageBonus) {
+                    const effectValue = getTownHallUpgradeEffectValue(effectDef, level);
+                    if (stats[effectDef.stat!] !== undefined) {
+                        if (effectDef.stat === 'maxEnergyShield' || effectDef.stat === 'energyShieldRechargeRate' || effectDef.stat === 'energyShieldRechargeDelay') {
+                            if (mageTowerBuilt) (stats[effectDef.stat!] as number) *= (1 + effectValue);
+                        } else {
+                            (stats[effectDef.stat!] as number) *= (1 + effectValue);
+                        }
+                    }
+                }
+            });
+        }
+    }
+  });
+
+  // Shared Passive Skills - Percentage Contributions
+  Object.entries(gameState.playerSharedSkills).forEach(([skillId, progress]) => {
+    if (progress.currentMajorLevel > 0) {
+        const skillDef = SHARED_SKILL_DEFINITIONS[skillId];
+        if (skillDef && skillDef.effects) {
+            skillDef.effects.forEach(effect => {
+                 if (stats.hasOwnProperty(effect.stat) && effect.isPercentage) {
+                    let percentBonusFromThisSharedSkill = 0;
+                    for (let i = 0; i < progress.currentMajorLevel; i++) {
+                        const majorValue = effect.baseValuePerMajorLevel[i];
+                         if (typeof majorValue === 'number') percentBonusFromThisSharedSkill += majorValue;
+                         else if (majorValue) percentBonusFromThisSharedSkill += majorValue.percent || 0;
+                       if (i < progress.currentMajorLevel -1) {
+                          const minorValue = effect.minorValuePerMinorLevel[i];
+                          const numMinors = skillDef.minorLevelsPerMajorTier[i] || 0;
+                          if (typeof minorValue === 'number') percentBonusFromThisSharedSkill += minorValue * numMinors;
+                          else if (minorValue) percentBonusFromThisSharedSkill += (minorValue.percent || 0) * numMinors;
+                      }
+                    }
+                    if (progress.currentMajorLevel > 0 && progress.currentMinorLevel > 0) {
+                        const minorValueCurrentTier = effect.minorValuePerMinorLevel[progress.currentMajorLevel - 1];
+                        if (typeof minorValueCurrentTier === 'number') percentBonusFromThisSharedSkill += minorValueCurrentTier * progress.currentMinorLevel;
+                        else if (minorValueCurrentTier) percentBonusFromThisSharedSkill += (minorValueCurrentTier.percent || 0) * progress.currentMinorLevel;
+                    }
+                    if (percentBonusFromThisSharedSkill !== 0) {
+                        const statKey = effect.stat as keyof HeroStats;
+                        if (statKey === 'maxEnergyShield' || statKey === 'energyShieldRechargeRate' || statKey === 'energyShieldRechargeDelay') {
+                            if (mageTowerBuilt) (stats[statKey] as number) *= (1 + percentBonusFromThisSharedSkill);
+                        } else {
+                            (stats[statKey] as number) *= (1 + percentBonusFromThisSharedSkill);
+                        }
+                    }
+                }
+            });
+        }
+    }
+  });
+
+  // Apply percentage bonuses from Aetheric Resonance
+  (Object.keys(gameState.aethericResonanceBonuses) as Array<keyof HeroStats>).forEach(statKey => {
+    if (stats[statKey] !== undefined) {
+      const resonanceBonus = gameState.aethericResonanceBonuses[statKey];
+      if (resonanceBonus && resonanceBonus.percentage) {
+        if (statKey === 'maxEnergyShield' || statKey === 'energyShieldRechargeRate' || statKey === 'energyShieldRechargeDelay') {
+            if (mageTowerBuilt) (stats[statKey] as number) *= (1 + resonanceBonus.percentage);
+        } else {
+            (stats[statKey] as number) *= (1 + resonanceBonus.percentage);
+        }
+      }
+    }
+  });
+
+  // Dungeon Run Buffs
   if (gameState.activeDungeonRun && gameState.activeDungeonRun.activeRunBuffs.length > 0 && runBuffDefinitions) {
-    const aggregatedRunBuffEffects: Partial<Record<keyof HeroStats, { percentageAdditive: number, flat: number }>> = {};
     gameState.activeDungeonRun.activeRunBuffs.forEach(activeBuff => {
         const buffDef = runBuffDefinitions[activeBuff.definitionId];
         if (buffDef) {
@@ -246,57 +280,45 @@ export const calculateHeroStats = (
             }
             allEffectsForThisBuff.forEach(effect => {
                 if (effect.stat && stats[effect.stat] !== undefined) {
-                    if (!aggregatedRunBuffEffects[effect.stat]) aggregatedRunBuffEffects[effect.stat] = { percentageAdditive: 0, flat: 0 };
                     if (effect.stat === 'maxEnergyShield' || effect.stat === 'energyShieldRechargeRate' || effect.stat === 'energyShieldRechargeDelay') if (!mageTowerBuilt) return;
-                    if (effect.type === 'FLAT') aggregatedRunBuffEffects[effect.stat]!.flat += effect.value;
-                    else if (effect.type === 'PERCENTAGE_ADDITIVE') aggregatedRunBuffEffects[effect.stat]!.percentageAdditive += effect.value;
+                    if (effect.type === 'FLAT') (stats[effect.stat] as number) += effect.value;
+                    else if (effect.type === 'PERCENTAGE_ADDITIVE') (stats[effect.stat] as number) *= (1 + effect.value);
+                    // PERCENTAGE_MULTIPLICATIVE would be applied differently if used
                 }
             });
         }
     });
-    (Object.keys(aggregatedRunBuffEffects) as Array<keyof HeroStats>).forEach(statKey => {
-        if (stats[statKey] !== undefined) {
-            const buffValues = aggregatedRunBuffEffects[statKey]!;
-            (stats[statKey] as number) *= (1 + buffValues.percentageAdditive);
-            (stats[statKey] as number) += buffValues.flat;
-        }
-    });
   }
-  
-  // Apply Demonicon Milestone Rewards if applicable
+
+  // Demonicon Milestone Bonuses (Percentage applied after other percentages)
   if (isDemoniconBattle && achievedDemoniconMilestoneRewards && achievedDemoniconMilestoneRewards.length > 0) {
-    const milestoneStatBonuses: Partial<Record<keyof HeroStats, { percentage: number }>> = {};
     achievedDemoniconMilestoneRewards.forEach(rewardId => {
       Object.values(DEMONICON_MILESTONE_REWARDS).flat().forEach(milestoneDef => {
         if (milestoneDef.id === rewardId) {
           milestoneDef.rewards.forEach(rewardEffect => {
-            if (rewardEffect.type === 'GLOBAL_STAT_MODIFIER' && rewardEffect.isPercentage) {
-              if (!milestoneStatBonuses[rewardEffect.stat]) milestoneStatBonuses[rewardEffect.stat] = { percentage: 0 };
-              milestoneStatBonuses[rewardEffect.stat]!.percentage += rewardEffect.value;
+            if (rewardEffect.type === 'GLOBAL_STAT_MODIFIER' && rewardEffect.isPercentage && stats[rewardEffect.stat] !== undefined) {
+              if (rewardEffect.stat === 'maxEnergyShield' || rewardEffect.stat === 'energyShieldRechargeRate' || rewardEffect.stat === 'energyShieldRechargeDelay') {
+                if (mageTowerBuilt) (stats[rewardEffect.stat] as number) *= (1 + rewardEffect.value);
+              } else {
+                (stats[rewardEffect.stat] as number) *= (1 + rewardEffect.value);
+              }
             }
+            // Note: Flat Demonicon bonuses would need to be applied earlier or managed carefully.
           });
         }
       });
     });
-    (Object.keys(milestoneStatBonuses) as Array<keyof HeroStats>).forEach(statKey => {
-      if (stats[statKey] !== undefined) {
-        if (statKey === 'maxEnergyShield' || statKey === 'energyShieldRechargeRate' || statKey === 'energyShieldRechargeDelay') {
-          if (mageTowerBuilt) (stats[statKey] as number) *= (1 + milestoneStatBonuses[statKey]!.percentage);
-        } else {
-          (stats[statKey] as number) *= (1 + milestoneStatBonuses[statKey]!.percentage);
-        }
-      }
-    });
   }
 
+  // Active Status Effects (Buffs/Debuffs)
   if ('statusEffects' in heroState && heroState.statusEffects && statusEffectDefinitionsParam) {
     (heroState as BattleHero).statusEffects.forEach(activeEffect => {
         const effectDefinition = activeEffect.definitionId ? statusEffectDefinitionsParam[activeEffect.definitionId] : activeEffect;
         if (effectDefinition && effectDefinition.statAffected && effectDefinition.value !== undefined &&
             (effectDefinition.type === StatusEffectType.BUFF || effectDefinition.type === StatusEffectType.DEBUFF)) {
             const statKey = effectDefinition.statAffected;
-            if (stats[statKey] !== undefined) { 
-                if (statKey === 'maxEnergyShield' || statKey === 'energyShieldRechargeRate' || statKey === 'energyShieldRechargeDelay') if (!mageTowerBuilt) return; 
+            if (stats[statKey] !== undefined) {
+                if (statKey === 'maxEnergyShield' || statKey === 'energyShieldRechargeRate' || statKey === 'energyShieldRechargeDelay') if (!mageTowerBuilt) return;
                 if (effectDefinition.modifierType === 'FLAT') (stats[statKey] as number) += effectDefinition.value;
                 else if (effectDefinition.modifierType === 'PERCENTAGE_ADDITIVE') (stats[statKey] as number) *= (1 + effectDefinition.value);
             }
@@ -304,6 +326,7 @@ export const calculateHeroStats = (
     });
   }
 
+  // Temporary Potion Buffs
   if ('temporaryBuffs' in heroState) {
     const battleHero = heroState as BattleHero;
     if (battleHero.temporaryBuffs) {
@@ -311,7 +334,7 @@ export const calculateHeroStats = (
         if (buff.effectType === 'TEMPORARY_STAT_MODIFIER' && buff.stat) {
           const statKey = buff.stat;
           if (stats[statKey] !== undefined) {
-            if (buff.stat === 'maxEnergyShield' || buff.stat === 'energyShieldRechargeRate' || buff.stat === 'energyShieldRechargeDelay') if (!mageTowerBuilt) return; 
+            if (buff.stat === 'maxEnergyShield' || buff.stat === 'energyShieldRechargeRate' || buff.stat === 'energyShieldRechargeDelay') if (!mageTowerBuilt) return;
             if (buff.modifierType === 'FLAT') (stats[statKey] as number) += buff.value;
             else if (buff.modifierType === 'PERCENTAGE') (stats[statKey] as number) *= (1 + buff.value);
           }
@@ -326,27 +349,20 @@ export const calculateHeroStats = (
     stats.energyShieldRechargeDelay = 0;
   }
 
-  stats.maxHp = Number(stats.maxHp) || 0;
-  stats.damage = Number(stats.damage) || 0;
-  stats.defense = Number(stats.defense) || 0;
-  stats.attackSpeed = Number(stats.attackSpeed) || 1.0;
-  stats.maxEnergyShield = Number(stats.maxEnergyShield) || 0;
-  stats.energyShieldRechargeRate = Number(stats.energyShieldRechargeRate) || 0;
-  stats.energyShieldRechargeDelay = Number(stats.energyShieldRechargeDelay) || DEFAULT_ENERGY_SHIELD_RECHARGE_DELAY_TICKS;
-
-  stats.maxHp = Math.floor(stats.maxHp);
-  stats.damage = parseFloat(stats.damage.toFixed(1));
-  stats.defense = Math.floor(stats.defense);
-  stats.attackSpeed = parseFloat(stats.attackSpeed.toFixed(2));
-  stats.critChance = Number(stats.critChance?.toFixed(4)) || 0;
-  stats.critDamage = Number(stats.critDamage?.toFixed(2)) || 1.5;
-  stats.healPower = parseFloat((stats.healPower || 0).toFixed(1));
-  stats.maxMana = Math.floor(stats.maxMana || 0);
+  // Final formatting and clamping
+  stats.maxHp = Math.max(1, Math.floor(stats.maxHp));
+  stats.damage = Math.max(0, parseFloat(stats.damage.toFixed(1)));
+  stats.defense = Math.max(0, Math.floor(stats.defense));
+  stats.attackSpeed = Math.max(0.1, parseFloat(stats.attackSpeed.toFixed(2))); // Ensure min attack speed
+  stats.critChance = Math.max(0, Math.min(1, Number(stats.critChance?.toFixed(4)) || 0));
+  stats.critDamage = Math.max(1, Number(stats.critDamage?.toFixed(2)) || 1.5);
+  stats.healPower = Math.max(0, parseFloat((stats.healPower || 0).toFixed(1)));
+  stats.maxMana = Math.max(0, Math.floor(stats.maxMana || 0));
   stats.manaRegen = parseFloat((stats.manaRegen || 0).toFixed(2));
   stats.hpRegen = parseFloat((stats.hpRegen || 0).toFixed(2));
-  stats.maxEnergyShield = Math.floor(stats.maxEnergyShield);
-  stats.energyShieldRechargeRate = parseFloat(stats.energyShieldRechargeRate.toFixed(2));
-  stats.energyShieldRechargeDelay = Math.floor(stats.energyShieldRechargeDelay);
+  stats.maxEnergyShield = Math.max(0, Math.floor(stats.maxEnergyShield));
+  stats.energyShieldRechargeRate = Math.max(0, parseFloat(stats.energyShieldRechargeRate.toFixed(2)));
+  stats.energyShieldRechargeDelay = Math.max(0, Math.floor(stats.energyShieldRechargeDelay));
 
   return stats;
 };

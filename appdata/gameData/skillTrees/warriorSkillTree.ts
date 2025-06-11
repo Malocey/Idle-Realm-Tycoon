@@ -1,5 +1,5 @@
 
-import { ResourceType, SkillTreeDefinition, SkillNodeDefinition, CalculatedSpecialAttackData } from '../../types';
+import { ResourceType, SkillTreeDefinition, SkillNodeDefinition, CalculatedSpecialAttackData, StatusEffectType } from '../../types';
 import { SPECIAL_ATTACK_DEFINITIONS } from '../specialAttackDefinitions';
 import { calculateSpecialAttackData } from '../../utils';
 
@@ -144,6 +144,38 @@ export const WARRIOR_SKILL_TREE_DEFINITION: SkillTreeDefinition = {
         costPerLevel: (lvl) => ({ heroicPointsCost: SPECIAL_ATTACK_DEFINITIONS['WARRIOR_SHIELD_BASH'].costBase + lvl * SPECIAL_ATTACK_DEFINITIONS['WARRIOR_SHIELD_BASH'].costIncreasePerLevel }),
         prerequisites: [{ skillId: 'WSK004', level: 2 }], position: { x: 3, y: 4 },
         statBonuses: () => ({})
+      },
+      {
+        id: 'WARRIOR_PASSIVE_COUNTERATTACK_01', name: 'Counter Attack',
+        description: (level) => `On Hit: ${(5 + level * 2)}% chance to immediately counter with ${(20 + level * 5)}% of weapon damage.`,
+        iconName: 'SWORD', maxLevel: 5,
+        costPerLevel: (lvl) => ({ skillPoints: 1, resources: [{ resource: ResourceType.IRON, amount: (lvl + 1) * 12 }] }),
+        prerequisites: [{ skillId: 'WSK002', level: 1 }], position: { x: 0, y: 3 },
+        isPassiveEffect: true, statBonuses: () => ({})
+      },
+      {
+        id: 'WARRIOR_PASSIVE_STUNBLOW_01', name: 'Overwhelming Strike',
+        description: (level) => `On Attack: ${(8 + level * 2)}% chance to deal an additional ${(30 + level * 10)}% damage and briefly stun the target (0.5s).`,
+        iconName: 'SWORD', maxLevel: 5,
+        costPerLevel: (lvl) => ({ skillPoints: 1, resources: [{ resource: ResourceType.GOLD, amount: (lvl + 1) * 25 }] }),
+        prerequisites: [{ skillId: 'WSK001', level: 3 }], position: { x: 3, y: 1 },
+        isPassiveEffect: true, statBonuses: () => ({})
+      },
+      {
+        id: 'WARRIOR_PASSIVE_DEFENSEBUFF_01', name: 'Unyielding',
+        description: (level) => `On Hit: ${(10 + level * 3)}% chance to increase Defense by ${(15 + level * 5)}% for 5s.`,
+        iconName: 'SHIELD', maxLevel: 5,
+        costPerLevel: (lvl) => ({ skillPoints: 1, resources: [{ resource: ResourceType.STONE, amount: (lvl + 1) * 18 }] }),
+        prerequisites: [{ skillId: 'WSK004', level: 1 }], position: { x: 2, y: 4 },
+        isPassiveEffect: true, statBonuses: () => ({})
+      },
+      {
+        id: 'WARRIOR_PASSIVE_CLEAVE_01', name: 'Cleave',
+        description: (level) => `On Attack: ${(7 + level * 2)}% chance to hit another nearby enemy for ${(25 + level * 5)}% of damage.`,
+        iconName: 'SWORD', maxLevel: 5,
+        costPerLevel: (lvl) => ({ skillPoints: 1, heroicPointsCost: 60 + lvl * 15 }),
+        prerequisites: [{ skillId: 'WSK_SA001', level: 1 }], position: { x: 4, y: 0 },
+        isPassiveEffect: true, statBonuses: () => ({})
       },
     ] as SkillNodeDefinition[],
 };

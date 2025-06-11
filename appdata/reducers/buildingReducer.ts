@@ -1,12 +1,12 @@
 
-import { GameState, GameAction, PlayerBuildingState, Cost, GameNotification, GlobalBonuses } from '../types';
+import { GameState, GameAction, PlayerBuildingState, Cost, GameNotification, GlobalBonuses, ResearchProgress } from '../types';
 // FIX: Corrected import path for game data definitions
 import { BUILDING_DEFINITIONS } from '../gameData/index';
 import { NOTIFICATION_ICONS } from '../constants';
 import { calculateBuildingUpgradeCost, canAfford } from '../utils';
 
 export const handleBuildingActions = (
-    state: GameState, 
+    state: GameState,
     action: Extract<GameAction, { type: 'CONSTRUCT_BUILDING' | 'UPGRADE_BUILDING' }>,
     globalBonuses: GlobalBonuses
 ): GameState => {
@@ -47,7 +47,7 @@ export const handleBuildingActions = (
       if (def.maxLevel !== -1 && finalTargetLevel > def.maxLevel) {
         finalTargetLevel = def.maxLevel;
       }
-      
+
       const actualLevelsUpgraded = finalTargetLevel - initialLevel;
       if (actualLevelsUpgraded <= 0) {
          const newNotification: GameNotification = { id: Date.now().toString(), message: `${def.name} is already at max level or no upgrade possible.`, type: 'info', iconName: NOTIFICATION_ICONS.info, timestamp: Date.now() };
@@ -64,7 +64,7 @@ export const handleBuildingActions = (
           amount: Math.max(1, Math.floor(c.amount * (1 - globalBonuses.buildingCostReduction)))
         }));
       }
-      
+
       if (!canAfford(state.resources, costForUpgrade)) {
          const newNotification: GameNotification = { id: Date.now().toString(), message: `Not enough resources to upgrade ${def.name}!`, type: 'error', iconName: NOTIFICATION_ICONS.error, timestamp: Date.now() };
          return { ...state, notifications: [...state.notifications, newNotification]};
@@ -72,7 +72,7 @@ export const handleBuildingActions = (
 
       const newResources = { ...state.resources };
       costForUpgrade.forEach(c => newResources[c.resource] -= c.amount);
-      
+
       const successNotification: GameNotification = {
         id: Date.now().toString(),
         message: levelsToUpgrade > 1
@@ -83,11 +83,22 @@ export const handleBuildingActions = (
         timestamp: Date.now()
       };
 
+      let updatedResearchSlots = state.researchSlots;
+      if (def.id === 'ACADEMY_OF_SCHOLARS' && def.upgrades) {
+          const upgradeEffect = def.upgrades.find(upg => upg.level === finalTargetLevel && upg.effect.type === 'INCREASE_RESEARCH_SLOTS');
+          if (upgradeEffect) {
+              updatedResearchSlots += upgradeEffect.effect.value;
+              successNotification.message += ` Research slots increased to ${updatedResearchSlots}!`;
+          }
+      }
+
+
       return {
         ...state,
         resources: newResources,
         buildings: state.buildings.map(b => b.id === buildingId ? { ...b, level: finalTargetLevel } : b),
-        notifications: [...state.notifications, successNotification]
+        notifications: [...state.notifications, successNotification],
+        researchSlots: updatedResearchSlots,
       };
     }
     default:

@@ -28,19 +28,16 @@ const HeroStatsPanel: React.FC<HeroStatsPanelProps> = ({ heroState, heroDef }) =
   return (
     <div className="p-4 space-y-3 bg-slate-800 rounded-lg h-full">
       <div>
-        <h3 className="text-xl font-bold text-sky-300 mb-2">Charakterwerte</h3>
+        <h3 className="text-xl font-bold text-sky-300 mb-2">Character Stats</h3>
         <div className="space-y-1 text-sm">
           {(Object.keys(finalStats) as Array<keyof HeroStats>).map((key) => {
             const value = finalStats[key];
-            // Ensure value is not undefined before further checks
             if (value === undefined) return null;
             if (key === 'healPower' && value === 0) return null;
             if (key === 'manaRegen' && (!finalStats.maxMana || finalStats.maxMana === 0)) return null;
-            // Hide energy shield rate/delay if max energy shield is 0 or undefined
             if ((key === 'energyShieldRechargeRate' || key === 'energyShieldRechargeDelay') && (!finalStats.maxEnergyShield || finalStats.maxEnergyShield === 0)) {
                 return null;
             }
-            // If maxEnergyShield itself is 0 (or undefined and defaults to 0), don't show it.
             if (key === 'maxEnergyShield' && (!value || value === 0)) {
                 return null;
             }

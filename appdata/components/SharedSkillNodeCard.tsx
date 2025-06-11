@@ -25,29 +25,69 @@ const SharedSkillNodeCard: React.FC<SharedSkillNodeCardProps> = ({
 }) => {
   const Icon = ICONS[skillDef.iconName];
   const SharedPointsIcon = ICONS.UPGRADE;
-  const HeroicPointsIcon = ICONS.HEROIC_POINTS; // Changed from HeroXPIcon
+  const HeroicPointsIcon = ICONS.HEROIC_POINTS; 
 
   const currentMajorLevel = skillProgress?.currentMajorLevel || 0;
   const currentMinorLevel = skillProgress?.currentMinorLevel || 0;
 
-  let currentTotalBonus = 0;
   const effect = skillDef.effects[0];
-  for (let i = 0; i < currentMajorLevel; i++) {
-    currentTotalBonus += effect.baseValuePerMajorLevel[i] || 0;
-    if (i < currentMajorLevel -1 ) { // Add completed minor levels from PREVIOUS major tiers
-        currentTotalBonus += (effect.minorValuePerMinorLevel[i] || 0) * (skillDef.minorLevelsPerMajorTier[i] || 0);
-    }
+  let currentTotalBonusForDesc: number | { flat: number; percent: number };
+  let nextMinorBonusForDesc: number | { flat: number; percent: number } | null = null;
+  let nextMajorBonusForDesc: number | { flat: number; percent: number } | null = null;
+
+  if (skillDef.id === 'SHARED_HP_FLAT') {
+      let flat = 0; let percent = 0;
+      for (let i = 0; i < currentMajorLevel; i++) {
+          const majorVal = effect.baseValuePerMajorLevel[i] as { flat?: number; percent?: number };
+          flat += majorVal.flat || 0;
+          percent += majorVal.percent || 0;
+          if (i < currentMajorLevel - 1) {
+              const minorVal = effect.minorValuePerMinorLevel[i] as { flat?: number; percent?: number };
+              flat += (minorVal.flat || 0) * (skillDef.minorLevelsPerMajorTier[i] || 0);
+              percent += (minorVal.percent || 0) * (skillDef.minorLevelsPerMajorTier[i] || 0);
+          }
+      }
+      if (currentMajorLevel > 0) {
+          const minorValCurrent = effect.minorValuePerMinorLevel[currentMajorLevel - 1] as { flat?: number; percent?: number };
+          flat += (minorValCurrent.flat || 0) * currentMinorLevel;
+          percent += (minorValCurrent.percent || 0) * currentMinorLevel;
+      }
+      currentTotalBonusForDesc = { flat, percent };
+
+      if (currentMajorLevel > 0 && currentMinorLevel < (skillDef.minorLevelsPerMajorTier[currentMajorLevel - 1] || 0)) {
+          const nextMinorVal = effect.minorValuePerMinorLevel[currentMajorLevel - 1] as { flat?: number; percent?: number };
+          nextMinorBonusForDesc = { flat: nextMinorVal.flat || 0, percent: nextMinorVal.percent || 0};
+      }
+      if (currentMajorLevel < skillDef.maxMajorLevels) {
+          const nextMajorVal = effect.baseValuePerMajorLevel[currentMajorLevel] as { flat?: number; percent?: number };
+           nextMajorBonusForDesc = { flat: nextMajorVal.flat || 0, percent: nextMajorVal.percent || 0 };
+      }
+  } else {
+      let totalNumericBonus = 0;
+      for (let i = 0; i < currentMajorLevel; i++) {
+          totalNumericBonus += (effect.baseValuePerMajorLevel[i] as number) || 0;
+          if (i < currentMajorLevel - 1) {
+              totalNumericBonus += ((effect.minorValuePerMinorLevel[i] as number) || 0) * (skillDef.minorLevelsPerMajorTier[i] || 0);
+          }
+      }
+      if (currentMajorLevel > 0) {
+          totalNumericBonus += ((effect.minorValuePerMinorLevel[currentMajorLevel - 1] as number) || 0) * currentMinorLevel;
+      }
+      currentTotalBonusForDesc = totalNumericBonus;
+
+      if (currentMajorLevel > 0 && currentMinorLevel < (skillDef.minorLevelsPerMajorTier[currentMajorLevel - 1] || 0)) {
+          nextMinorBonusForDesc = (effect.minorValuePerMinorLevel[currentMajorLevel - 1] as number) || 0;
+      }
+      if (currentMajorLevel < skillDef.maxMajorLevels) {
+          nextMajorBonusForDesc = (effect.baseValuePerMajorLevel[currentMajorLevel] as number) || 0;
+      }
   }
-   if (currentMajorLevel > 0) { // Add minor levels from the CURRENT active major tier
-       currentTotalBonus += (effect.minorValuePerMinorLevel[currentMajorLevel - 1] || 0) * currentMinorLevel;
-   }
 
 
   const isMaxMajorLevel = currentMajorLevel >= skillDef.maxMajorLevels;
   const minorLevelsInCurrentTier = currentMajorLevel > 0 ? skillDef.minorLevelsPerMajorTier[currentMajorLevel - 1] : (currentMajorLevel === 0 ? skillDef.minorLevelsPerMajorTier[0] : 0);
   const isMaxMinorLevelForCurrentTier = currentMajorLevel > 0 && currentMinorLevel >= minorLevelsInCurrentTier;
 
-  // Determine if the major upgrade section should be shown AT ALL
   const isCompletelyMaxed = isMaxMajorLevel && (currentMajorLevel === 0 ? true : isMaxMinorLevelForCurrentTier);
   const showMajorUpgradeSection = !isCompletelyMaxed && (currentMajorLevel === 0 || isMaxMinorLevelForCurrentTier);
 
@@ -65,20 +105,13 @@ const SharedSkillNodeCard: React.FC<SharedSkillNodeCardProps> = ({
 
   let canUpgradeMinor = false;
   let minorUpgradeCost = 0;
-  let nextMinorBonus = null;
+  
   if (currentMajorLevel > 0 && !isMaxMinorLevelForCurrentTier) {
     minorUpgradeCost = skillDef.costHeroXpPoolPerMinorLevel(currentMajorLevel, currentMinorLevel);
     canUpgradeMinor = heroXpPool >= minorUpgradeCost;
-    nextMinorBonus = effect.minorValuePerMinorLevel[currentMajorLevel - 1] || 0;
   }
 
-  let nextMajorBonusUnlock = null;
-  if(!isMaxMajorLevel){ // This should be based on currentMajorLevel vs maxMajorLevels
-      nextMajorBonusUnlock = effect.baseValuePerMajorLevel[currentMajorLevel] || 0;
-  }
-
-
-  const description = skillDef.description(currentTotalBonus, nextMinorBonus, nextMajorBonusUnlock, effect.isPercentage);
+  const description = skillDef.description(currentTotalBonusForDesc, nextMinorBonusForDesc, nextMajorBonusForDesc, effect.isPercentage);
 
   let cardBgClass = 'bg-slate-800';
   let borderColorClass = 'border-slate-700';
@@ -89,10 +122,9 @@ const SharedSkillNodeCard: React.FC<SharedSkillNodeCardProps> = ({
     cardBgClass = 'bg-green-800/30';
     borderColorClass = 'border-green-500 ring-2 ring-green-400/50';
     titleColorClass = 'text-green-300';
-  } else if (showMajorUpgradeSection && canAffordMajor) { // Glow for major if affordable
+  } else if (showMajorUpgradeSection && canAffordMajor) { 
     borderColorClass = 'border-sky-500';
-    // majorUpgradeButtonGlow already set
-  } else if (canUpgradeMinor) { // Highlight for affordable minor
+  } else if (canUpgradeMinor) { 
     borderColorClass = 'border-amber-500';
   }
 
@@ -141,7 +173,7 @@ const SharedSkillNodeCard: React.FC<SharedSkillNodeCardProps> = ({
               ></div>
               <div className="relative z-10 flex items-center justify-center space-x-1.5 text-white">
                 {ICONS.UPGRADE && <ICONS.UPGRADE className="w-4 h-4"/>}
-                <span>Level Up (+{(nextMinorBonus !== null ? (nextMinorBonus * (effect.isPercentage ? 100 : 1)).toFixed(1) : '0')}{effect.isPercentage ? '%' : ''})</span>
+                <span>Level Up (+{((nextMinorBonusForDesc as number) * (effect.isPercentage ? 100 : 1)).toFixed(1)}{effect.isPercentage ? '%' : ''})</span>
               </div>
             </div>
           </div>

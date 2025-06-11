@@ -1,9 +1,10 @@
 
 import { ResourceType, CellType, RunBuffRarity } from './enums';
 import { Cost, GameNotification } from './common';
-import { PermanentHeroBuff, PlayerHeroState } from './hero'; 
-import { BuildingLevelUpEventInBattle, BattleHero, BattleState } from './battle'; 
+import { PermanentHeroBuff, PlayerHeroState, HeroStats } from './hero'; // Moved HeroStats here
+import { BuildingLevelUpEventInBattle, BattleHero, BattleState } from './battle';
 import { MinigameUpgradeType } from './minigame';
+import { ResonanceMoteType } from './aethericResonanceTypes'; // Corrected import for ResonanceMoteType
 
 export type GameAction =
   | { type: 'PROCESS_TICK' }
@@ -11,31 +12,12 @@ export type GameAction =
   | { type: 'CONSTRUCT_BUILDING'; payload: { buildingId: string } }
   | { type: 'UPGRADE_BUILDING'; payload: { buildingId: string; levelsToUpgrade?: number; totalBatchCost?: Cost[] } }
   | { type: 'RECRUIT_HERO'; payload: { heroId: string } }
-  | { type: 'UNLOCK_HERO_DEFINITION'; payload: { heroId: string } } 
+  | { type: 'UNLOCK_HERO_DEFINITION'; payload: { heroId: string } }
   | { type: 'UPGRADE_SKILL'; payload: { heroDefinitionId: string; skillId: string; levelsToUpgrade?: number; totalBatchCost?: Cost[] } }
   | { type: 'LEARN_UPGRADE_SPECIAL_ATTACK'; payload: { heroDefinitionId: string; skillNodeId: string; levelsToUpgrade?: number; totalBatchCost?: Cost[] } }
   | { type: 'UPGRADE_HERO_EQUIPMENT'; payload: { heroDefinitionId: string; equipmentId: string; levelsToUpgrade?: number; totalBatchCost?: Cost[] } }
-  | { type: 'AWARD_SHARD_TO_HERO'; payload: { heroDefinitionId: string; shardDefinitionId: string; shardLevel: number; } } // New Action
-  | { type: 'START_BATTLE_PREPARATION'; payload: { 
-        waveNumber: number; 
-        isAutoProgression?: boolean;
-        persistedHeroHp?: Record<string, number>;
-        persistedHeroMana?: Record<string, number>;
-        persistedHeroSpecialCooldowns?: Record<string, Record<string, number>>;
-        rewardsForPreviousWave?: Cost[];
-        expFromPreviousWave?: number;
-        previousWaveNumberCleared?: number; 
-        buildingLevelUpEventsFromPreviousWave?: BuildingLevelUpEventInBattle[];
-        previousBattleOutcomeForQuestProcessing?: {
-            lootCollected: Cost[];
-            defeatedEnemyOriginalIds: string[];
-            waveNumberReached: number;
-        };
-        sourceMapNodeId?: string; 
-        customWaveSequence?: string[]; 
-        currentCustomWaveIndex?: number; 
-    } }
-  | { type: 'START_WAVE_BATTLE_PREPARATION'; payload: { 
+  | { type: 'AWARD_SHARD_TO_HERO'; payload: { heroDefinitionId: string; shardDefinitionId: string; shardLevel: number; } }
+  | { type: 'START_BATTLE_PREPARATION'; payload: {
         waveNumber: number;
         isAutoProgression?: boolean;
         persistedHeroHp?: Record<string, number>;
@@ -45,17 +27,36 @@ export type GameAction =
         expFromPreviousWave?: number;
         previousWaveNumberCleared?: number;
         buildingLevelUpEventsFromPreviousWave?: BuildingLevelUpEventInBattle[];
-         previousBattleOutcomeForQuestProcessing?: { 
+        previousBattleOutcomeForQuestProcessing?: {
             lootCollected: Cost[];
             defeatedEnemyOriginalIds: string[];
             waveNumberReached: number;
         };
-        sourceMapNodeId?: string; 
-        customWaveSequence?: string[]; 
-        currentCustomWaveIndex?: number; 
+        sourceMapNodeId?: string;
+        customWaveSequence?: string[];
+        currentCustomWaveIndex?: number;
     } }
-  | { type: 'BATTLE_ACTION' } 
-  | { type: 'END_BATTLE'; payload: { outcome: 'VICTORY' | 'DEFEAT'; waveClearBonus?: Cost[], collectedLoot?: Cost[], expRewardToHeroes?: number } } 
+  | { type: 'START_WAVE_BATTLE_PREPARATION'; payload: {
+        waveNumber: number;
+        isAutoProgression?: boolean;
+        persistedHeroHp?: Record<string, number>;
+        persistedHeroMana?: Record<string, number>;
+        persistedHeroSpecialCooldowns?: Record<string, Record<string, number>>;
+        rewardsForPreviousWave?: Cost[];
+        expFromPreviousWave?: number;
+        previousWaveNumberCleared?: number;
+        buildingLevelUpEventsFromPreviousWave?: BuildingLevelUpEventInBattle[];
+         previousBattleOutcomeForQuestProcessing?: {
+            lootCollected: Cost[];
+            defeatedEnemyOriginalIds: string[];
+            waveNumberReached: number;
+        };
+        sourceMapNodeId?: string;
+        customWaveSequence?: string[];
+        currentCustomWaveIndex?: number;
+    } }
+  | { type: 'BATTLE_ACTION' }
+  | { type: 'END_BATTLE'; payload: { outcome: 'VICTORY' | 'DEFEAT'; waveClearBonus?: Cost[], collectedLoot?: Cost[], expRewardToHeroes?: number } }
   | { type: 'END_WAVE_BATTLE_RESULT'; payload: { outcome: 'VICTORY' | 'DEFEAT'; battleStateFromEnd: BattleState } }
   | { type: 'END_DUNGEON_GRID_BATTLE_RESULT'; payload: { outcome: 'VICTORY' | 'DEFEAT'; battleStateFromEnd: BattleState } }
   | { type: 'ADD_NOTIFICATION'; payload: Omit<GameNotification, 'id' | 'timestamp'> }
@@ -124,29 +125,29 @@ export type GameAction =
   | { type: 'UPGRADE_SHARED_SKILL_MINOR'; payload: { skillId: string } }
   | { type: 'GOLD_MINE_MINIGAME_INIT'; payload?: { depth?: number } }
   | { type: 'GOLD_MINE_MINIGAME_START_RUN'; payload?: { depth?: number } }
-  | { type: 'GOLD_MINE_MINIGAME_MINE_CELL'; payload: { dr: number, dc: number } } 
+  | { type: 'GOLD_MINE_MINIGAME_MINE_CELL'; payload: { dr: number, dc: number } }
   | { type: 'GOLD_MINE_MINIGAME_MOVE_PLAYER'; payload: { dr: number, dc: number } }
   | { type: 'GOLD_MINE_MINIGAME_RETURN_TO_SURFACE' }
   | { type: 'GOLD_MINE_MINIGAME_PURCHASE_UPGRADE'; payload: { upgradeId: string } }
   | { type: 'GOLD_MINE_MINIGAME_TICK' }
   | { type: 'SET_BATTLE_TARGET'; payload: { targetId: string | null } }
   | { type: 'START_DEMONICON_CHALLENGE'; payload: { enemyId: string } }
-  | { type: 'PROCESS_DEMONICON_VICTORY_REWARDS'; payload: { 
-      enemyId: string; 
-      clearedRank: number; 
-      survivingHeroesWithState: Array<{ 
-        uniqueBattleId: string; 
-        definitionId: string; 
-        level: number; 
-        currentExp: number; 
-        expToNextLevel: number; 
-        skillPoints: number; 
-        currentHp: number; 
-        currentMana: number; 
-        specialAttackCooldownsRemaining: Record<string, number>; 
+  | { type: 'PROCESS_DEMONICON_VICTORY_REWARDS'; payload: {
+      enemyId: string;
+      clearedRank: number;
+      survivingHeroesWithState: Array<{
+        uniqueBattleId: string;
+        definitionId: string;
+        level: number;
+        currentExp: number;
+        expToNextLevel: number;
+        skillPoints: number;
+        currentHp: number;
+        currentMana: number;
+        specialAttackCooldownsRemaining: Record<string, number>;
       }>;
-      rankLootCollected: Cost[]; 
-      rankExpCollected: number;  
+      rankLootCollected: Cost[];
+      rankExpCollected: number;
     } }
   | { type: 'CONTINUE_DEMONICON_CHALLENGE' }
   | { type: 'CLEANUP_DEMONICON_STATE' }
@@ -154,4 +155,11 @@ export type GameAction =
   | { type: 'REVEAL_MAP_NODES_STATIC'; payload: { nodeIds: string[] } }
   | { type: 'SET_CURRENT_MAP'; payload: { mapId: string; targetNodeId?: string } }
   | { type: 'COLLECT_MAP_RESOURCE'; payload: { nodeId: string; mapId: string } }
-  | { type: 'SET_MAP_POI_COMPLETED'; payload: { poiKey: string } };
+  | { type: 'SET_MAP_POI_COMPLETED'; payload: { poiKey: string } }
+  | { type: 'GAIN_ACCOUNT_XP'; payload: { amount: number; source: string; } }
+  | { type: 'COLLECT_RESONANCE_MOTES'; payload: { statId: keyof HeroStats; quality: ResonanceMoteType; amount: number } }
+  | { type: 'INFUSE_STAT_SPECIFIC_MOTE'; payload: { statId: keyof HeroStats; moteType: ResonanceMoteType } }
+  // Research Actions
+  | { type: 'START_RESEARCH'; payload: { researchId: string, levelToResearch: number } }
+  | { type: 'CANCEL_RESEARCH'; payload: { researchId: string, researchSlotId?: number } }
+  | { type: 'PROCESS_RESEARCH_TICK' }; // Added for tickReducer to process research

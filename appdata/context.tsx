@@ -1,4 +1,5 @@
 
+
 import React, { createContext, useMemo, useCallback, useEffect, useContext, useReducer } from 'react';
 import {
   ResourceType, GameState, GameAction, GameContextType, Resources, PlayerBuildingState,
@@ -6,8 +7,7 @@ import {
   AttackEvent, TownHallUpgradeDefinition, SpecialAttackDefinition, SpecialAttackTargetType,
   HeroEquipmentDefinition, BuildingDefinition, GlobalBonuses, TownHallUpgradeUnlockRequirementType,
   DungeonRunState, DungeonDefinition, PermanentHeroBuff, BuildingLevelUpEventInBattle, BuildingSpecificUpgradeDefinition, GuildHallUpgradeDefinition, PotionDefinition, ShardDefinition,
-  QuestTemplate, TrapDefinition, DungeonEventDefinition, RunBuffDefinition, ColosseumWaveDefinition, ActionBattleState, SharedSkillDefinition, StatusEffectDefinition, WorldMapDefinition, // Added WorldMapDefinition
-  DemoniconMilestoneRewardDefinition 
+  QuestTemplate, TrapDefinition, DungeonEventDefinition, RunBuffDefinition, ColosseumWaveDefinition, ActionBattleState, SharedSkillDefinition, StatusEffectDefinition, WorldMapDefinition, AccountLevelDefinition, AethericResonanceStatConfig, ResearchDefinition
 } from './types';
 import { ICONS } from './components/Icons';
 import {
@@ -17,7 +17,7 @@ import {
   BUILDING_DEFINITIONS, HERO_DEFINITIONS, SKILL_TREES, ENEMY_DEFINITIONS,
   WAVE_DEFINITIONS, TOWN_HALL_UPGRADE_DEFINITIONS, SPECIAL_ATTACK_DEFINITIONS, EQUIPMENT_DEFINITIONS,
   DUNGEON_DEFINITIONS, BUILDING_SPECIFIC_UPGRADE_DEFINITIONS, GUILD_HALL_UPGRADE_DEFINITIONS, POTION_DEFINITIONS, SHARD_DEFINITIONS, QUEST_DEFINITIONS, TRAP_DEFINITIONS, DUNGEON_EVENT_DEFINITIONS, RUN_BUFF_DEFINITIONS, COLOSSEUM_WAVE_DEFINITIONS, SHARED_SKILL_DEFINITIONS, STATUS_EFFECT_DEFINITIONS, 
-  DEMONICON_MILESTONE_REWARDS, worldMapDefinitions // Imported worldMapDefinitions
+  DEMONICON_MILESTONE_REWARDS, worldMapDefinitions, ACCOUNT_LEVEL_DEFINITIONS, AETHERIC_RESONANCE_STAT_CONFIGS, RESEARCH_DEFINITIONS
 } from './gameData/index';
 import {
     calculateBuildingProduction, calculateBuildingUpgradeCost,
@@ -40,7 +40,7 @@ import { useDungeonManager } from './hooks/useDungeonManager';
 export const GameContext = createContext<GameContextType | undefined>(undefined);
 
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const staticData = useMemo(() => ({
+  const staticData: GameContextType['staticData'] = useMemo(() => ({
     buildingDefinitions: BUILDING_DEFINITIONS,
     heroDefinitions: HERO_DEFINITIONS,
     skillTrees: SKILL_TREES,
@@ -63,7 +63,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     sharedSkillDefinitions: SHARED_SKILL_DEFINITIONS,
     statusEffectDefinitions: STATUS_EFFECT_DEFINITIONS, 
     demoniconMilestoneRewards: DEMONICON_MILESTONE_REWARDS,
-    worldMapDefinitions: worldMapDefinitions, // Added worldMapDefinitions here
+    worldMapDefinitions: worldMapDefinitions,
+    accountLevelDefinitions: ACCOUNT_LEVEL_DEFINITIONS,
+    aethericResonanceStatConfigs: AETHERIC_RESONANCE_STAT_CONFIGS,
+    researchDefinitions: RESEARCH_DEFINITIONS, // Added missing property
   }), []);
 
   const reducerWithStaticData = useMemo(() => createGameReducer(staticData), [staticData]);

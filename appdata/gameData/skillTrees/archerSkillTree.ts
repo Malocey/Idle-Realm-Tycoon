@@ -74,5 +74,29 @@ export const ARCHER_SKILL_TREE_DEFINITION: SkillTreeDefinition = {
         statBonuses: (lvl) => ({ critDamage: lvl * 0.1 }),
         prerequisites: [{ skillId: 'ASK004', level: 2 }], position: { x: 2, y: 2 }
       },
+      {
+        id: 'ARCHER_PASSIVE_RICOCHET_01', name: 'Ricochet Shot',
+        description: (level) => `On Attack: ${(10 + level * 2)}% chance for arrows to ricochet to a second target for ${(30 + level * 5)}% damage.`,
+        iconName: 'MAGIC_ARROW', maxLevel: 5,
+        costPerLevel: (lvl) => ({ skillPoints: 1, resources: [{ resource: ResourceType.WOOD, amount: (lvl + 1) * 15 }] }),
+        prerequisites: [{ skillId: 'ASK003', level: 1 }], position: { x: 1, y: -1 }, 
+        isPassiveEffect: true, statBonuses: () => ({})
+      },
+      {
+        id: 'ARCHER_PASSIVE_RAPIDFIRE_01', name: 'Rapid Fire',
+        description: (level) => `On Standard Attack: ${(5 + level * 1)}% chance to immediately fire another arrow (no mana cost).`,
+        iconName: 'BOW_ICON', maxLevel: 5,
+        costPerLevel: (lvl) => ({ skillPoints: 1, heroicPointsCost: 50 + lvl * 20 }),
+        prerequisites: [{ skillId: 'ASK_XP_ATTACK_SPEED', level: 1 }], position: { x: 3, y: 1 },
+        isPassiveEffect: true, statBonuses: () => ({})
+      },
+      {
+        id: 'ARCHER_PASSIVE_CRIPPLESHOT_01', name: 'Crippling Shot',
+        description: (level) => `On Standard Attack: ${(8 + level * 2)}% chance to reduce target's attack speed by ${(15 + level * 3)}% for 3s.`,
+        iconName: 'WIND_SLASH', maxLevel: 5,
+        costPerLevel: (lvl) => ({ skillPoints: 1, resources: [{ resource: ResourceType.LEATHER, amount: (lvl + 1) * 10 }] }),
+        prerequisites: [{ skillId: 'ASK004', level: 1 }], position: { x: 1, y: 3 },
+        isPassiveEffect: true, statBonuses: () => ({})
+      },
     ] as SkillNodeDefinition[],
 };

@@ -62,7 +62,7 @@ export const HERO_DEFINITIONS: Record<string, HeroDefinition> = {
   },
   'ELEMENTAL_MAGE': {
     id: 'ELEMENTAL_MAGE',
-    name: 'Elementar Mage',
+    name: 'Elemental Mage',
     description: 'A mage wielding the raw powers of fire, ice, and lightning.',
     baseStats: { 
       maxHp: 65, damage: 8, defense: 1, attackSpeed: 1.0, critChance: 0.05, critDamage: 1.5, healPower: 0, maxMana: 100, manaRegen: 2.0,

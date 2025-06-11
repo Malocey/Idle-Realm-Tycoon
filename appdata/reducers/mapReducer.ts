@@ -107,7 +107,16 @@ export const handleMapActions = (
     case 'COLLECT_MAP_RESOURCE': {
       const { nodeId, mapId } = action.payload;
       const mapDef = worldMapDefinitions[mapId];
-      if (!mapDef) return state;
+      
+      if (!mapDef) {
+        console.error(`COLLECT_MAP_RESOURCE: Map definition not found for mapId: ${mapId}`);
+        return { ...state, notifications: [...state.notifications, {id: Date.now().toString(), message: `Error: Map data for ${mapId} not found.`, type: 'error', iconName: NOTIFICATION_ICONS.error, timestamp: Date.now()}] };
+      }
+      if (!mapDef.nodes || !Array.isArray(mapDef.nodes)) {
+        console.error(`COLLECT_MAP_RESOURCE: Nodes array is missing or invalid for mapId: ${mapId}. mapDef:`, mapDef);
+        return { ...state, notifications: [...state.notifications, {id: Date.now().toString(), message: `Error: Node data missing for ${mapId}.`, type: 'error', iconName: NOTIFICATION_ICONS.error, timestamp: Date.now()}] };
+      }
+      
       const node = mapDef.nodes.find(n => n.id === nodeId);
       
       if (!node || node.poiType !== 'RESOURCE' || !node.resourceType || !node.resourceAmount || node.grantsShardId) {

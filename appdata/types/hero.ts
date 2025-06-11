@@ -1,8 +1,9 @@
 
 import { Cost } from './common';
-import { EquipmentSlot, ResourceType, SpecialAttackTargetType, StatusEffectType, AbilityEffectTriggerType } from './enums'; // Added AbilityEffectTriggerType
+import { EquipmentSlot, ResourceType, SpecialAttackTargetType, StatusEffectType, AbilityEffectTriggerType, GlobalEffectTarget } from './enums'; // Added GlobalEffectTarget
 import { PlayerOwnedShard } from './shards';
 import { StatusEffectDefinition } from './battle/effects';
+import { GlobalBonuses } from './globalBonuses'; // Added GlobalBonuses
 
 export interface HeroStats {
   maxHp: number;
@@ -195,16 +196,18 @@ export interface StatBreakdownItem {
 }
 
 export interface SharedSkillEffect {
-  stat: keyof HeroStats;
-  baseValuePerMajorLevel: number[]; 
-  minorValuePerMinorLevel: number[]; 
-  isPercentage: boolean;
+  // `stat` can now be a key of HeroStats OR GlobalBonuses for flexibility
+  stat: keyof HeroStats | keyof GlobalBonuses | 'heroXpGainBonus' | 'heroicPointsGainBonus' | 'enemyGoldDropBonus';
+  baseValuePerMajorLevel: number[] | Array<{ flat?: number, percent?: number }>; // Can be simple number array (for direct stat) or object for combined flat/percent
+  minorValuePerMinorLevel: number[] | Array<{ flat?: number, percent?: number }>; // Same as above
+  isPercentage: boolean; // Overall type of bonus if simple numbers are used
 }
+
 
 export interface SharedSkillDefinition {
   id: string;
   name: string;
-  description: (currentBonus: number, nextBonusPerMinorLevel: number | null, nextBonusPerMajorLevelUnlock: number | null, isPercentage: boolean) => string;
+  description: (currentBonus: number | {flat: number, percent: number}, nextBonusPerMinorLevel: number | {flat: number, percent: number} | null, nextBonusPerMajorLevelUnlock: number | {flat: number, percent: number} | null, isPercentage: boolean) => string;
   iconName: string;
   maxMajorLevels: number;
   minorLevelsPerMajorTier: number[]; 

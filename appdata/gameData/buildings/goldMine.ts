@@ -1,3 +1,4 @@
+
 import { ResourceType, BuildingDefinition } from '../../types';
 
 export const GOLD_MINE_DEFINITION: BuildingDefinition = {
@@ -11,6 +12,6 @@ export const GOLD_MINE_DEFINITION: BuildingDefinition = {
   maxLevel: -1,
   iconName: 'GOLD',
   isProducer: true,
-  unlockWaveRequirement: 3,
-  hasMinigame: true, // Added this flag
+  // unlockWaveRequirement: 3, // Entfernt
+  hasMinigame: true,
 };

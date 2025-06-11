@@ -331,7 +331,7 @@ export const updateParticipants = (
             addStatusEffectToParticipant(updatedParticipant, appliance.effect, isHeroSourceForThisEffect);
         }
     });
-    statusEffectsToApplyNextTick.length = 0; 
+    // Clearing statusEffectsToApplyNextTick is done after processing all participants
 
 
     updatedParticipant.statusEffects = stillActiveEffects;
@@ -476,9 +476,37 @@ export const updateParticipants = (
     }
     return updatedParticipant;
   };
+  
 
-  const finalHeroes = heroes.map(h => updateSingleParticipant(h, true));
+  const finalHeroesInitial = heroes.map(h => updateSingleParticipant(h, true));
   const finalEnemies = enemies.map(e => updateSingleParticipant(e, false));
 
-  return { updatedHeroes: finalHeroes, updatedEnemies: finalEnemies, logMessages, attackEventsFromDots, statsRecalculationNeededForHeroIds, newSummons };
+  // Apply Paladin Aura after individual updates
+  let finalHeroesWithAura = [...finalHeroesInitial];
+  const paladinsInPartyProvidingAura = finalHeroesWithAura.filter(h => 
+    h.definitionId === 'PALADIN' && 
+    h.currentHp > 0 && 
+    (h.skillLevels['PALADIN_PASSIVE_PERSEVERANCEAURA_01'] || 0) > 0
+  );
+
+  paladinsInPartyProvidingAura.forEach(paladinAuraProvider => {
+    const skillLevel = paladinAuraProvider.skillLevels['PALADIN_PASSIVE_PERSEVERANCEAURA_01'];
+    const procChancePerTick = (0.01 + skillLevel * 0.005);
+    if (Math.random() < procChancePerTick) {
+        const manaRestored = 1 + Math.floor(skillLevel / 2);
+        finalHeroesWithAura = finalHeroesWithAura.map(heroToReceiveAura => {
+            if (heroToReceiveAura.currentHp > 0 && heroToReceiveAura.calculatedStats.maxMana && heroToReceiveAura.calculatedStats.maxMana > 0) {
+                const newMana = Math.min(heroToReceiveAura.calculatedStats.maxMana!, (heroToReceiveAura.currentMana || 0) + manaRestored);
+                if (newMana > (heroToReceiveAura.currentMana || 0)) {
+                     logMessages.push(`  ↳ ${paladinAuraProvider.name}'s Aura of Perseverance restores ${manaRestored} Mana to ${heroToReceiveAura.name}.`);
+                     return { ...heroToReceiveAura, currentMana: newMana };
+                }
+            }
+            return heroToReceiveAura;
+        });
+    }
+  });
+  statusEffectsToApplyNextTick.length = 0; // Clear after processing all participants for the tick
+
+  return { updatedHeroes: finalHeroesWithAura, updatedEnemies: finalEnemies, logMessages, attackEventsFromDots, statsRecalculationNeededForHeroIds, newSummons };
 };

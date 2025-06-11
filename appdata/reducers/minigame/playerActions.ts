@@ -45,7 +45,7 @@ export const handleMinigameCellClick = (
       if (revealedResource) {
         newMinigameState.resources[revealedResource] = (newMinigameState.resources[revealedResource] || 0) + 1;
         newMinigameState.popupEvents.push(createPopupEvent(revealedResource, 1, currentCellInNewState.r, currentCellInNewState.c, true));
-        newNotifications.push({id: Date.now().toString() + "-advExcProc", message: `Meistergräber! Found +1 ${revealedResource.replace('MINIGAME_','')}!`, type: 'success', iconName: ICONS.UPGRADE ? 'UPGRADE' : undefined, timestamp: Date.now()});
+        newNotifications.push({id: Date.now().toString() + "-advExcProc", message: `Master Excavator! Found +1 ${revealedResource.replace('MINIGAME_','')}!`, type: 'success', iconName: ICONS.UPGRADE ? 'UPGRADE' : undefined, timestamp: Date.now()});
       }
     }
 
@@ -79,7 +79,7 @@ export const handleMinigameCellClick = (
       }
     }
     
-    if (currentCellInNewState.currentResource !== ResourceType.MINIGAME_SAND) { // Sand doesn't transform
+    if (currentCellInNewState.currentResource !== ResourceType.MINIGAME_SAND) { 
         currentCellInNewState.currentClicks += amountCollected;
         if (currentCellInNewState.currentClicks >= currentCellInNewState.clicksToNextResource) {
             if (currentCellInNewState.currentResource === ResourceType.MINIGAME_DIRT) {

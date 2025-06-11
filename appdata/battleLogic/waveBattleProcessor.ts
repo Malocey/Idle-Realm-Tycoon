@@ -14,17 +14,23 @@ import { handleLootAndXP } from '../reducers/combat/lootAndXPHandler';
 import { checkBattleStatus } from '../reducers/combat/battleStatusManager';
 import { calculateRunExpToNextLevel } from '../utils';
 
+interface WaveBattleTickResult {
+    updatedGameState: GameState;
+    deferredActions: GameAction[];
+    newlyAddedToFirstTimeDefeatsForAccXp?: string[];
+}
+
 export const processWaveBattleTick = (
     state: GameState,
     globalBonuses: GlobalBonuses,
     staticData: GameContextType['staticData']
-): GameState => {
+): WaveBattleTickResult => {
   if (!state.battleState || state.battleState.status !== 'FIGHTING' || state.battleState.isDemoniconBattle) {
-    // This processor is only for non-Demonicon wave/dungeon battles
-    return state;
+    return { updatedGameState: state, deferredActions: [] };
   }
 
   const battleTickDurationMs = GAME_TICK_MS / state.gameSpeed;
+  let allDeferredActionsThisTick: GameAction[] = [];
 
   let currentBattleLog = [...state.battleState.battleLog];
   let currentBattleLootCollected: Cost[] = [...state.battleState.battleLootCollected];
@@ -39,7 +45,7 @@ export const processWaveBattleTick = (
   let currentBuildings = [...state.buildings];
   let currentBuildingLevelUpEventsGameState = {...state.buildingLevelUpEvents};
   let currentBuildingLevelUpEventsInBattle = [...(state.battleState.buildingLevelUpEventsInBattle || [])];
-  let actionsToDispatch: GameAction[] = [];
+  
   let playerSharedSkillPointsFromBattle = state.playerSharedSkillPoints;
 
   // 1. Update Participants (Cooldowns, Status Effects, Buffs, Regen, Channeling)
@@ -193,7 +199,7 @@ export const processWaveBattleTick = (
   currentBuildingLevelUpEventsInBattle = lootAndXPResult.updatedBuildingLevelUpEventsInBattle;
   currentBattleLog.push(...lootAndXPResult.logMessages);
   currentNotifications = lootAndXPResult.updatedNotifications;
-  actionsToDispatch.push(...lootAndXPResult.deferredActions);
+  allDeferredActionsThisTick.push(...lootAndXPResult.deferredActions); // Collect deferred actions
 
   if (lootAndXPResult.sharedSkillPointsGained > 0) {
     playerSharedSkillPointsFromBattle += lootAndXPResult.sharedSkillPointsGained;
@@ -228,52 +234,59 @@ export const processWaveBattleTick = (
   };
 
   let finalGameState = { ...state, battleState: finalBattleState, buildings: currentBuildings, buildingLevelUpEvents: currentBuildingLevelUpEventsGameState, notifications: currentNotifications, playerSharedSkillPoints: playerSharedSkillPointsFromBattle };
+  
+  // Process specific deferred actions that might modify run state directly within this tick's scope
+  // Other deferred actions like GAIN_ACCOUNT_XP will be returned for the main reducer.
+  lootAndXPResult.deferredActions.forEach(deferredAction => {
+    if (deferredAction.type === 'GAIN_RUN_XP') {
+        if (finalGameState.activeDungeonRun) {
+            const currentRun = finalGameState.activeDungeonRun;
+            let updatedRunXP = currentRun.runXP + deferredAction.payload.amount;
+            let updatedRunLevel = currentRun.runLevel;
+            let updatedExpToNextRunLevel = currentRun.expToNextRunLevel;
+            let updatedOfferedBuffChoices = currentRun.offeredBuffChoices;
+            let runLevelUpNotifications: GameNotification[] = [];
 
-  if (actionsToDispatch.length > 0) {
-    actionsToDispatch.forEach(deferredAction => {
-        if (deferredAction.type === 'GAIN_RUN_XP') {
-            if (finalGameState.activeDungeonRun) {
-                const currentRun = finalGameState.activeDungeonRun;
-                let updatedRunXP = currentRun.runXP + deferredAction.payload.amount;
-                let updatedRunLevel = currentRun.runLevel;
-                let updatedExpToNextRunLevel = currentRun.expToNextRunLevel;
-                let updatedOfferedBuffChoices = currentRun.offeredBuffChoices;
-                let runLevelUpNotifications: GameNotification[] = [];
+            while (updatedRunXP >= updatedExpToNextRunLevel) {
+                updatedRunLevel++;
+                updatedRunXP -= updatedExpToNextRunLevel;
+                updatedExpToNextRunLevel = calculateRunExpToNextLevel(updatedRunLevel);
+                runLevelUpNotifications.push({
+                    id: `${Date.now()}-runLevelUpCombat-${updatedRunLevel}`,
+                    message: `Run Level Up! Reached Level ${updatedRunLevel}. Choose a buff!`,
+                    type: 'success',
+                    iconName: ICONS.UPGRADE ? 'UPGRADE' : undefined,
+                    timestamp: Date.now()
+                });
 
-                while (updatedRunXP >= updatedExpToNextRunLevel) {
-                    updatedRunLevel++;
-                    updatedRunXP -= updatedExpToNextRunLevel;
-                    updatedExpToNextRunLevel = calculateRunExpToNextLevel(updatedRunLevel);
-                    runLevelUpNotifications.push({
-                        id: `${Date.now()}-runLevelUpCombat-${updatedRunLevel}`,
-                        message: `Run Level Up! Reached Level ${updatedRunLevel}. Choose a buff!`,
-                        type: 'success',
-                        iconName: ICONS.UPGRADE ? 'UPGRADE' : undefined,
-                        timestamp: Date.now()
-                    });
-
-                    const numChoices = (staticData.dungeonDefinitions[currentRun.dungeonDefinitionId]?.finalReward.permanentBuffChoices || 3) + globalBonuses.dungeonBuffChoicesBonus;
-                    const availableBuffs = Object.values(staticData.runBuffDefinitions).filter(buff => finalGameState.unlockedRunBuffs.includes(buff.id));
-                    const chosenBuffIds: string[] = [];
-                    if(availableBuffs.length > 0){
-                        for (let i = 0; i < numChoices && availableBuffs.length > 0; i++) {
-                            const buffDefinition = availableBuffs.splice(Math.floor(Math.random() * availableBuffs.length), 1)[0] as RunBuffDefinition;
-                            chosenBuffIds.push(buffDefinition.id);
-                        }
+                const numChoices = (staticData.dungeonDefinitions[currentRun.dungeonDefinitionId]?.finalReward.permanentBuffChoices || 3) + globalBonuses.dungeonBuffChoicesBonus;
+                const availableBuffs = Object.values(staticData.runBuffDefinitions).filter(buff => finalGameState.unlockedRunBuffs.includes(buff.id));
+                const chosenBuffIds: string[] = [];
+                if(availableBuffs.length > 0){
+                    for (let i = 0; i < numChoices && availableBuffs.length > 0; i++) {
+                        const buffDefinition = availableBuffs.splice(Math.floor(Math.random() * availableBuffs.length), 1)[0] as RunBuffDefinition;
+                        chosenBuffIds.push(buffDefinition.id);
                     }
-                    updatedOfferedBuffChoices = chosenBuffIds.length > 0 ? chosenBuffIds : null;
                 }
-                finalGameState.activeDungeonRun = {
-                    ...currentRun,
-                    runXP: updatedRunXP,
-                    runLevel: updatedRunLevel,
-                    expToNextRunLevel: updatedExpToNextRunLevel,
-                    offeredBuffChoices: updatedOfferedBuffChoices,
-                };
-                finalGameState.notifications = [...finalGameState.notifications, ...runLevelUpNotifications];
+                updatedOfferedBuffChoices = chosenBuffIds.length > 0 ? chosenBuffIds : null;
             }
+            finalGameState.activeDungeonRun = {
+                ...currentRun,
+                runXP: updatedRunXP,
+                runLevel: updatedRunLevel,
+                expToNextRunLevel: updatedExpToNextRunLevel,
+                offeredBuffChoices: updatedOfferedBuffChoices,
+            };
+            finalGameState.notifications = [...finalGameState.notifications, ...runLevelUpNotifications];
+             // Filter out GAIN_RUN_XP as it's handled, keep others like GAIN_ACCOUNT_XP
+            allDeferredActionsThisTick = allDeferredActionsThisTick.filter(da => da.type !== 'GAIN_RUN_XP');
         }
-    });
-  }
-  return finalGameState;
+    }
+  });
+
+  return { 
+    updatedGameState: finalGameState, 
+    deferredActions: allDeferredActionsThisTick,
+    newlyAddedToFirstTimeDefeatsForAccXp: lootAndXPResult.newlyAddedToFirstTimeDefeatsForAccXp,
+  };
 };
