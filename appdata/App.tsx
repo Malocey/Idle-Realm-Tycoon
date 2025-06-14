@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { GameProvider, useGameContext } from './context';
 import TopBar from './components/TopBar';
@@ -11,15 +12,15 @@ import HeroAcademyView from './views/HeroAcademyView';
 import DungeonExploreView from './views/DungeonExploreView'; 
 import CheatMenuModal from './components/CheatMenuModal';
 import StoneQuarryMinigameView from './views/StoneQuarryMinigameView';
-import ActionBattleView from './views/ActionBattleView';
+import ActionBattleView from './views/ActionBattleView'; // Corrected import if ActionBattleView exports default
 import SharedSkillTreeView from './views/SharedSkillTreeView'; 
 import GoldMineMinigameView from './views/GoldMineMinigameView';
 import DemoniconPortalView from './views/DemoniconPortalView';
 import WorldMapView from './views/WorldMapView'; 
 import AccountLevelInfoModal from './components/AccountLevelInfoModal'; 
 import AcademyModal from './components/AcademyModal'; 
-import AutoBattlerView from './views/AutoBattlerView'; // New Import
-import { GameState, ActiveView } from './types'; // Added ActiveView
+import AutoBattlerView from './views/AutoBattlerView';
+import { GameState, ActiveView } from './types'; 
 
 const VIEW_TRANSITION_DURATION = 400; // ms, should match CSS animation duration
 
@@ -28,8 +29,8 @@ const AppContentInternal: React.FC = () => {
   const [isCheatMenuModalOpen, setIsCheatMenuModalOpen] = useState(false);
   const [isAccountLevelModalOpen, setIsAccountLevelModalOpen] = useState(false); 
   
-  const [currentView, setCurrentView] = useState<ActiveView | null>(null); // Use ActiveView enum
-  const [previousView, setPreviousView] = useState<ActiveView | null>(null); // Use ActiveView enum
+  const [currentView, setCurrentView] = useState<ActiveView | null>(null); 
+  const [previousView, setPreviousView] = useState<ActiveView | null>(null); 
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   useEffect(() => {
@@ -75,7 +76,7 @@ const AppContentInternal: React.FC = () => {
     setIsAccountLevelModalOpen(prev => !prev);
   };
 
-  const renderView = (viewName: ActiveView | null, isExiting: boolean) => { // Use ActiveView enum
+  const renderView = (viewName: ActiveView | null, isExiting: boolean) => { 
     if (!viewName) return null;
     
     let viewComponent;
@@ -98,7 +99,7 @@ const AppContentInternal: React.FC = () => {
           />
         ); 
         break;
-      case ActiveView.AUTO_BATTLER: viewComponent = <AutoBattlerView />; break; // New case
+      case ActiveView.AUTO_BATTLER: viewComponent = <AutoBattlerView />; break; 
       default: return null;
     }
 

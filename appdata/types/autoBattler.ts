@@ -16,11 +16,12 @@ export enum AutoBattlerBuildingType {
 }
 
 export interface AutoBattlerBuildingCard {
-  id: string; // e.g., 'FARM_CARD', 'BARRACKS_CARD_LVL1'
+  id: string; 
   name: string;
   buildingType: AutoBattlerBuildingType;
   cost: number; // Supplies cost
-  // Add other card-specific properties like description, icon, etc.
+  producesUnitId?: string;
+  productionTimeMs?: number; 
 }
 
 export interface AutoBattlerBaseStructure {
@@ -28,62 +29,75 @@ export interface AutoBattlerBaseStructure {
   type: AutoBattlerBuildingType;
   hp?: number;
   maxHp?: number;
-  x: number; // For fixed structures, this is world/path position
-  y: number; // For fixed structures, this is world/path position
+  x?: number; // Visual display X coordinate
+  y?: number; // Visual display Y coordinate
+  producesUnitId?: string;      
+  productionTimeMs?: number;    
+  productionProgressMs?: number; 
 }
 
 export interface AutoBattlerBuilding extends AutoBattlerBaseStructure {
   level: number;
-  // For grid buildings, x and y are grid cell indices (col, row)
-  gridX: number;
-  gridY: number;
-  // Production/buffing state if applicable
+  position: { x: number; y: number; }; // Grid column x, grid row y
+  productionProgressMs?: number; 
+  producesUnitId?: string; 
+  productionTimeMs?: number; 
 }
 
-export interface AutoBattlerUnit {
-  id: string; // Unique instance ID
-  type: string; // e.g., 'SOLDIER', 'ARCHER', 'BUILDER'
+export interface AutoBattlerUnitDefinition {
+  id: string;
+  name: string;
   hp: number;
   maxHp: number;
   damage: number;
-  attackSpeed: number;
-  x: number; // Position on the battle path
+  attackSpeed: number; // Milliseconds between attacks
+  speed: number; // Pixels per second
+  attackRange: number; // Pixels
+}
+
+export interface AutoBattlerUnit {
+  instanceId: string; 
+  definitionId: string; 
+  hp: number;
+  maxHp: number;
+  damage: number;
+  attackSpeed: number; // Cooldown in ms
+  attackRange: number; // Range in pixels
+  speed: number;
+  x: number; 
   y: number;
-  targetId?: string | null;
+  targetId?: string | null; 
   isPlayerUnit: boolean;
-  // Other unit stats/state
+  attackCooldownRemainingMs?: number; // Time until next attack is ready
+  isMoving?: boolean; // To control movement when targeting
+  stackSize: number; // Number of units in this stack
 }
 
 export interface AutoBattlerEnemyTower extends AutoBattlerBaseStructure {
-  type: AutoBattlerBuildingType.ENEMY_TOWER; // Ensure type consistency
-  // Specific tower properties like attack range, damage
+  type: AutoBattlerBuildingType.ENEMY_TOWER;
 }
 
 export interface AutoBattlerDefense extends AutoBattlerBaseStructure {
    type: AutoBattlerBuildingType.BALLISTA;
-  // Ballista specific properties
 }
 
 export interface AutoBattlerState {
   isActive: boolean;
   supplies: number;
-  grid: (AutoBattlerBuilding | null)[][]; // Represents the 10x6 player grid
+  grid: (AutoBattlerBuilding | null)[][]; 
   playerUnits: AutoBattlerUnit[];
-  builderUnits: AutoBattlerUnit[]; // Specifically builder units
-  playerDefenses: AutoBattlerDefense[]; // Ballistas built by player
+  builderUnits: AutoBattlerUnit[]; 
+  playerDefenses: AutoBattlerDefense[]; 
   
   enemyUnits: AutoBattlerUnit[];
   enemyTowers: AutoBattlerEnemyTower[];
-  enemyBase: AutoBattlerBaseStructure & { hp: number; maxHp: number };
+  enemyBase: AutoBattlerBaseStructure & { hp: number; maxHp: number; producesUnitId?: string; productionTimeMs?: number; productionProgressMs?: number; };
   
-  enemySpawnRateModifier: number; // Starts at 1.0, increases with tower destruction
+  enemySpawnRateModifier: number;
 
-  // Card system state
   deck: AutoBattlerBuildingCard[];
   hand: AutoBattlerBuildingCard[];
   discard: AutoBattlerBuildingCard[];
 
-  // UI or game flow state
-  currentPhase: 'SETUP' | 'COMBAT' | 'ENDED';
-  gameTime: number; // In ticks or ms
+  gameTime: number; 
 }

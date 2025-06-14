@@ -17,7 +17,7 @@ interface BuildingCardProps {
   onEnterColosseum?: () => void;
   onOpenDemoniconPortal?: () => void;
   onOpenAcademy?: () => void; 
-  onEnterAutoBattler?: () => void; // New prop
+  onEnterAutoBattler?: () => void;
 }
 
 const BUILDING_LEVEL_UP_INDICATOR_DURATION = 10000;
@@ -31,7 +31,7 @@ const BuildingCard: React.FC<BuildingCardProps> = ({
   onEnterColosseum,
   onOpenDemoniconPortal,
   onOpenAcademy,
-  onEnterAutoBattler, // New prop
+  onEnterAutoBattler,
 }) => {
   const { gameState, dispatch, getBuildingProduction, getBuildingUpgradeCost: getSingleLevelUpgradeCost, getGlobalBonuses } = useGameContext();
   const def = BUILDING_DEFINITIONS[buildingState.id];
@@ -151,7 +151,7 @@ const BuildingCard: React.FC<BuildingCardProps> = ({
 
       {def.isProducer && currentProductionPerSecond.length > 0 && (
         <div className="mb-2">
-            <h4 className="text-xs text-slate-500 uppercase font-semibold mb-1">Produktion (pro Sekunde)</h4>
+            <h4 className="text-xs text-slate-500 uppercase font-semibold mb-1">Production (per Sekunde)</h4>
             {currentProductionPerSecond.map(p => (
             <div key={p.resource} className="flex items-center text-sm">
                 <span className={`${RESOURCE_COLORS[p.resource as ResourceType]}`}>{p.resource.replace(/_/g,' ')}:</span>
@@ -163,7 +163,7 @@ const BuildingCard: React.FC<BuildingCardProps> = ({
 
        {(def.maxLevel === -1 || buildingState.level < def.maxLevel) && (
         <div className="mt-3 space-y-2">
-          <h4 className="text-xs text-slate-500 uppercase font-semibold mb-1">Upgrade Kosten (Lvl {buildingState.level + 1})</h4>
+          <h4 className="text-xs text-slate-500 uppercase font-semibold mb-1">Upgrade Cost (Lvl {buildingState.level + 1})</h4>
           {upgradeCostForNextLevel.map(c => (
             <div key={c.resource} className={`flex items-center text-sm ${gameState.resources[c.resource] < c.amount ? 'text-red-400' : 'text-slate-300'}`}>
               <span className={`${RESOURCE_COLORS[c.resource as ResourceType]}`}>{ICONS[c.resource] && React.createElement(ICONS[c.resource], {className:"w-3 h-3 inline mr-1"})} {c.resource.replace(/_/g,' ')}:</span>
@@ -201,7 +201,7 @@ const BuildingCard: React.FC<BuildingCardProps> = ({
               variant="secondary"
               icon={ICONS.SETTINGS && <ICONS.SETTINGS className="w-4 h-4"/>}
             >
-              Globale Upgrades
+              Global Upgrades
             </Button>
         )}
         {def.id === 'GUILD_HALL' && onOpenGuildHallUpgrades && (
@@ -211,7 +211,7 @@ const BuildingCard: React.FC<BuildingCardProps> = ({
               variant="secondary"
               icon={ICONS.HERO && <ICONS.HERO className="w-4 h-4"/>}
             >
-              Gilden Upgrades
+              Guild Upgrades
             </Button>
         )}
         {(def.id === 'MAGE_TOWER' || def.id === 'FARM') && onOpenBuildingSpecificUpgrades && hasSpecificUpgrades && (
@@ -221,8 +221,8 @@ const BuildingCard: React.FC<BuildingCardProps> = ({
               variant="secondary"
               icon={ICONS.UPGRADE && <ICONS.UPGRADE className="w-4 h-4"/>}
             >
-              {def.id === 'MAGE_TOWER' ? 'Arkane Verbesserungen' :
-               def.id === 'FARM' ? 'Farm Verbesserungen' : 'Gebäude-Upgrades'}
+              {def.id === 'MAGE_TOWER' ? 'Arcane Enhancements' :
+               def.id === 'FARM' ? 'Farm Improvements' : 'Building Upgrades'}
             </Button>
         )}
          {def.id === 'ACADEMY_OF_SCHOLARS' && onOpenAcademy && ( 
@@ -232,17 +232,17 @@ const BuildingCard: React.FC<BuildingCardProps> = ({
                 variant="secondary"
                 icon={ICONS.BOOK_ICON && <ICONS.BOOK_ICON className="w-4 h-4"/>}
             >
-                Forschung
+                Research
             </Button>
         )}
-        {def.id === 'KRIEGSAKADEMIE' && onEnterAutoBattler && ( // New button
+        {def.id === 'WAR_ACADEMY' && onEnterAutoBattler && ( 
             <Button
               onClick={onEnterAutoBattler}
               className="w-full"
               variant="secondary"
               icon={ICONS.FIGHT && <ICONS.FIGHT className="w-4 h-4"/>}
             >
-              Auto-Battler Minispiel
+              Auto-Battler Minigame
             </Button>
         )}
         {def.id === 'COLOSSEUM' && onEnterColosseum && (
@@ -252,7 +252,7 @@ const BuildingCard: React.FC<BuildingCardProps> = ({
               variant="secondary"
               icon={ICONS.COLOSSEUM_ICON && <ICONS.COLOSSEUM_ICON className="w-4 h-4"/>}
             >
-              Kolosseum betreten
+              Enter Colosseum
             </Button>
         )}
         {def.id === 'DEMONICON_GATE' && onOpenDemoniconPortal && (
@@ -262,16 +262,16 @@ const BuildingCard: React.FC<BuildingCardProps> = ({
               variant="secondary"
               icon={ICONS.ENEMY && <ICONS.ENEMY className="w-4 h-4"/>}
             >
-              Demonicon betreten
+              Enter Demonicon
             </Button>
         )}
       </div>
 
       {def.id === 'FORGE' && ( 
         <div className="mt-3 pt-3 border-t border-slate-700 space-y-2">
-            <h4 className="text-md font-semibold text-amber-300">Katakomben-Schlüssel herstellen</h4>
+            <h4 className="text-md font-semibold text-amber-300">Craft Catacomb Keys</h4>
              <div className="flex items-center space-x-2">
-                <label htmlFor={`craft-key-amount-${def.id}`} className="text-sm text-slate-300">Menge:</label>
+                <label htmlFor={`craft-key-amount-${def.id}`} className="text-sm text-slate-300">Quantity:</label>
                 <input
                     type="number"
                     id={`craft-key-amount-${def.id}`}
@@ -281,7 +281,7 @@ const BuildingCard: React.FC<BuildingCardProps> = ({
                     className="w-16 p-1 bg-slate-700 border border-slate-600 rounded text-sm"
                 />
             </div>
-            <div className="text-xs">Kosten für {craftKeyAmount} Schlüssel:</div>
+            <div className="text-xs">Cost for {craftKeyAmount} key(s):</div>
             {totalKeyCost.map(c => (
                  <div key={c.resource} className={`flex items-center text-xs ${gameState.resources[c.resource] < c.amount ? 'text-red-400' : RESOURCE_COLORS[c.resource]}`}>
                     <span className={`${RESOURCE_COLORS[c.resource]}`}>{ICONS[c.resource] && React.createElement(ICONS[c.resource], {className:"w-3 h-3 inline mr-1"})} {c.resource.replace(/_/g,' ')}:</span>
@@ -289,7 +289,7 @@ const BuildingCard: React.FC<BuildingCardProps> = ({
                 </div>
             ))}
             <Button onClick={handleCraftKeys} disabled={!canAffordKeys || craftKeyAmount <= 0} className="w-full" variant="secondary" icon={ICONS.CATACOMB_KEY && <ICONS.CATACOMB_KEY className="w-4 h-4"/>}>
-                Schlüssel herstellen
+                Craft Keys
             </Button>
         </div>
       )}
@@ -300,12 +300,12 @@ const BuildingCard: React.FC<BuildingCardProps> = ({
             variant="secondary"
             icon={ICONS.COMPASS && <ICONS.COMPASS className="w-4 h-4"/>}
           >
-            Katakomben betreten
+            Enter Catacombs
           </Button>
       )}
 
       {def.maxLevel !== -1 && buildingState.level >= def.maxLevel && (
-        <p className="text-sm text-green-400 mt-3 text-center">Gebäude hat max. Level erreicht</p>
+        <p className="text-sm text-green-400 mt-3 text-center">Building is at Max Level</p>
       )}
     </div>
   );

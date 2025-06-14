@@ -14,6 +14,7 @@ import { handleGuildHallUpgradeActions } from './guildHallUpgradeReducer';
 import { handleCraftingActions } from './craftingReducer';
 import { handleHeroActions } from './heroReducer';
 import { handleShardActions } from './shardReducer';
+// BattleActions are now delegated from here.
 import { handleCombatTick } from './combat/index';
 import { handleDungeonActions } from './dungeonReducer';
 import { questReducer } from './questReducer';
@@ -56,14 +57,11 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
     if (tickResult.activeView === ActiveView.GOLD_MINE_MINIGAME && tickResult.goldMineMinigame && tickResult.goldMineMinigame.status === 'MINING_IN_PROGRESS') {
         tickResult = goldMineMinigameReducer(tickResult, { type: 'GOLD_MINE_MINIGAME_TICK' } as any, globalBonuses);
     }
-    // Add Auto-Battler tick processing if needed in the future
-    // if (tickResult.activeView === ActiveView.AUTO_BATTLER && tickResult.autoBattler && tickResult.autoBattler.isActive) {
-    //    tickResult = autoBattlerReducer(tickResult, { type: 'AUTO_BATTLER_TICK' } as any);
-    // }
+    // Auto-Battler tick is dispatched from its view directly, not from PROCESS_TICK
     return { ...state, ...tickResult };
   }
 
-  if (action.type === 'INITIALIZE_AUTO_BATTLER') { 
+  if (action.type === 'INITIALIZE_AUTO_BATTLER' || action.type === 'PLAY_AUTOBATTLER_CARD' || action.type === 'AUTOBATTLER_GAME_TICK') { 
     return autoBattlerReducer(state, action);
   }
 

@@ -1,4 +1,5 @@
 
+
 import { ResourceType, CellType, RunBuffRarity, ActiveView } from './enums'; // Added ActiveView
 import { Cost, GameNotification } from './common';
 import { PermanentHeroBuff, PlayerHeroState, HeroStats } from './hero'; 
@@ -6,14 +7,15 @@ import { BuildingLevelUpEventInBattle, BattleHero, BattleState } from './battle'
 import { MinigameUpgradeType } from './minigame';
 import { ResonanceMoteType } from './aethericResonanceTypes'; 
 import { ResearchProgress, CompletedResearchEntry } from './research';
+// import { AutoBattlerPhase } from './autoBattler'; // AutoBattlerPhase removed
 
 export type GameAction =
   | { type: 'PROCESS_TICK' }
-  | { type: 'SET_ACTIVE_VIEW'; payload: ActiveView } // Use ActiveView enum
+  | { type: 'SET_ACTIVE_VIEW'; payload: ActiveView } 
   | { type: 'CONSTRUCT_BUILDING'; payload: { buildingId: string } }
   | { type: 'UPGRADE_BUILDING'; payload: { buildingId: string; levelsToUpgrade?: number; totalBatchCost?: Cost[] } }
   | { type: 'RECRUIT_HERO'; payload: { heroId: string } }
-  | { type: 'UNLOCK_HERO_DEFINITION'; payload: { heroId: string } }
+  | { type: 'UNLOCK_HERO_DEFINITION'; payload: { heroId: string } } 
   | { type: 'UPGRADE_SKILL'; payload: { heroDefinitionId: string; skillId: string; levelsToUpgrade?: number; totalBatchCost?: Cost[] } }
   | { type: 'LEARN_UPGRADE_SPECIAL_ATTACK'; payload: { heroDefinitionId: string; skillNodeId: string; levelsToUpgrade?: number; totalBatchCost?: Cost[] } }
   | { type: 'UPGRADE_HERO_EQUIPMENT'; payload: { heroDefinitionId: string; equipmentId: string; levelsToUpgrade?: number; totalBatchCost?: Cost[] } }
@@ -166,5 +168,7 @@ export type GameAction =
   | { type: 'START_RESEARCH'; payload: { researchId: string, levelToResearch: number } }
   | { type: 'CANCEL_RESEARCH'; payload: { researchId: string, researchSlotId?: number } }
   | { type: 'PROCESS_RESEARCH_TICK' }
-  | { type: 'INITIALIZE_AUTO_BATTLER' } // New action
-  ;
+  | { type: 'INITIALIZE_AUTO_BATTLER' }
+  | { type: 'PLAY_AUTOBATTLER_CARD'; payload: { handIndex: number; position: { x: number; y: number } } }
+  | { type: 'AUTOBATTLER_GAME_TICK' }
+  | { type: 'AUTOBATTLER_UNIT_ATTACK'; payload: { attackerId: string; targetId: string } }; // New action type

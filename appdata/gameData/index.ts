@@ -18,12 +18,14 @@ export * from './eventDefinitions';
 export * from './runBuffDefinitions';
 export * from './colosseumWaveDefinitions';
 export * from './sharedSkillDefinitions';
-export * from './statusEffectDefinitions';
+export * from './statusEffectDefinitions'; 
 export * from './demoniconMilestoneRewards';
 export * from './maps/index'; // Updated to use the maps barrel file
 export * from './accountLevelBonuses';
 export * from './aethericResonanceDefinitions';
 export * from './researchDefinitions';
+export * from './autoBattlerCardDefinitions';
+export * from './autoBattlerUnitDefinitions';
 export { GOLD_MINE_UPGRADE_DEFINITIONS } from './goldMineUpgrades';
 
 // Explicitly re-export specific maps if needed elsewhere directly, though barrel files are preferred.

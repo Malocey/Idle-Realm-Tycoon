@@ -46,7 +46,7 @@ const MyBuildingsTab: React.FC<MyBuildingsTabProps> = ({
             onEnterColosseum={b.id === 'COLOSSEUM' ? onEnterColosseum : undefined}
             onOpenDemoniconPortal={b.id === 'DEMONICON_GATE' ? onOpenDemoniconPortal : undefined}
             onOpenAcademy={b.id === 'ACADEMY_OF_SCHOLARS' ? onOpenAcademy : undefined}
-            onEnterAutoBattler={b.id === 'KRIEGSAKADEMIE' ? onEnterAutoBattler : undefined} // Pass to BuildingCard
+            onEnterAutoBattler={b.id === 'WAR_ACADEMY' ? onEnterAutoBattler : undefined} // Changed KRIEGSAKADEMIE to WAR_ACADEMY
           />
         ))}
         {buildings.length === 0 && (

@@ -1,8 +1,8 @@
 
 
-import { GameState, GameAction, GlobalBonuses, Cost, GameNotification, ResourceType, GameContextType, ActiveDemoniconChallenge, BattleHero, EnemyDefinition, BattleState, BuildingLevelUpEventInBattle, PlayerHeroState } from './../types';
+import { GameState, GameAction, GlobalBonuses, Cost, GameNotification, ResourceType, GameContextType, ActiveDemoniconChallenge, BattleHero, EnemyDefinition, BattleState, BuildingLevelUpEventInBattle, PlayerHeroState, ActiveView } from './../types';
 import { calculateGlobalBonusesFromAllSources, formatNumber, canAfford, calculateGoldMinePlayerStats, calculateDemoniconEnemyStats as calculateDemoniconEnemyStatsUtil, getExpToNextHeroLevel, calculateHeroStats as calculateHeroStatsUtil } from './../utils';
-import { HERO_DEFINITIONS, ENEMY_DEFINITIONS as ALL_ENEMY_DEFINITIONS, TOWN_HALL_UPGRADE_DEFINITIONS, BUILDING_SPECIFIC_UPGRADE_DEFINITIONS, GUILD_HALL_UPGRADE_DEFINITIONS, GOLD_MINE_UPGRADE_DEFINITIONS, SKILL_TREES, EQUIPMENT_DEFINITIONS, RUN_BUFF_DEFINITIONS, STATUS_EFFECT_DEFINITIONS, SPECIAL_ATTACK_DEFINITIONS, BUILDING_DEFINITIONS, SHARD_DEFINITIONS, WAVE_DEFINITIONS } from '../gameData/index';
+import { HERO_DEFINITIONS, ENEMY_DEFINITIONS as ALL_ENEMY_DEFINITIONS, TOWN_HALL_UPGRADE_DEFINITIONS, BUILDING_SPECIFIC_UPGRADE_DEFINITIONS, GUILD_HALL_UPGRADE_DEFINITIONS, GOLD_MINE_UPGRADE_DEFINITIONS, SKILL_TREES, EQUIPMENT_DEFINITIONS, RUN_BUFF_DEFINITIONS, STATUS_EFFECT_DEFINITIONS, SPECIAL_ATTACK_DEFINITIONS, BUILDING_DEFINITIONS, SHARD_DEFINITIONS, WAVE_DEFINITIONS, worldMapDefinitions, AETHERIC_RESONANCE_STAT_CONFIGS, RESEARCH_DEFINITIONS } from '../gameData/index';
 import { NOTIFICATION_ICONS, INITIAL_GOLD_MINE_PLAYER_STATS, GAME_TICK_MS, DEFAULT_ENERGY_SHIELD_RECHARGE_DELAY_TICKS, MAX_WAVE_NUMBER } from '../constants';
 
 // Modular reducer imports
@@ -30,6 +30,10 @@ import { waveBattleFlowReducer } from './battleFlow/waveBattleFlowReducer';
 import { startBattleReducer } from './battleFlow/startBattleReducer'; 
 import { dungeonBattleFlowReducer } from './battleFlow/dungeonBattleFlowReducer';
 import { handleMapActions } from './mapReducer'; 
+import { aethericResonanceReducer } from './aethericResonanceReducer';
+import { researchReducer } from './researchReducer';
+import { autoBattlerReducer } from './autoBattlerReducer'; 
+
 
 const processDeferredActions = (actions: GameAction[], dispatchFn: React.Dispatch<GameAction>, getStateFn: () => GameState) => {
     actions.forEach(deferredAction => {
@@ -46,16 +50,23 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
   const originalBattleState: BattleState | null = state.battleState ? JSON.parse(JSON.stringify(state.battleState)) : null;
 
 
-  // Tick Verarbeitung
   if (action.type === 'PROCESS_TICK') {
     let tickResult = handleProcessTick(state, action, globalBonuses);
     if (tickResult.stoneQuarryMinigame && tickResult.stoneQuarryMinigame.gridInitialized) {
         tickResult = stoneQuarryMinigameReducer(tickResult, { type: 'STONE_QUARRY_MINIGAME_TICK' } as any, globalBonuses);
     }
-    if (tickResult.activeView === 'GOLD_MINE_MINIGAME' && tickResult.goldMineMinigame && tickResult.goldMineMinigame.status === 'MINING_IN_PROGRESS') {
+    if (tickResult.activeView === ActiveView.GOLD_MINE_MINIGAME && tickResult.goldMineMinigame && tickResult.goldMineMinigame.status === 'MINING_IN_PROGRESS') {
         tickResult = goldMineMinigameReducer(tickResult, { type: 'GOLD_MINE_MINIGAME_TICK' } as any, globalBonuses);
     }
+    // Add Auto-Battler tick processing if needed in the future
+    // if (tickResult.activeView === ActiveView.AUTO_BATTLER && tickResult.autoBattler && tickResult.autoBattler.isActive) {
+    //    tickResult = autoBattlerReducer(tickResult, { type: 'AUTO_BATTLER_TICK' } as any);
+    // }
     return { ...state, ...tickResult };
+  }
+
+  if (action.type === 'INITIALIZE_AUTO_BATTLER') { 
+    return autoBattlerReducer(state, action);
   }
 
   if (action.type === 'GOLD_MINE_MINIGAME_PURCHASE_UPGRADE') {
@@ -117,7 +128,7 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
   else if (action.type === 'START_BATTLE_PREPARATION') { 
     const preparationResult = startBattleReducer(state, {type: 'START_WAVE_BATTLE_PREPARATION', payload: action.payload}, globalBonuses); 
     nextState = preparationResult.updatedState;
-    deferredActionsFromSubReducer = preparationResult.deferredActions; // Collect deferred actions
+    deferredActionsFromSubReducer = preparationResult.deferredActions; 
     if (action.payload.isAutoProgression && action.payload.previousBattleOutcomeForQuestProcessing) {
         const questProgressAction: GameAction = {
             type: 'PROCESS_QUEST_PROGRESS_FROM_BATTLE',
@@ -126,7 +137,7 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
         nextState = questReducer(nextState, questProgressAction);
     }
   }
-  else if (action.type === 'END_WAVE_BATTLE_RESULT') { // This case might not be directly dispatched by components anymore
+  else if (action.type === 'END_WAVE_BATTLE_RESULT') { 
     const waveBattleResult = waveBattleFlowReducer(state, action, globalBonuses);
     nextState = waveBattleResult.updatedState;
     deferredActionsFromSubReducer = waveBattleResult.deferredActions;
@@ -141,11 +152,11 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
     } else if (originalBattleState.isDungeonGridBattle) {
       nextState = dungeonBattleFlowReducer(state, { type: 'END_DUNGEON_GRID_BATTLE_RESULT', payload: { outcome: action.payload.outcome, battleStateFromEnd: originalBattleState } }, globalBonuses);
     } else if (originalBattleState.isDungeonBattle) { 
-      nextState = handleDungeonActions(state, { type: 'END_DUNGEON_FLOOR', payload: { outcome: action.payload.outcome, collectedLoot: action.payload.collectedLoot, collectedExp: action.payload.expRewardToHeroes, buildingLevelUps: originalBattleState.buildingLevelUpEventsInBattle } }, globalBonuses);
+      nextState = handleDungeonActions(state, { type: 'END_DUNGEON_FLOOR', payload: { outcome: action.payload.outcome, collectedLoot: action.payload.collectedLoot, collectedExp: action.payload.expRewardToHeroes, buildingLevelUpEventsInBattle: originalBattleState.buildingLevelUpEventsInBattle } }, globalBonuses);
     } else { 
       const waveEndResult = waveBattleFlowReducer(state, { type: 'END_WAVE_BATTLE_RESULT', payload: { outcome: action.payload.outcome, battleStateFromEnd: originalBattleState } }, globalBonuses);
       nextState = waveEndResult.updatedState;
-      deferredActionsFromSubReducer = waveEndResult.deferredActions; // Collect deferred actions
+      deferredActionsFromSubReducer = waveEndResult.deferredActions; 
 
       const lootForQuests: Cost[] = [];
       (action.payload.collectedLoot || []).forEach(loot => {
@@ -172,21 +183,13 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
         if (action.payload.outcome === 'VICTORY') {
             const battleNodeKey = `${originalBattleState.sourceMapNodeId}_battle_won`;
             let poiNotifications: GameNotification[] = [];
-            
-            if (!state.mapPoiCompletionStatus[battleNodeKey]) {
-                nextState = {
-                    ...nextState,
-                    mapPoiCompletionStatus: { ...nextState.mapPoiCompletionStatus, [battleNodeKey]: true }
-                };
-            }
+            let mapPoiUpdates: Record<string, boolean> = { [battleNodeKey]: true };
+
 
             if (originalBattleState.sourceMapNodeId === 'ww_cleric_rescue_battle_node') {
                 const clericPoiKey = 'ww_cleric_rescue_poi_completed';
                 if (!state.mapPoiCompletionStatus[clericPoiKey]) {
-                    nextState = {
-                        ...nextState,
-                        mapPoiCompletionStatus: { ...nextState.mapPoiCompletionStatus, [clericPoiKey]: true }
-                    };
+                    mapPoiUpdates[clericPoiKey] = true;
                     const clericAlreadyUnlocked = nextState.unlockedHeroDefinitions.includes('CLERIC');
                     if (!clericAlreadyUnlocked) {
                        nextState.unlockedHeroDefinitions = [...nextState.unlockedHeroDefinitions, 'CLERIC'];
@@ -201,21 +204,43 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
                 }
             }
             
-            if (originalBattleState.sourceMapNodeId === 'lumber_mill_battle' && !state.mapPoiCompletionStatus['lumber_mill_blueprint_obtained']) {
-                nextState = { ...nextState, mapPoiCompletionStatus: { ...nextState.mapPoiCompletionStatus, 'lumber_mill_blueprint_obtained': true } };
-                poiNotifications.push({ id: Date.now().toString() + "-lm-unlock", message: 'Lumber Mill blueprints acquired! You can now build it in town.', type: 'success', iconName: 'WOOD', timestamp: Date.now() });
-            } else if (originalBattleState.sourceMapNodeId === 'farm_battle' && !state.mapPoiCompletionStatus['farm_blueprint_obtained']) {
-                nextState = { ...nextState, mapPoiCompletionStatus: { ...nextState.mapPoiCompletionStatus, 'farm_blueprint_obtained': true } };
-                poiNotifications.push({ id: Date.now().toString() + "-farm-unlock", message: 'Farm plans discovered! You can now build it in town.', type: 'success', iconName: 'FOOD', timestamp: Date.now() });
+            const blueprintBattles: Record<string, string> = {
+                'gmd_blueprint_battle': 'gold_mine_blueprint_obtained',
+                'sqe_blueprint_battle': 'stone_quarry_blueprint_obtained',
+                'tannery_blueprint_battle': 'tannery_blueprint_obtained'
+            };
+            const buildingNames: Record<string, string> = {
+                'gold_mine_blueprint_obtained': 'Gold Mine',
+                'stone_quarry_blueprint_obtained': 'Stone Quarry',
+                'tannery_blueprint_obtained': 'Tannery'
+            };
+
+            if (blueprintBattles[originalBattleState.sourceMapNodeId] && !state.mapPoiCompletionStatus[blueprintBattles[originalBattleState.sourceMapNodeId]]) {
+                mapPoiUpdates[blueprintBattles[originalBattleState.sourceMapNodeId]] = true;
+                const buildingName = buildingNames[blueprintBattles[originalBattleState.sourceMapNodeId]];
+                poiNotifications.push({ id: Date.now().toString() + `-${buildingName.toLowerCase().replace(' ','-')}-unlock`, message: `${buildingName} blueprints acquired! You can now build it in town.`, type: 'success', iconName: 'SETTINGS', timestamp: Date.now() });
             }
+            
+             if (originalBattleState.customWaveSequence && originalBattleState.currentCustomWaveIndex !== undefined &&
+                originalBattleState.customWaveSequence[originalBattleState.currentCustomWaveIndex] === 'map_corrupted_shrine_wave_3' &&
+                !state.mapPoiCompletionStatus['demonicon_gate_unlocked']) {
+                mapPoiUpdates['demonicon_gate_unlocked'] = true;
+                poiNotifications.push({ id: Date.now().toString() + "-demonicon-unlock", message: 'The Corrupted Shrine has been cleansed! The Demonicon Gate can now be constructed.', type: 'success', iconName: 'ENEMY', timestamp: Date.now() });
+            }
+
+
+            nextState = {
+                ...nextState,
+                mapPoiCompletionStatus: { ...nextState.mapPoiCompletionStatus, ...mapPoiUpdates }
+            };
             
             if (poiNotifications.length > 0) {
                 nextState.notifications.push(...poiNotifications);
             }
         }
-        nextState = { ...nextState, activeView: 'WORLD_MAP', battleState: null };
+        nextState = { ...nextState, activeView: ActiveView.WORLD_MAP, battleState: null };
       } else if (action.payload.outcome === 'DEFEAT' || (originalBattleState.waveNumber && originalBattleState.waveNumber >= MAX_WAVE_NUMBER && action.payload.outcome === 'VICTORY')) {
-        nextState = { ...nextState, activeView: 'TOWN', battleState: null };
+        nextState = { ...nextState, activeView: ActiveView.TOWN, battleState: null };
       }
     }
   }
@@ -271,7 +296,15 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
     nextState = handleDungeonActions(state, action, globalBonuses);
   }
   else if (action.type === 'BATTLE_ACTION') {
-    return handleCombatTick(state, action, globalBonuses, staticData);
+    const stateAfterCombatTick: GameState = handleCombatTick(state, action, globalBonuses, staticData);
+    nextState = { ...stateAfterCombatTick };
+
+    if (nextState._deferredCombatActions && nextState._deferredCombatActions.length > 0) {
+        deferredActionsFromSubReducer.push(...nextState._deferredCombatActions);
+    }
+    
+    const { _deferredCombatActions, ...cleanedNextStateAfterCombat } = nextState;
+    nextState = cleanedNextStateAfterCombat;
   }
   else if (action.type === 'UPGRADE_TOWN_HALL_GLOBAL_UPGRADE') {
     nextState = handleTownHallActions(state, action, globalBonuses);
@@ -300,6 +333,7 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
     action.type === 'GOLD_MINE_MINIGAME_MINE_CELL' ||
     action.type === 'GOLD_MINE_MINIGAME_MOVE_PLAYER' ||
     action.type === 'GOLD_MINE_MINIGAME_RETURN_TO_SURFACE' ||
+    action.type === 'GOLD_MINE_MINIGAME_PURCHASE_UPGRADE' ||
     action.type === 'GOLD_MINE_MINIGAME_TICK'
   ) {
     nextState = goldMineMinigameReducer(state, action as any, globalBonuses);
@@ -321,6 +355,14 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
   else if (action.type === 'UPGRADE_SHARED_SKILL_MAJOR' || action.type === 'UPGRADE_SHARED_SKILL_MINOR') {
     nextState = handleSharedSkillsActions(state, action, globalBonuses);
   }
+  else if (action.type === 'COLLECT_RESONANCE_MOTES' || action.type === 'INFUSE_STAT_SPECIFIC_MOTE') {
+    nextState = aethericResonanceReducer(state, action, globalBonuses);
+  }
+  else if (action.type === 'START_RESEARCH' || action.type === 'CANCEL_RESEARCH' || action.type === 'PROCESS_RESEARCH_TICK') {
+    if (action.type === 'START_RESEARCH' || action.type === 'CANCEL_RESEARCH' || action.type === 'PROCESS_RESEARCH_TICK') {
+        nextState = researchReducer(state, action, globalBonuses);
+    }
+  }
   else if (
     action.type === 'SET_ACTIVE_VIEW' ||
     action.type === 'ADD_NOTIFICATION' ||
@@ -334,7 +376,7 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
     action.type === 'CHEAT_FORCE_BATTLE_VICTORY' ||
     action.type === 'CHEAT_TOGGLE_GOD_MODE' ||
     action.type === 'TOGGLE_ACTION_BATTLE_AI_SYSTEM' ||
-    action.type === 'GAIN_ACCOUNT_XP' // Included GAIN_ACCOUNT_XP here
+    action.type === 'GAIN_ACCOUNT_XP'
   ) {
     nextState = handleMiscActions(state, action as any);
   }
@@ -348,25 +390,20 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
     });
   }
 
-
-  // Moved the firstTimeEnemyDefeatsAccountXP update logic to after the main action processing.
-  if (nextState.battleState && nextState.battleState.defeatedEnemiesWithLoot) {
-    const battleCombatTickResult = (nextState as any)._battleCombatTickResult || {}; // Internal property if set by handleCombatTick
-    if (battleCombatTickResult.newlyAddedToFirstTimeDefeatsForAccXp && battleCombatTickResult.newlyAddedToFirstTimeDefeatsForAccXp.length > 0) {
-        const uniqueNewDefeats = Array.from(new Set([...nextState.firstTimeEnemyDefeatsAccountXP, ...battleCombatTickResult.newlyAddedToFirstTimeDefeatsForAccXp]));
+  if (nextState._battleCombatTickResult && nextState._battleCombatTickResult.newlyAddedToFirstTimeDefeatsForAccXp) {
+    if (nextState._battleCombatTickResult.newlyAddedToFirstTimeDefeatsForAccXp.length > 0) {
+        const uniqueNewDefeats = Array.from(new Set([...nextState.firstTimeEnemyDefeatsAccountXP, ...nextState._battleCombatTickResult.newlyAddedToFirstTimeDefeatsForAccXp]));
         nextState = {
             ...nextState,
             firstTimeEnemyDefeatsAccountXP: uniqueNewDefeats,
         };
-        // Clear the temporary property
-        if ((nextState as any)._battleCombatTickResult) {
-          delete (nextState as any)._battleCombatTickResult.newlyAddedToFirstTimeDefeatsForAccXp;
-        }
     }
+    const { _battleCombatTickResult, ...stateWithoutTempProp } = nextState;
+    nextState = stateWithoutTempProp;
   }
 
 
-  if (originalBattleState && originalBattleState.defeatedEnemiesWithLoot && !nextState.battleState?.isDemoniconBattle) { // Avoid double-counting Demonicon
+  if (originalBattleState && originalBattleState.defeatedEnemiesWithLoot && !nextState.battleState?.isDemoniconBattle) {
     let updatedDefeatedEnemyTypes = [...nextState.defeatedEnemyTypes];
     let updatedDemoniconRanks = { ...nextState.demoniconHighestRankCompleted };
     let changed = false;

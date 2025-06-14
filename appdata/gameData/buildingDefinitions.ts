@@ -21,7 +21,7 @@ import { AETHERIUM_SYNTHESIZER_DEFINITION } from './buildings/aetheriumSynthesiz
 import { DEMONICON_GATE_DEFINITION } from './buildings/demoniconGate';
 import { ALTAR_OF_CONVERGENCE_DEFINITION } from './buildings/altarOfConvergence';
 import { ACADEMY_OF_SCHOLARS_DEFINITION } from './buildings/academyOfScholars';
-import { KRIEGSAKADEMIE_DEFINITION } from './buildings/kriegsakademie'; // New
+import { WAR_ACADEMY_DEFINITION } from './buildings/kriegsakademie'; // Changed import name
 
 export const BUILDING_DEFINITIONS: Record<string, BuildingDefinition> = {
   'TOWN_HALL': TOWN_HALL_DEFINITION,
@@ -43,5 +43,5 @@ export const BUILDING_DEFINITIONS: Record<string, BuildingDefinition> = {
   'DEMONICON_GATE': DEMONICON_GATE_DEFINITION,
   'ALTAR_OF_CONVERGENCE': ALTAR_OF_CONVERGENCE_DEFINITION,
   'ACADEMY_OF_SCHOLARS': ACADEMY_OF_SCHOLARS_DEFINITION,
-  'KRIEGSAKADEMIE': KRIEGSAKADEMIE_DEFINITION, // New
+  'WAR_ACADEMY': WAR_ACADEMY_DEFINITION, // Changed ID
 };

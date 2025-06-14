@@ -481,4 +481,4 @@ export const RESEARCH_DEFINITIONS: Record<string, ResearchDefinition> = {
     maxLevel: 5,
     position: { x: 5, y: 0 },
   },
-];
+};
