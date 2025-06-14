@@ -1,5 +1,5 @@
 
-import { GameState, GameAction, GlobalBonuses, CellType, GameNotification, ResourceType } from '../../types';
+import { GameState, GameAction, GlobalBonuses, CellType, GameNotification, ResourceType, ActiveView } from '../../types';
 import { DUNGEON_DEFINITIONS } from '../../gameData/index';
 import { ICONS } from '../../components/Icons';
 import { NOTIFICATION_ICONS } from '../../constants';
@@ -49,7 +49,7 @@ export const handleFloorProgressionActions = (
         const dungeonDef = DUNGEON_DEFINITIONS[nextState.activeDungeonRun.dungeonDefinitionId];
         if (nextState.activeDungeonRun.currentFloorIndex >= dungeonDef.floors.length -1) { // Last floor cleared
              notifications.push({id: Date.now().toString(), message: `${dungeonDef.name} cleared! Claim your reward.`, type: 'success', iconName: ICONS.CHECK_CIRCLE ? 'CHECK_CIRCLE' : undefined, timestamp: Date.now()});
-             nextState.activeView = 'DUNGEON_REWARD';
+             nextState.activeView = ActiveView.DUNGEON_REWARD;
              nextState.activeDungeonGrid = null; // Grid is done
         } else {
             // Proceed to next floor automatically by setting activeDungeonGrid to null.
@@ -60,7 +60,7 @@ export const handleFloorProgressionActions = (
         }
       } else { // DEFEAT
         notifications.push({id: Date.now().toString(), message: `Party defeated in ${DUNGEON_DEFINITIONS[nextState.activeDungeonRun.dungeonDefinitionId].name}! Run ended.`, type: 'error', iconName: NOTIFICATION_ICONS.error, timestamp: Date.now()});
-        nextState.activeView = 'TOWN';
+        nextState.activeView = ActiveView.TOWN;
         nextState.activeDungeonGrid = null;
         nextState.activeDungeonRun = null;
       }

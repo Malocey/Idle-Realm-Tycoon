@@ -1,5 +1,4 @@
 
-
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useGameContext } from '../context';
 import Modal, { ModalProps } from './Modal';
@@ -13,10 +12,14 @@ const NODE_WIDTH = 160;
 const NODE_HEIGHT = 90;
 const GAP_X = 60;
 const GAP_Y = 40;
-const LINE_COLOR_LOCKED = 'rgba(100, 116, 139, 0.5)';
-const LINE_COLOR_UNLOCKED = 'rgba(59, 130, 246, 0.8)';
-const LINE_STROKE_WIDTH = 2.5;
-const EXPANDED_NODE_AREA_PADDING = 100; // Extra padding around the tree for expanded nodes
+const LINE_COLOR_LOCKED = 'rgba(100, 116, 139, 0.3)'; // Dimmer for locked
+const LINE_COLOR_UNLOCKED = 'rgba(59, 130, 246, 0.9)'; // Brighter for unlocked
+const LINE_STROKE_WIDTH_LOCKED = 1.5;
+const LINE_STROKE_WIDTH_UNLOCKED = 3;
+const LINE_STROKE_WIDTH_ACTIVE = 3.5; // For currently researching or completed
+const LINE_COLOR_ACTIVE = 'rgba(250, 204, 21, 0.9)'; // Amber for active/completed path to current research
+
+const EXPANDED_NODE_AREA_PADDING = 100; 
 
 interface AcademyModalProps extends Omit<ModalProps, 'title' | 'children'> {}
 
@@ -69,12 +72,10 @@ const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) => {
   };
 
   const handleStartResearch = (researchId: string, levelToResearch: number) => {
-    // console.log('[AcademyModal] handleStartResearch called with:', { researchId, levelToResearch });
     dispatch({ type: 'START_RESEARCH', payload: { researchId, levelToResearch } });
   };
 
   const handleCancelResearch = (researchId: string, slotId?: number) => {
-    // console.log('[AcademyModal] handleCancelResearch called with:', { researchId, slotId });
     dispatch({ type: 'CANCEL_RESEARCH', payload: { researchId, researchSlotId: slotId } });
   };
 
@@ -86,9 +87,10 @@ const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) => {
     canAffordNext: boolean;
     isMaxLevel: boolean;
     canStartNext: boolean;
+    prerequisitesMet: boolean;
   } => {
     if (!researchDef) {
-        return { currentLevel: 0, isResearching: false, progressPercent: 0, isInQueue: false, canAffordNext: false, isMaxLevel: true, canStartNext: false };
+        return { currentLevel: 0, isResearching: false, progressPercent: 0, isInQueue: false, canAffordNext: false, isMaxLevel: true, canStartNext: false, prerequisitesMet: false };
     }
     const completed = gameState.completedResearch[researchDef.id];
     const currentLevel = completed?.level || 0;
@@ -98,17 +100,15 @@ const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) => {
     const isInQueue = researchQueue.some(q => q.researchId === researchDef.id && q.levelToResearch === currentLevel + 1);
 
     let canAffordNext = false;
-    let canStartNext = !isMaxLevel && !researchingNow && !isInQueue;
-    let nextLevelCost: Cost[] = [];
-
-    if (canStartNext) {
-        nextLevelCost = researchDef.costPerLevel(currentLevel + 1);
-        canAffordNext = nextLevelCost.every(cost => (resources[cost.resource] || 0) >= cost.amount);
-    }
-
+    let prerequisitesMet = true;
     if (researchDef.prerequisites.length > 0) {
-        const prereqsMet = researchDef.prerequisites.every(pr => (gameState.completedResearch[pr.researchId]?.level || 0) >= pr.level);
-        if (!prereqsMet) canStartNext = false;
+        prerequisitesMet = researchDef.prerequisites.every(pr => (gameState.completedResearch[pr.researchId]?.level || 0) >= pr.level);
+    }
+    let canStartNext = prerequisitesMet && !isMaxLevel && !researchingNow && !isInQueue;
+    
+    if (canStartNext) {
+        const nextLevelCost = researchDef.costPerLevel(currentLevel + 1);
+        canAffordNext = nextLevelCost.every(cost => (resources[cost.resource] || 0) >= cost.amount);
     }
     
     return {
@@ -119,6 +119,7 @@ const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) => {
       canAffordNext,
       isMaxLevel,
       canStartNext,
+      prerequisitesMet,
     };
   };
 
@@ -139,19 +140,49 @@ const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) => {
             style={{ width: treeContentWidth, height: treeContentHeight, position: 'relative' }}
           >
             <svg width={treeContentWidth} height={treeContentHeight} className="absolute top-0 left-0 pointer-events-none z-0">
+              <defs>
+                <marker id="arrowhead-unlocked" markerWidth="8" markerHeight="5" refX="7" refY="2.5" orient="auto">
+                  <polygon points="0 0, 8 2.5, 0 5" fill={LINE_COLOR_UNLOCKED} />
+                </marker>
+                 <marker id="arrowhead-active" markerWidth="8" markerHeight="5" refX="7" refY="2.5" orient="auto">
+                  <polygon points="0 0, 8 2.5, 0 5" fill={LINE_COLOR_ACTIVE} />
+                </marker>
+                <marker id="arrowhead-locked" markerWidth="6" markerHeight="4" refX="5.5" refY="2" orient="auto">
+                  <polygon points="0 0, 6 2, 0 4" fill={LINE_COLOR_LOCKED} />
+                </marker>
+              </defs>
               {sortedResearchDefs.map(targetNodeDef => {
                 const currentTargetNode = targetNodeDef as ResearchDefinition;
                 if (!currentTargetNode || !currentTargetNode.position) return null;
                 const targetPos = calculateNodePosition(currentTargetNode);
+                const targetStatus = getResearchStatus(currentTargetNode);
 
                 return currentTargetNode.prerequisites.map(prereq => {
                   const sourceNode = researchDefinitions[prereq.researchId] as ResearchDefinition;
                   if (!sourceNode || !sourceNode.position) return null;
                   const sourcePos = calculateNodePosition(sourceNode);
+                  const sourceStatus = getResearchStatus(sourceNode);
 
-                  const isPrereqMet = (completedResearch[prereq.researchId]?.level || 0) >= prereq.level;
-                  const strokeColor = isPrereqMet ? LINE_COLOR_UNLOCKED : LINE_COLOR_LOCKED;
-                  const strokeDash = isPrereqMet ? undefined : "5,5";
+                  const isPrereqMetForThisLine = sourceStatus.currentLevel >= prereq.level;
+                  let strokeColor = LINE_COLOR_LOCKED;
+                  let strokeWidth = LINE_STROKE_WIDTH_LOCKED;
+                  let strokeDash = "5,5";
+                  let markerEnd = "url(#arrowhead-locked)";
+
+                  if (isPrereqMetForThisLine) {
+                    strokeColor = LINE_COLOR_UNLOCKED;
+                    strokeWidth = LINE_STROKE_WIDTH_UNLOCKED;
+                    strokeDash = "none";
+                    markerEnd = "url(#arrowhead-unlocked)";
+                  }
+                  
+                  // Highlight line if source is completed and target is researching/queued
+                  if (isPrereqMetForThisLine && (targetStatus.isResearching || targetStatus.isInQueue)) {
+                     strokeColor = LINE_COLOR_ACTIVE;
+                     strokeWidth = LINE_STROKE_WIDTH_ACTIVE;
+                     markerEnd = "url(#arrowhead-active)";
+                  }
+
 
                   return (
                     <line
@@ -161,8 +192,9 @@ const AcademyModal: React.FC<AcademyModalProps> = ({ isOpen, onClose }) => {
                       x2={targetPos.left + NODE_WIDTH / 2}
                       y2={targetPos.top + NODE_HEIGHT / 2}
                       stroke={strokeColor}
-                      strokeWidth={LINE_STROKE_WIDTH}
+                      strokeWidth={strokeWidth}
                       strokeDasharray={strokeDash}
+                      markerEnd={markerEnd}
                     />
                   );
                 });

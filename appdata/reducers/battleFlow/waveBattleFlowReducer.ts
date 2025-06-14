@@ -1,6 +1,6 @@
 
-import { GameState, GameAction, GlobalBonuses, BattleHero, BattleEnemy, Cost, ResourceType, GameNotification, BattleState, BuildingLevelUpEventInBattle, WaveDefinition } from '../../types';
-import { HERO_DEFINITIONS, SKILL_TREES, WAVE_DEFINITIONS, ENEMY_DEFINITIONS, TOWN_HALL_UPGRADE_DEFINITIONS, EQUIPMENT_DEFINITIONS, GUILD_HALL_UPGRADE_DEFINITIONS, SHARD_DEFINITIONS, RUN_BUFF_DEFINITIONS, STATUS_EFFECT_DEFINITIONS, worldMapDefinitions, calculateXPForAccountLevel as calculateXPForAccountLevelUtil } from '../../gameData/index';
+import { GameState, GameAction, GlobalBonuses, BattleHero, BattleEnemy, Cost, ResourceType, GameNotification, BattleState, BuildingLevelUpEventInBattle, WaveDefinition, EnemyChannelingAbilityDefinition, ActiveView } from '../../types';
+import { HERO_DEFINITIONS, SKILL_TREES, WAVE_DEFINITIONS, ENEMY_DEFINITIONS, TOWN_HALL_UPGRADE_DEFINITIONS, EQUIPMENT_DEFINITIONS, GUILD_HALL_UPGRADE_DEFINITIONS, SHARD_DEFINITIONS, RUN_BUFF_DEFINITIONS, STATUS_EFFECT_DEFINITIONS, worldMapDefinitions, calculateXPForAccountLevel as calculateXPForAccountLevelUtil } from '../../gameData/index'; // Updated import path
 import { calculateHeroStats, calculateWaveEnemyStats, getExpToNextHeroLevel, formatNumber } from '../../utils';
 import { MAX_WAVE_NUMBER, NOTIFICATION_ICONS } from '../../constants';
 import { ICONS } from '../../components/Icons';
@@ -23,51 +23,50 @@ export const waveBattleFlowReducer = (
   globalBonuses: GlobalBonuses
 ): WaveBattleFlowResult => {
   let deferredAccountXpActions: GameAction[] = [];
+  let additionalNotifications: GameNotification[] = [];
 
   switch (action.type) {
     case 'START_WAVE_BATTLE_PREPARATION': {
       const {
-          waveNumber, // For normal waves, or initial wave number for old map battles
+          waveNumber, 
           isAutoProgression,
           persistedHeroHp,
           persistedHeroMana,
           persistedHeroSpecialCooldowns,
           rewardsForPreviousWave,
           expFromPreviousWave,
-          previousWaveNumberCleared, // For normal waves, this is the actual wave number; for custom, it's the 0-indexed previous step
+          previousWaveNumberCleared, 
           buildingLevelUpEventsFromPreviousWave, 
           previousBattleOutcomeForQuestProcessing,
           sourceMapNodeId,
           customWaveSequence, 
-          currentCustomWaveIndex // 0-indexed for the wave TO START
+          currentCustomWaveIndex 
       } = action.payload;
 
       let waveDefToUse: WaveDefinition | undefined;
-      let actualBattleTitleWaveNumber = waveNumber; // This is the wave number for display purposes
+      let actualBattleTitleWaveNumber = waveNumber; 
       let actualCustomWaveSequenceForState: string[] | undefined = customWaveSequence;
       let actualCurrentCustomWaveIndexForState: number | undefined = currentCustomWaveIndex;
 
       if (sourceMapNodeId) {
-        const mapNode = worldMapDefinitions[state.currentMapId]?.nodes.find(n => n.id === sourceMapNodeId);
+        const currentMapDef = worldMapDefinitions[state.currentMapId];
+        const mapNode = currentMapDef?.nodes.find(n => n.id === sourceMapNodeId);
+
         if (customWaveSequence && currentCustomWaveIndex !== undefined) {
-          // Continuing a custom sequence
-          waveDefToUse = WAVE_DEFINITIONS.find(w => w.id === customWaveSequence[currentCustomWaveIndex]);
-          actualBattleTitleWaveNumber = currentCustomWaveIndex + 1; // 1-indexed for display
+          waveDefToUse = WAVE_DEFINITIONS.find(w => w.id === customWaveSequence[currentCustomWaveIndex!]);
+          actualBattleTitleWaveNumber = currentCustomWaveIndex + 1; 
         } else if (mapNode?.customWaveDefinitionIds && mapNode.customWaveDefinitionIds.length > 0) {
-          // Starting a new custom sequence from map node
           actualCustomWaveSequenceForState = mapNode.customWaveDefinitionIds;
           actualCurrentCustomWaveIndexForState = 0;
           waveDefToUse = WAVE_DEFINITIONS.find(w => w.id === actualCustomWaveSequenceForState![0]);
-          actualBattleTitleWaveNumber = 1; // First step in custom sequence
+          actualBattleTitleWaveNumber = 1; 
         } else if (mapNode?.battleWaveStart !== undefined) {
-            // Fallback to old map battle system (single wave specified by battleWaveStart)
             waveDefToUse = WAVE_DEFINITIONS.find(w => w.waveNumber === mapNode.battleWaveStart);
             actualBattleTitleWaveNumber = mapNode.battleWaveStart;
-            // Clear custom sequence flags as this is not a custom sequence
             actualCustomWaveSequenceForState = undefined;
             actualCurrentCustomWaveIndexForState = undefined;
         }
-      } else { // Normal wave progression
+      } else { 
         waveDefToUse = WAVE_DEFINITIONS.find(w => w.waveNumber === waveNumber);
         actualBattleTitleWaveNumber = waveNumber;
       }
@@ -95,8 +94,6 @@ export const waveBattleFlowReducer = (
       let newSessionTotalLoot: Cost[] = (isAutoProgression && state.battleState?.sessionTotalLoot) ? [...state.battleState.sessionTotalLoot] : [];
       let newSessionTotalExp: number = (isAutoProgression && state.battleState?.sessionTotalExp) ? state.battleState.sessionTotalExp : 0;
       let newSessionTotalBuildingLevelUps = (isAutoProgression && state.battleState?.sessionTotalBuildingLevelUps) ? [...state.battleState.sessionTotalBuildingLevelUps] : [];
-      // Removed: let deferredAccountXpActions: GameAction[] = [];
-
 
       if (isAutoProgression && previousWaveNumberCleared !== undefined) {
           const effectivePrevWaveForProgress = actualCustomWaveSequenceForState ? (previousWaveNumberCleared +1) : previousWaveNumberCleared;
@@ -180,12 +177,12 @@ export const waveBattleFlowReducer = (
       });
       if (battleHeroes.length === 0) {
          tempNotifications.push({id: Date.now().toString(), message: 'Auto-progression failed: No heroes for next wave. Returning to Town.', type: 'error', iconName: NOTIFICATION_ICONS.error, timestamp: Date.now()});
-         return { updatedState: { ...state, resources: tempNewResources, heroes: tempUpdatedHeroes, currentWaveProgress: tempCurrentWaveProgress, activeView: 'TOWN', battleState: null, notifications: tempNotifications, playerSharedSkillPoints: state.playerSharedSkillPoints + sharedSkillPointsGainedFromWaveXP }, deferredActions: deferredAccountXpActions };
+         return { updatedState: { ...state, resources: tempNewResources, heroes: tempUpdatedHeroes, currentWaveProgress: tempCurrentWaveProgress, activeView: ActiveView.TOWN, battleState: null, notifications: tempNotifications, playerSharedSkillPoints: state.playerSharedSkillPoints + sharedSkillPointsGainedFromWaveXP }, deferredActions: deferredAccountXpActions };
       }
       const battleEnemies: BattleEnemy[] = [];
       waveDefToUse.enemies.forEach((ew, i_outer) => ENEMY_DEFINITIONS[ew.enemyId] && Array.from({length: ew.count}).forEach((_, i_inner) => {
         const enemyDef = ENEMY_DEFINITIONS[ew.enemyId];
-        const finalStats = calculateWaveEnemyStats(enemyDef, actualBattleTitleWaveNumber);
+        const finalStats = calculateWaveEnemyStats(enemyDef, actualBattleTitleWaveNumber, ew.isElite, enemyDef.summonAbility ? 1.0 : undefined);
         const battleEnemyInstance: BattleEnemy = {
             ...enemyDef, attackType: enemyDef.attackType || 'MELEE', rangedAttackRangeUnits: enemyDef.rangedAttackRangeUnits,
             calculatedStats: finalStats, uniqueBattleId: `${ew.enemyId}_${i_outer}_${i_inner}_enemy_wave${actualBattleTitleWaveNumber}`,
@@ -194,7 +191,15 @@ export const waveBattleFlowReducer = (
             movementSpeed: 0, x: 0, y: 0, statusEffects: [], temporaryBuffs: [], isElite: ew.isElite || false, specialAttackCooldownsRemaining: {},
             summonStrengthModifier: enemyDef.summonAbility ? 1.0 : undefined,
             currentShieldHealCooldownMs: enemyDef.shieldHealAbility?.initialCooldownMs ?? enemyDef.shieldHealAbility?.cooldownMs,
+            currentPeriodicEffectCooldownMs: enemyDef.periodicEffectAbility?.initialCooldownMs ?? enemyDef.periodicEffectAbility?.cooldownMs,
         };
+        if (enemyDef.channelingAbilities) {
+             enemyDef.channelingAbilities.forEach((caDef: EnemyChannelingAbilityDefinition) => {
+                 if(battleEnemyInstance.specialAttackCooldownsRemaining) {
+                    battleEnemyInstance.specialAttackCooldownsRemaining[caDef.id] = caDef.initialCooldownMs ?? caDef.cooldownMs;
+                 }
+             });
+         }
         battleEnemies.push(battleEnemyInstance);
       }));
       if (sharedSkillPointsGainedFromWaveXP > 0) tempNotifications.push({ id: Date.now().toString() + "-sspWave", message: `Gained ${sharedSkillPointsGainedFromWaveXP} Shared Skill Point(s) from wave XP!`, type: 'success', iconName: ICONS.UPGRADE ? 'UPGRADE' : undefined, timestamp: Date.now() });
@@ -214,7 +219,7 @@ export const waveBattleFlowReducer = (
         sessionTotalLoot: newSessionTotalLoot, sessionTotalExp: newSessionTotalExp, sessionTotalBuildingLevelUps: newSessionTotalBuildingLevelUps,
       };
       
-      return { updatedState: { ...state, resources: tempNewResources, heroes: tempUpdatedHeroes, currentWaveProgress: tempCurrentWaveProgress, activeView: 'BATTLEFIELD', battleState: newBattleState, notifications: tempNotifications, playerSharedSkillPoints: state.playerSharedSkillPoints + sharedSkillPointsGainedFromWaveXP }, deferredActions: deferredAccountXpActions };
+      return { updatedState: { ...state, resources: tempNewResources, heroes: tempUpdatedHeroes, currentWaveProgress: tempCurrentWaveProgress, activeView: ActiveView.BATTLEFIELD, battleState: newBattleState, notifications: tempNotifications, playerSharedSkillPoints: state.playerSharedSkillPoints + sharedSkillPointsGainedFromWaveXP }, deferredActions: deferredAccountXpActions };
     }
     case 'END_WAVE_BATTLE_RESULT': {
       const { outcome, battleStateFromEnd } = action.payload;
@@ -223,21 +228,20 @@ export const waveBattleFlowReducer = (
       let finalCurrentWaveProgress = state.currentWaveProgress;
       let finalNotificationsArr = [...state.notifications];
       let sharedSkillPointsGainedThisBattleEnd = 0;
-      // Removed: let deferredAccountXpActions: GameAction[] = [];
+      let finalMapPoiCompletionStatus = { ...state.mapPoiCompletionStatus };
 
       if (outcome === 'VICTORY') {
         const currentWaveBattleNum = battleStateFromEnd.waveNumber || 0;
         
-        if (!battleStateFromEnd.customWaveSequence) { // Normal Wave
-            if (currentWaveBattleNum > state.currentWaveProgress) { // First time clear
+        if (!battleStateFromEnd.customWaveSequence) { 
+            if (currentWaveBattleNum > state.currentWaveProgress) { 
                 const accountXpForWave = currentWaveBattleNum * 10;
                 deferredAccountXpActions.push({ type: 'GAIN_ACCOUNT_XP', payload: { amount: accountXpForWave, source: `Wave ${currentWaveBattleNum} First Clear` } });
             }
             finalCurrentWaveProgress = Math.max(state.currentWaveProgress, currentWaveBattleNum);
-        } else if (battleStateFromEnd.customWaveSequence && battleStateFromEnd.currentCustomWaveIndex !== undefined && battleStateFromEnd.sourceMapNodeId) { // Custom Map Sequence Wave
+        } else if (battleStateFromEnd.customWaveSequence && battleStateFromEnd.currentCustomWaveIndex !== undefined && battleStateFromEnd.sourceMapNodeId) { 
             const mapNodeKey = `${battleStateFromEnd.sourceMapNodeId}_battle_won`;
             if (battleStateFromEnd.currentCustomWaveIndex === battleStateFromEnd.customWaveSequence.length - 1 && !state.mapPoiCompletionStatus[mapNodeKey]) {
-                // This is the *final* wave of the custom sequence, and it's a first-time clear for the POI
                 const waveDef = WAVE_DEFINITIONS.find(w => w.id === battleStateFromEnd.customWaveSequence![battleStateFromEnd.currentCustomWaveIndex!]);
                 let totalBaseExpForWave = 0;
                 waveDef?.enemies.forEach(ew => {
@@ -248,6 +252,33 @@ export const waveBattleFlowReducer = (
                 if (accountXpForMapNode > 0) {
                     const mapNodeName = worldMapDefinitions[state.currentMapId]?.nodes.find(n => n.id === battleStateFromEnd.sourceMapNodeId)?.name || battleStateFromEnd.sourceMapNodeId;
                     deferredAccountXpActions.push({ type: 'GAIN_ACCOUNT_XP', payload: { amount: accountXpForMapNode, source: `${mapNodeName} First Clear` } });
+                }
+                finalMapPoiCompletionStatus[mapNodeKey] = true;
+
+                // Check for blueprint awarding battles
+                const blueprintWavePrefixes: Record<string, string> = {
+                    'map_lms_battle_3_wave_4': 'lumber_mill_blueprint_obtained',
+                    'map_fsr_battle_3_wave_4': 'farm_blueprint_obtained',
+                    'map_gmd_battle_3_wave_4': 'gold_mine_blueprint_obtained',
+                    'map_sqe_battle_3_wave_4': 'stone_quarry_blueprint_obtained',
+                    'map_tannery_battle_3_wave_4': 'tannery_blueprint_obtained'
+                };
+                const currentWaveId = battleStateFromEnd.customWaveSequence[battleStateFromEnd.currentCustomWaveIndex];
+                const blueprintFlag = blueprintWavePrefixes[currentWaveId];
+                if (blueprintFlag && !finalMapPoiCompletionStatus[blueprintFlag]) {
+                    finalMapPoiCompletionStatus[blueprintFlag] = true;
+                    let blueprintName = 'Unknown Blueprint';
+                    if (blueprintFlag.includes('lumber_mill')) blueprintName = 'Lumber Mill Schematics';
+                    else if (blueprintFlag.includes('farm')) blueprintName = 'Farming Almanac';
+                    else if (blueprintFlag.includes('gold_mine')) blueprintName = 'Gold Mine Blueprints';
+                    else if (blueprintFlag.includes('stone_quarry')) blueprintName = 'Stone Quarry Blueprints';
+                    else if (blueprintFlag.includes('tannery')) blueprintName = 'Tannery Blueprints';
+                    additionalNotifications.push({ id: Date.now().toString() + `-blueprint-${blueprintFlag}`, message: `${blueprintName} secured!`, type: 'success', iconName: 'SETTINGS', timestamp: Date.now() });
+                }
+                
+                if (battleStateFromEnd.customWaveSequence[battleStateFromEnd.currentCustomWaveIndex] === 'map_corrupted_shrine_wave_3' && !finalMapPoiCompletionStatus['demonicon_gate_unlocked']) {
+                   finalMapPoiCompletionStatus['demonicon_gate_unlocked'] = true;
+                   additionalNotifications.push({ id: Date.now().toString() + "-demonicon-unlock", message: 'The Corrupted Shrine has been cleansed! The Demonicon Gate can now be constructed.', type: 'success', iconName: 'ENEMY', timestamp: Date.now() });
                 }
             }
         }
@@ -298,8 +329,9 @@ export const waveBattleFlowReducer = (
             resources: finalResources, 
             heroes: finalUpdatedHeroes, 
             currentWaveProgress: finalCurrentWaveProgress, 
-            notifications: finalNotificationsArr, 
+            notifications: [...finalNotificationsArr, ...additionalNotifications], 
             playerSharedSkillPoints: state.playerSharedSkillPoints + sharedSkillPointsGainedThisBattleEnd,
+            mapPoiCompletionStatus: finalMapPoiCompletionStatus,
         },
         deferredActions: deferredAccountXpActions
       };

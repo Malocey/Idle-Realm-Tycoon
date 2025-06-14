@@ -6,25 +6,21 @@ import { RESOURCE_COLORS } from '../constants';
 import { BUILDING_DEFINITIONS, HERO_DEFINITIONS } from '../gameData/index';
 import Button from '../components/Button';
 import { formatNumber, canAfford } from '../utils';
-import { GameNotification, PlayerBuildingState, ResourceType, Cost, BuildingDefinition, HeroDefinition } from '../types';
+import { GameNotification, PlayerBuildingState, ResourceType, Cost, BuildingDefinition, HeroDefinition, ActiveView } from '../types'; // Added ActiveView
 import TownHallUpgradeModal from '../components/TownHallUpgradeModal';
-import ForgeUpgradeModal from '../components/ForgeUpgradeModal';
 import DungeonSelectionModal from '../components/DungeonSelectionModal';
 import BuildingSpecificUpgradeModal from '../components/BuildingSpecificUpgradeModal';
 import GuildHallUpgradeModal from '../components/GuildHallUpgradeModal';
-import AlchemistLabModal from '../components/AlchemistLabModal';
-import LibraryModal from '../components/LibraryModal';
-import AltarOfConvergenceModal from '../components/AltarOfConvergenceModal';
-import AcademyModal from '../components/AcademyModal'; // Import AcademyModal
 
 // Import new tab components
 import MyBuildingsTab from './TownView/MyBuildingsTab';
 import ConstructionTab from './TownView/ConstructionTab';
 import RecruitmentTab from './TownView/RecruitmentTab';
+import FacilitiesTabContent from './TownView/FacilitiesTabContent'; 
 
 
-type TownViewTab = 'MY_BUILDINGS' | 'CONSTRUCTION' | 'RECRUITMENT';
-const TOWN_VIEW_TABS_ORDER: TownViewTab[] = ['MY_BUILDINGS', 'CONSTRUCTION', 'RECRUITMENT'];
+type TownViewTab = 'MY_BUILDINGS' | 'CONSTRUCTION' | 'RECRUITMENT' | 'FACILITIES_ACTIONS'; 
+const TOWN_VIEW_TABS_ORDER: TownViewTab[] = ['MY_BUILDINGS', 'CONSTRUCTION', 'RECRUITMENT', 'FACILITIES_ACTIONS']; 
 const TAB_TRANSITION_DURATION = 300; // ms, should match CSS animation
 
 const TownView: React.FC = () => {
@@ -36,14 +32,10 @@ const TownView: React.FC = () => {
   const [transitionDirection, setTransitionDirection] = useState<'left' | 'right' | null>(null);
 
   const [isTownHallUpgradeModalOpen, setIsTownHallUpgradeModalOpen] = useState(false);
-  const [isForgeUpgradeModalOpen, setIsForgeUpgradeModalOpen] = useState(false);
   const [isDungeonSelectionModalOpen, setIsDungeonSelectionModalOpen] = useState(false);
   const [isGuildHallUpgradeModalOpen, setIsGuildHallUpgradeModalOpen] = useState(false);
-  const [isAlchemistLabModalOpen, setIsAlchemistLabModalOpen] = useState(false);
-  const [isLibraryModalOpen, setIsLibraryModalOpen] = useState(false);
-  const [isAltarOfConvergenceModalOpen, setIsAltarOfConvergenceModalOpen] = useState(false);
-  const [isAcademyModalOpen, setIsAcademyModalOpen] = useState(false); // State for Academy Modal
   const [selectedBuildingForSpecificUpgrades, setSelectedBuildingForSpecificUpgrades] = useState<string | null>(null);
+  
   const [animatingCardId, setAnimatingCardId] = useState<string | null>(null);
 
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
@@ -51,6 +43,7 @@ const TownView: React.FC = () => {
     MY_BUILDINGS: useRef<HTMLButtonElement>(null),
     CONSTRUCTION: useRef<HTMLButtonElement>(null),
     RECRUITMENT: useRef<HTMLButtonElement>(null),
+    FACILITIES_ACTIONS: useRef<HTMLButtonElement>(null), 
   };
 
   useEffect(() => {
@@ -61,7 +54,7 @@ const TownView: React.FC = () => {
         width: activeTabRef.offsetWidth,
       });
     }
-  }, [activeTownTab, tabButtonRefs.MY_BUILDINGS, tabButtonRefs.CONSTRUCTION, tabButtonRefs.RECRUITMENT]);
+  }, [activeTownTab, tabButtonRefs.MY_BUILDINGS, tabButtonRefs.CONSTRUCTION, tabButtonRefs.RECRUITMENT, tabButtonRefs.FACILITIES_ACTIONS]);
 
   const handleTabChange = (newTab: TownViewTab) => {
     if (newTab !== activeTownTab && !isTransitioningTabs) {
@@ -89,16 +82,16 @@ const TownView: React.FC = () => {
 
   const globalBonuses = getGlobalBonuses();
 
-  const unbuiltBuildingsRaw = Object.values(BUILDING_DEFINITIONS).filter(bd => !gameState.buildings.find(b => b.id === bd.id));
+  const unbuiltBuildingsRaw: BuildingDefinition[] = Object.values(BUILDING_DEFINITIONS).filter(bd => !gameState.buildings.find(b => b.id === bd.id));
 
   const sortedUnbuiltBuildings = useMemo(() => {
-    return unbuiltBuildingsRaw.sort((a, b) => {
+    return [...unbuiltBuildingsRaw].sort((a, b) => { 
       const costA = a.baseCost.map(c => ({
         ...c,
         amount: Math.max(1, Math.floor(c.amount * (1 - globalBonuses.buildingCostReduction)))
       }));
       const canAffordA = canAfford(gameState.resources, costA);
-      const isLockedA = (a.unlockWaveRequirement !== undefined && gameState.currentWaveProgress < a.unlockWaveRequirement) ||
+       const isLockedA = (a.unlockWaveRequirement !== undefined && gameState.currentWaveProgress < a.unlockWaveRequirement) ||
                         (a.id === 'DEMONICON_GATE' && !gameState.mapPoiCompletionStatus['demonicon_gate_unlocked']);
 
 
@@ -148,7 +141,7 @@ const TownView: React.FC = () => {
   }, [unbuiltBuildingsRaw, gameState.currentWaveProgress, gameState.resources, globalBonuses.buildingCostReduction, gameState.mapPoiCompletionStatus]);
 
 
-  const unrecruitedHeroes = Object.values(HERO_DEFINITIONS).filter(hd => !gameState.heroes.find(h => h.definitionId === hd.id));
+  const unrecruitedHeroes: HeroDefinition[] = Object.values(HERO_DEFINITIONS).filter(hd => !gameState.heroes.find(h => h.definitionId === hd.id));
   const availableRecruitmentCount = unrecruitedHeroes.filter(heroDef => {
     const isUnlocked = heroDef.unlockWaveRequirement === undefined || gameState.currentWaveProgress >= heroDef.unlockWaveRequirement;
     if (!isUnlocked) return false;
@@ -185,24 +178,9 @@ const TownView: React.FC = () => {
       dispatch({ type: 'RECRUIT_HERO', payload: { heroId: heroDefId } });
     }
   };
-
-  const handleOpenStoneQuarryMinigame = () => {
-    dispatch({ type: 'STONE_QUARRY_MINIGAME_INIT' });
-    dispatch({ type: 'SET_ACTIVE_VIEW', payload: 'STONE_QUARRY_MINIGAME' });
-  };
-
-  const handleOpenGoldMineMinigame = () => {
-    dispatch({ type: 'GOLD_MINE_MINIGAME_INIT' });
-    dispatch({ type: 'SET_ACTIVE_VIEW', payload: 'GOLD_MINE_MINIGAME' });
-  };
-
-  const handleEnterColosseum = () => {
-    dispatch({ type: 'START_ACTION_BATTLE' });
-    dispatch({ type: 'SET_ACTIVE_VIEW', payload: 'ACTION_BATTLE_VIEW' });
-  };
-
-  const handleOpenDemoniconPortal = () => {
-    dispatch({ type: 'SET_ACTIVE_VIEW', payload: 'DEMONICON_PORTAL' });
+  
+  const handleEnterAutoBattler = () => {
+    dispatch({ type: 'SET_ACTIVE_VIEW', payload: ActiveView.AUTO_BATTLER });
   };
 
   const renderSingleTabContent = (tabKey: TownViewTab | null) => {
@@ -215,16 +193,15 @@ const TownView: React.FC = () => {
             buildings={gameState.buildings}
             onOpenTownHallUpgrades={() => setIsTownHallUpgradeModalOpen(true)}
             onOpenGuildHallUpgrades={() => setIsGuildHallUpgradeModalOpen(true)}
-            onOpenAlchemistLab={() => setIsAlchemistLabModalOpen(true)}
-            onOpenForgeUpgrades={() => setIsForgeUpgradeModalOpen(true)}
             onOpenDungeonSelection={() => setIsDungeonSelectionModalOpen(true)}
             onOpenBuildingSpecificUpgrades={handleOpenBuildingSpecificUpgrades}
-            onOpenLibrary={() => setIsLibraryModalOpen(true)}
-            onOpenStoneQuarryMinigame={handleOpenStoneQuarryMinigame}
-            onOpenGoldMineMinigame={handleOpenGoldMineMinigame}
-            onEnterColosseum={handleEnterColosseum}
-            onOpenDemoniconPortal={handleOpenDemoniconPortal}
-            onOpenAltarOfConvergence={() => setIsAltarOfConvergenceModalOpen(true)}
+            onEnterColosseum={() => { 
+                dispatch({ type: 'START_ACTION_BATTLE' }); 
+                dispatch({ type: 'SET_ACTIVE_VIEW', payload: ActiveView.ACTION_BATTLE_VIEW });
+            }}
+            onOpenDemoniconPortal={() => dispatch({ type: 'SET_ACTIVE_VIEW', payload: ActiveView.DEMONICON_PORTAL })}
+            onOpenAcademy={() => dispatch({ type: 'SET_ACTIVE_VIEW', payload: ActiveView.ACADEMY_OF_SCHOLARS})}
+            onEnterAutoBattler={handleEnterAutoBattler} // Pass handler
           />
         );
       case 'CONSTRUCTION':
@@ -248,6 +225,8 @@ const TownView: React.FC = () => {
             animatingCardId={animatingCardId}
           />
         );
+      case 'FACILITIES_ACTIONS': 
+        return <FacilitiesTabContent />;
       default:
         return null;
     }
@@ -271,21 +250,23 @@ const TownView: React.FC = () => {
        ? 'text-sky-300'
        : 'bg-transparent hover:bg-slate-700/50 text-slate-400 hover:text-slate-200'}`;
 
-  // Check if Academy of Scholars is built to show the button
-  const isAcademyBuilt = gameState.buildings.some(b => b.id === 'ACADEMY_OF_SCHOLARS' && b.level > 0);
-
   return (
     <div className="p-4 space-y-6">
-      <div className="flex justify-between items-center"> {/* Container for tabs and Academy button */}
+      <div className="flex justify-between items-center">
         <div className="relative flex border-b border-slate-700">
-          {TOWN_VIEW_TABS_ORDER.map(tabId => (
+          {TOWN_VIEW_TABS_ORDER.map(tabId => {
+            let tabDisplayName = tabId.replace('_', ' ');
+            if (tabId === 'FACILITIES_ACTIONS') {
+              tabDisplayName = 'Facilities & Actions';
+            }
+            return (
               <button
                   key={tabId}
                   ref={tabButtonRefs[tabId]}
                   className={tabButtonStyle(tabId, tabButtonRefs[tabId])}
                   onClick={() => handleTabChange(tabId)}
               >
-              {tabId.replace('_', ' ')}
+              {tabDisplayName}
               {tabId === 'CONSTRUCTION' && availableConstructionCount > 0 && (
                   <span className="ml-2 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
                   {availableConstructionCount}
@@ -297,22 +278,12 @@ const TownView: React.FC = () => {
                   </span>
               )}
               </button>
-          ))}
+          )})}
           <div
             className="absolute bottom-0 h-0.5 bg-sky-500 transition-all duration-300 ease-in-out"
             style={{ left: indicatorStyle.left, width: indicatorStyle.width }}
           />
         </div>
-        {isAcademyBuilt && (
-            <Button
-                onClick={() => setIsAcademyModalOpen(true)}
-                variant="secondary"
-                size="md"
-                icon={ICONS.BOOK_ICON && <ICONS.BOOK_ICON className="w-5 h-5" />}
-            >
-                Academy
-            </Button>
-        )}
       </div>
 
 
@@ -342,18 +313,6 @@ const TownView: React.FC = () => {
         isOpen={isGuildHallUpgradeModalOpen}
         onClose={() => setIsGuildHallUpgradeModalOpen(false)}
       />
-      <AlchemistLabModal
-        isOpen={isAlchemistLabModalOpen}
-        onClose={() => setIsAlchemistLabModalOpen(false)}
-      />
-      <LibraryModal
-        isOpen={isLibraryModalOpen}
-        onClose={() => setIsLibraryModalOpen(false)}
-      />
-      <ForgeUpgradeModal
-        isOpen={isForgeUpgradeModalOpen}
-        onClose={() => setIsForgeUpgradeModalOpen(false)}
-      />
       <DungeonSelectionModal
         isOpen={isDungeonSelectionModalOpen}
         onClose={() => setIsDungeonSelectionModalOpen(false)}
@@ -363,16 +322,6 @@ const TownView: React.FC = () => {
           isOpen={!!selectedBuildingForSpecificUpgrades}
           onClose={handleCloseBuildingSpecificUpgrades}
           buildingId={selectedBuildingForSpecificUpgrades}
-        />
-      )}
-      <AltarOfConvergenceModal
-        isOpen={isAltarOfConvergenceModalOpen}
-        onClose={() => setIsAltarOfConvergenceModalOpen(false)}
-      />
-      {isAcademyModalOpen && (
-        <AcademyModal
-            isOpen={isAcademyModalOpen}
-            onClose={() => setIsAcademyModalOpen(false)}
         />
       )}
     </div>

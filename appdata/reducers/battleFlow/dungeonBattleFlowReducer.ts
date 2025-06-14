@@ -1,4 +1,5 @@
-import { GameState, GameAction, GlobalBonuses, Cost, ResourceType, BattleState, CellType } from '../../types';
+
+import { GameState, GameAction, GlobalBonuses, Cost, ResourceType, BattleState, CellType, ActiveView } from '../../types';
 import { DUNGEON_DEFINITIONS, HERO_DEFINITIONS, SKILL_TREES, ENEMY_DEFINITIONS, TOWN_HALL_UPGRADE_DEFINITIONS, EQUIPMENT_DEFINITIONS, GUILD_HALL_UPGRADE_DEFINITIONS, SHARD_DEFINITIONS, RUN_BUFF_DEFINITIONS, STATUS_EFFECT_DEFINITIONS } from '../../gameData/index';
 import { calculateHeroStats, calculateDungeonEnemyStats } from '../../utils';
 import { NOTIFICATION_ICONS } from '../../constants';
@@ -40,10 +41,10 @@ export const dungeonBattleFlowReducer = (
             nextState.activeDungeonGrid = { ...nextState.activeDungeonGrid, grid: newGrid };
         }
         notifications.push({id: Date.now().toString(), message: `Dungeon encounter cleared!`, type: 'success', iconName: ICONS.CHECK_CIRCLE ? 'CHECK_CIRCLE' : undefined, timestamp: Date.now()});
-        nextState.activeView = 'DUNGEON_EXPLORE'; // Return to dungeon map
+        nextState.activeView = ActiveView.DUNGEON_EXPLORE; // Return to dungeon map
       } else { // DEFEAT in dungeon grid battle
         notifications.push({id: Date.now().toString(), message: `Party defeated in ${DUNGEON_DEFINITIONS[nextState.activeDungeonRun!.dungeonDefinitionId].name}! Run ended.`, type: 'error', iconName: NOTIFICATION_ICONS.error, timestamp: Date.now()});
-        nextState.activeView = 'TOWN';
+        nextState.activeView = ActiveView.TOWN;
         nextState.activeDungeonGrid = null;
         nextState.activeDungeonRun = null;
       }

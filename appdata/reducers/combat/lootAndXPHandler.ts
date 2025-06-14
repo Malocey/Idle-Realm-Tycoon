@@ -2,7 +2,7 @@
 import { BattleEnemy, BattleHero, Cost, GameNotification, ResourceType, GlobalBonuses, BuildingLevelUpEventInBattle, GameState, GameAction, ResonanceMoteType, HeroStats } from '../../types';
 import { ENEMY_DEFINITIONS, BUILDING_DEFINITIONS, HERO_DEFINITIONS, DUNGEON_DEFINITIONS, AETHERIC_RESONANCE_STAT_CONFIGS } from '../../gameData/index'; // Added AETHERIC_RESONANCE_STAT_CONFIGS
 import { calculateIndividualEnemyLoot, formatNumber, getExpToNextHeroLevel } from '../../utils';
-import { NOTIFICATION_ICONS } from '../../constants';
+import { NOTIFICATION_ICONS, BUILDING_INSTANT_UPGRADE_BASE_CHANCE_ACCOUNT_LVL_5, BUILDING_INSTANT_UPGRADE_MAX_CHANCE_ACCOUNT_LVL_10 } from '../../constants'; // Import new constants
 import { ICONS } from '../../components/Icons';
 
 
@@ -186,9 +186,19 @@ export const handleLootAndXP = (
         return battleHero;
       });
     }
+    
+    // Gebäude-Level-Up Chance basierend auf Account Level
+    let buildingUpgradeChance = 0;
+    const accountLevel = gameState.accountLevel;
+    if (accountLevel >= 10) {
+        buildingUpgradeChance = BUILDING_INSTANT_UPGRADE_MAX_CHANCE_ACCOUNT_LVL_10;
+    } else if (accountLevel >= 5) {
+        buildingUpgradeChance = BUILDING_INSTANT_UPGRADE_BASE_CHANCE_ACCOUNT_LVL_5 + 
+                                ((accountLevel - 5) / (10 - 5)) * 
+                                (BUILDING_INSTANT_UPGRADE_MAX_CHANCE_ACCOUNT_LVL_10 - BUILDING_INSTANT_UPGRADE_BASE_CHANCE_ACCOUNT_LVL_5);
+    }
 
-    const BUILDING_LEVEL_UP_CHANCE_FROM_LOOT = 0.05;
-    if (Math.random() < BUILDING_LEVEL_UP_CHANCE_FROM_LOOT) {
+    if (Math.random() < buildingUpgradeChance) {
       const eligibleBuildings = updatedBuildingsCopy.filter(b => {
         const def = BUILDING_DEFINITIONS[b.id];
         return def && (def.maxLevel === -1 || b.level < def.maxLevel);
@@ -214,7 +224,7 @@ export const handleLootAndXP = (
         };
         updatedBuildingLevelUpEventsInBattleCopy.push(buildingLevelUpEventForSpoils);
 
-        const levelUpMsg = `${buildingDef.name} leveled up from loot (Lvl ${newLevel})!`; // Englischer Text
+        const levelUpMsg = `${buildingDef.name} leveled up from loot (Lvl ${newLevel})!`;
         logMessages.push(`✨ ${levelUpMsg}`);
         updatedNotificationsCopy.push({
           id: Date.now().toString() + "-bldgLvlUp-" + randomBuildingState.id,

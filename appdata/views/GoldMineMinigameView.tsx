@@ -4,7 +4,7 @@ import { useGameContext } from '../context';
 import Button from '../components/Button';
 import { ICONS } from '../components/Icons';
 import { formatNumber } from '../utils';
-import { GoldMineMinigameGridCell, ResourceType, GoldMinePopupEvent, GoldMineUpgradeDefinition } from '../types';
+import { GoldMineMinigameGridCell, ResourceType, GoldMinePopupEvent, GoldMineUpgradeDefinition, ActiveView } from '../types';
 import GoldMineCellDisplay from '../components/GoldMineMinigameView/GoldMineCellDisplay';
 import GoldMineUpgradeCard from '../components/GoldMineMinigameView/GoldMineUpgradeCard'; 
 import { RESOURCE_POPUP_DURATION_MS, RESOURCE_COLORS, MAX_GOLD_MINE_DEPTH } from '../constants'; 
@@ -98,7 +98,7 @@ const GoldMineMinigameView: React.FC = () => {
     if (minigameState?.status === 'MINING_IN_PROGRESS' || minigameState?.status === 'FATIGUED_RETURN_TO_SURFACE') {
         dispatch({ type: 'GOLD_MINE_MINIGAME_RETURN_TO_SURFACE' });
     }
-    dispatch({ type: 'SET_ACTIVE_VIEW', payload: 'TOWN' });
+    dispatch({ type: 'SET_ACTIVE_VIEW', payload: ActiveView.TOWN });
   };
   
   const handlePurchaseUpgrade = (upgradeId: string) => {

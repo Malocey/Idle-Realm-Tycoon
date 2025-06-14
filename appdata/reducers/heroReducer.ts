@@ -1,13 +1,17 @@
 
-import { GameState, GameAction, PlayerHeroState, GameNotification, ResourceType, GlobalBonuses, Cost } from '../types';
+import { GameState, GameAction, PlayerHeroState, GameNotification, ResourceType, GlobalBonuses, Cost, MAX_POTION_SLOTS_PER_HERO } from '../types';
 import { HERO_DEFINITIONS, SKILL_TREES, SPECIAL_ATTACK_DEFINITIONS, EQUIPMENT_DEFINITIONS, SHARD_DEFINITIONS } from '../gameData/index';
 import { NOTIFICATION_ICONS } from '../constants';
 import { canAfford, getExpToNextHeroLevel } from '../utils';
 import { ICONS } from '../components/Icons';
 
+// Helper function to generate a unique ID for new shards
+const generateUniqueIdHero = () => `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
+
 export const handleHeroActions = (
     state: GameState,
-    action: Extract<GameAction, { type: 'RECRUIT_HERO' | 'UNLOCK_HERO_DEFINITION' | 'UPGRADE_SKILL' | 'LEARN_UPGRADE_SPECIAL_ATTACK' | 'UPGRADE_HERO_EQUIPMENT' | 'APPLY_PERMANENT_HERO_BUFF' | 'TRANSFER_SHARD' | 'CHEAT_MODIFY_FIRST_HERO_STATS' }>, 
+    action: Extract<GameAction, { type: 'RECRUIT_HERO' | 'UNLOCK_HERO_DEFINITION' | 'UPGRADE_SKILL' | 'LEARN_UPGRADE_SPECIAL_ATTACK' | 'UPGRADE_HERO_EQUIPMENT' | 'APPLY_PERMANENT_HERO_BUFF' | 'TRANSFER_SHARD' | 'CHEAT_MODIFY_FIRST_HERO_STATS' | 'AWARD_SHARD_TO_HERO' | 'EQUIP_POTION_TO_SLOT' | 'UNEQUIP_POTION_FROM_SLOT' }>, 
     globalBonuses: GlobalBonuses
 ): GameState => {
   switch (action.type) {
@@ -19,7 +23,6 @@ export const handleHeroActions = (
         const newNotification: GameNotification = {id: Date.now().toString(), message: `${heroDef.name} unlocks after Wave ${heroDef.unlockWaveRequirement}.`, type: 'warning', iconName: NOTIFICATION_ICONS.warning, timestamp: Date.now()};
         return { ...state, notifications: [...state.notifications, newNotification]};
       }
-      // Ensure hero is in unlockedHeroDefinitions before allowing recruitment (unless wave req is met)
       if (!state.unlockedHeroDefinitions.includes(heroDef.id) && !(heroDef.unlockWaveRequirement && heroDef.unlockWaveRequirement <= state.currentWaveProgress) ) {
          const newNotification: GameNotification = {id: Date.now().toString(), message: `${heroDef.name} is not yet unlocked.`, type: 'warning', iconName: NOTIFICATION_ICONS.warning, timestamp: Date.now()};
          return { ...state, notifications: [...state.notifications, newNotification]};
@@ -40,7 +43,18 @@ export const handleHeroActions = (
       }
       const newResources = { ...state.resources };
       recruitmentCost.forEach(c => newResources[c.resource] -= c.amount);
-      const newHero: PlayerHeroState = { definitionId: heroDef.id, level: 1, currentExp: 0, expToNextLevel: getExpToNextHeroLevel(1), skillPoints: 1, skillLevels: {}, specialAttackLevels: {}, equipmentLevels: {}, permanentBuffs: [], ownedShards: [] };
+      const newHero: PlayerHeroState = { 
+          definitionId: heroDef.id, 
+          level: 1, currentExp: 0, 
+          expToNextLevel: getExpToNextHeroLevel(1), 
+          skillPoints: 1, skillLevels: {}, 
+          specialAttackLevels: {}, 
+          equipmentLevels: {}, 
+          permanentBuffs: [], 
+          ownedShards: [], 
+          potionSlots: Array(MAX_POTION_SLOTS_PER_HERO).fill(null),
+          appliedPermanentStats: {},
+      };
       const successNotification: GameNotification = {id: Date.now().toString(), message: `${heroDef.name} recruited!`, type: 'success', iconName: NOTIFICATION_ICONS.success, timestamp: Date.now()};
       return { ...state, resources: newResources, heroes: [...state.heroes, newHero], notifications: [...state.notifications, successNotification] };
     }
@@ -394,7 +408,40 @@ export const handleHeroActions = (
           playerSharedSkillPoints: newSharedSkillPoints,
           notifications: [...state.notifications, {id: Date.now().toString(), message: `Cheat: ${heroDef?.name || 'First Hero'} gained Lvl, SP, XP. +${levelsGained} Shared SP.`, type:'info', iconName: ICONS.HERO ? 'HERO' : undefined, timestamp: Date.now()}]
         };
+    }
+    case 'EQUIP_POTION_TO_SLOT': {
+      const { heroId, potionId, slotIndex } = action.payload;
+      const heroIndex = state.heroes.findIndex(h => h.definitionId === heroId);
+      if (heroIndex === -1) return state;
+
+      const updatedHeroes = [...state.heroes];
+      const heroToUpdate = { ...updatedHeroes[heroIndex] };
+      
+      if (slotIndex >= 0 && slotIndex < MAX_POTION_SLOTS_PER_HERO) {
+        if (!heroToUpdate.potionSlots || heroToUpdate.potionSlots.length !== MAX_POTION_SLOTS_PER_HERO) {
+            heroToUpdate.potionSlots = Array(MAX_POTION_SLOTS_PER_HERO).fill(null);
+        }
+        heroToUpdate.potionSlots[slotIndex] = potionId;
+        updatedHeroes[heroIndex] = heroToUpdate;
+        return { ...state, heroes: updatedHeroes };
       }
+      return state;
+    }
+    case 'UNEQUIP_POTION_FROM_SLOT': {
+      const { heroId, slotIndex } = action.payload;
+      const heroIndex = state.heroes.findIndex(h => h.definitionId === heroId);
+      if (heroIndex === -1) return state;
+
+      const updatedHeroes = [...state.heroes];
+      const heroToUpdate = { ...updatedHeroes[heroIndex] };
+
+      if (heroToUpdate.potionSlots && slotIndex >= 0 && slotIndex < heroToUpdate.potionSlots.length) {
+        heroToUpdate.potionSlots[slotIndex] = null;
+        updatedHeroes[heroIndex] = heroToUpdate;
+        return { ...state, heroes: updatedHeroes };
+      }
+      return state;
+    }
     default:
       return state;
   }

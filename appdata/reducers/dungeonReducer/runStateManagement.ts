@@ -1,5 +1,5 @@
 
-import { GameState, GameAction, DungeonRunState, GlobalBonuses, GameNotification, ResourceType } from '../../types';
+import { GameState, GameAction, DungeonRunState, GlobalBonuses, GameNotification, ResourceType, ActiveView } from '../../types';
 import { DUNGEON_DEFINITIONS, HERO_DEFINITIONS, SKILL_TREES, EQUIPMENT_DEFINITIONS, TOWN_HALL_UPGRADE_DEFINITIONS, GUILD_HALL_UPGRADE_DEFINITIONS, SHARD_DEFINITIONS, RUN_BUFF_DEFINITIONS } from '../../gameData/index';
 import { ICONS } from '../../components/Icons';
 import { NOTIFICATION_ICONS } from '../../constants';
@@ -65,14 +65,14 @@ export const handleRunStateActions = (
         } else {
              notifications.push({id: Date.now().toString(), message: `Dungeon Run Failed.`, type: 'error', iconName: ICONS.X_CIRCLE ? 'X_CIRCLE' : undefined, timestamp: Date.now()});
         }
-        return { ...state, activeDungeonRun: null, activeDungeonGrid: null, battleState: null, activeView: 'TOWN', notifications };
+        return { ...state, activeDungeonRun: null, activeDungeonGrid: null, battleState: null, activeView: ActiveView.TOWN, notifications };
     }
     case 'EXIT_DUNGEON_EXPLORATION': {
         const notifications = [...state.notifications];
         if (action.payload.outcome === 'ABANDONED') {
             notifications.push({id: Date.now().toString(), message: "Dungeon run abandoned.", type: 'warning', iconName: NOTIFICATION_ICONS.warning, timestamp: Date.now()});
         }
-        return { ...state, activeView: 'TOWN', activeDungeonGrid: null, activeDungeonRun: null, battleState: null, notifications };
+        return { ...state, activeView: ActiveView.TOWN, activeDungeonGrid: null, activeDungeonRun: null, battleState: null, notifications };
     }
     case 'GAIN_RUN_XP': { 
       if (!state.activeDungeonRun) return state;

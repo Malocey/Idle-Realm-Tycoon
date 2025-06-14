@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useGameContext } from '../context';
 import { BattleHero, BattleEnemy, HeroStats, AttackEvent, Cost, ResourceType, StatusEffect, TemporaryBuff, StatusEffectType, ParticipantChannelingState } from '../types';
@@ -10,7 +9,7 @@ import { formatNumber } from '../utils';
 // Import new sub-components
 import ParticipantInfoHeader from './BattleParticipantCard/ParticipantInfoHeader';
 import BattleActionBar from './BattleParticipantCard/BattleActionBar';
-import BattleStatBars from './BattleParticipantCard/BattleStatBars';
+import BattleStatBars from '../components/BattleStatBars'; // Updated path
 import ParticipantStatsDisplay from './BattleParticipantCard/ParticipantStatsDisplay';
 import SpecialAttackBadges from './BattleParticipantCard/SpecialAttackBadges';
 import TemporaryBuffBadges from './BattleParticipantCard/TemporaryBuffBadges';
@@ -23,6 +22,7 @@ interface BattleParticipantCardProps {
   isTargetable?: boolean;
   onSetTarget?: (targetId: string | null) => void;
   isSelectedTarget?: boolean;
+  displayMode?: 'card' | 'grid'; 
 }
 
 export interface PopupData {
@@ -33,15 +33,23 @@ export interface PopupData {
   timestamp: number;
 }
 
-type DisplayMode = 'ALIVE' | 'DYING' | 'SHOWING_LOOT';
+type DisplayModeInternal = 'ALIVE' | 'DYING' | 'SHOWING_LOOT'; 
 const STAT_BAR_ANIMATION_DURATION_MS = 300;
 const HIT_ANIMATION_DURATION_MS = 300;
 const HERO_DEATH_ANIMATION_DURATION_MS = 500;
 const HP_VALUE_ANIMATION_DURATION_MS = 400;
 const CHANNEL_BAR_ANIMATION_DURATION_MS = 100;
-const CHANNEL_BAR_HEIGHT_CLASS = 'h-3.5'; // Increased height for channeling bar
+const CHANNEL_BAR_HEIGHT_CLASS = 'h-2'; // Reduced height for grid mode
 
-const BattleParticipantCard: React.FC<BattleParticipantCardProps> = ({ participant, type, onClick, isTargetable, onSetTarget, isSelectedTarget }) => {
+const BattleParticipantCard: React.FC<BattleParticipantCardProps> = ({ 
+  participant, 
+  type, 
+  onClick, 
+  isTargetable, 
+  onSetTarget, 
+  isSelectedTarget,
+  displayMode = 'card' 
+}) => {
   const { gameState, staticData } = useGameContext();
   const stats = participant.calculatedStats;
   const maxHp = stats.maxHp;
@@ -50,7 +58,7 @@ const BattleParticipantCard: React.FC<BattleParticipantCardProps> = ({ participa
 
   const [isAttacking, setIsAttacking] = useState(false);
   const [popups, setPopups] = useState<PopupData[]>([]);
-  const [displayMode, setDisplayMode] = useState<DisplayMode>('ALIVE');
+  const [internalDisplayMode, setInternalDisplayMode] = useState<DisplayModeInternal>('ALIVE');
   const [isCastingSpecial, setIsCastingSpecial] = useState(false);
   const [isTakingHit, setIsTakingHit] = useState(false);
   const [isTakingCrit, setIsTakingCrit] = useState(false);
@@ -88,7 +96,7 @@ const BattleParticipantCard: React.FC<BattleParticipantCardProps> = ({ participa
   const hitReactionTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (displayMode === 'ALIVE') {
+    if (internalDisplayMode === 'ALIVE') {
         if (participant.currentHp < prevHpRef.current) {
             setHpValueAnimationClass('animate-hp-damage-value');
             if (hpAnimationTimeoutRef.current) clearTimeout(hpAnimationTimeoutRef.current);
@@ -102,7 +110,7 @@ const BattleParticipantCard: React.FC<BattleParticipantCardProps> = ({ participa
     prevHpRef.current = participant.currentHp;
     const currentShieldValue = battleHero?.currentEnergyShield || battleEnemy?.currentEnergyShield;
     prevShieldRef.current = currentShieldValue;
-  }, [participant.currentHp, battleHero?.currentEnergyShield, battleEnemy?.currentEnergyShield, displayMode]);
+  }, [participant.currentHp, battleHero?.currentEnergyShield, battleEnemy?.currentEnergyShield, internalDisplayMode]);
 
   useEffect(() => {
     if (hpBarAnimationRef.current) cancelAnimationFrame(hpBarAnimationRef.current);
@@ -219,13 +227,13 @@ const BattleParticipantCard: React.FC<BattleParticipantCardProps> = ({ participa
 
   useEffect(() => {
     if (type === 'enemy' && (participant as BattleEnemy).isDying && (participant as BattleEnemy).dyingTicksRemaining !== undefined && (participant as BattleEnemy).dyingTicksRemaining! <= 0) {
-      setDisplayMode('SHOWING_LOOT');
-    } else if (participant.currentHp <= 0 && displayMode === 'ALIVE') {
-      setDisplayMode('DYING');
-    } else if (participant.currentHp > 0 && displayMode !== 'ALIVE') {
-      setDisplayMode('ALIVE');
+      setInternalDisplayMode('SHOWING_LOOT');
+    } else if (participant.currentHp <= 0 && internalDisplayMode === 'ALIVE') {
+      setInternalDisplayMode('DYING');
+    } else if (participant.currentHp > 0 && internalDisplayMode !== 'ALIVE') {
+      setInternalDisplayMode('ALIVE');
     }
-  }, [participant.currentHp, (participant as BattleEnemy).isDying, (participant as BattleEnemy).dyingTicksRemaining, displayMode, type]);
+  }, [participant.currentHp, (participant as BattleEnemy).isDying, (participant as BattleEnemy).dyingTicksRemaining, internalDisplayMode, type]);
 
   useEffect(() => {
     const currentAttackEvents = gameStateRef.current.battleState?.lastAttackEvents || [];
@@ -238,7 +246,7 @@ const BattleParticipantCard: React.FC<BattleParticipantCardProps> = ({ participa
     if (hitReactionTimeoutRef.current) clearTimeout(hitReactionTimeoutRef.current);
 
     currentAttackEvents.forEach((event: AttackEvent) => {
-      if (event.attackerId === participant.uniqueBattleId && displayMode === 'ALIVE') {
+      if (event.attackerId === participant.uniqueBattleId && internalDisplayMode === 'ALIVE') {
         setIsAttacking(true);
         if (attackAnimationTimeoutRef.current) clearTimeout(attackAnimationTimeoutRef.current);
         attackAnimationTimeoutRef.current = window.setTimeout(() => setIsAttacking(false), HIT_ANIMATION_DURATION_MS);
@@ -274,7 +282,7 @@ const BattleParticipantCard: React.FC<BattleParticipantCardProps> = ({ participa
     }
 
     const createAndManagePopup = (amount: number, typePopup: PopupData['isCritOrHealType']) => {
-        if (amount > 0 && eventTimestampForPopup > 0 && displayMode === 'ALIVE') {
+        if (amount > 0 && eventTimestampForPopup > 0 && internalDisplayMode === 'ALIVE') {
             const popupId = `${eventTimestampForPopup}-${participant.uniqueBattleId}-${typePopup}-${Math.random().toString(36).substr(2, 5)}`;
             setPopups(prev => [...prev, { id: popupId, finalAmount: amount, displayedAmount: 0, isCritOrHealType: typePopup, timestamp: Date.now() }].slice(-7));
             if (popupTimeoutsRef.current[popupId]) clearTimeout(popupTimeoutsRef.current[popupId]);
@@ -289,7 +297,7 @@ const BattleParticipantCard: React.FC<BattleParticipantCardProps> = ({ participa
     createAndManagePopup(aggregatedDamage, wasCrit ? 'crit' : 'normal');
     createAndManagePopup(aggregatedHeal, 'heal');
 
-  }, [gameState.battleState?.lastAttackEvents, participant.uniqueBattleId, displayMode]);
+  }, [gameState.battleState?.lastAttackEvents, participant.uniqueBattleId, internalDisplayMode]);
 
   useEffect(() => {
     const animatePopups = () => {
@@ -307,9 +315,9 @@ const BattleParticipantCard: React.FC<BattleParticipantCardProps> = ({ participa
       });
       animationFrameRef.current = requestAnimationFrame(animatePopups);
     };
-    if (displayMode === 'ALIVE') animationFrameRef.current = requestAnimationFrame(animatePopups);
+    if (internalDisplayMode === 'ALIVE') animationFrameRef.current = requestAnimationFrame(animatePopups);
     return () => { if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current); };
-  }, [displayMode]);
+  }, [internalDisplayMode]);
 
   useEffect(() => {
     setIsVisuallyStunned(participant.statusEffects?.some(effect => effect.type === StatusEffectType.STUN && effect.remainingDurationMs > 0) || false);
@@ -356,54 +364,63 @@ const BattleParticipantCard: React.FC<BattleParticipantCardProps> = ({ participa
     channelingProgressText = ` (${currentSeconds}s / ${totalSeconds}s)`;
   }
 
+  let cardBaseStyle = 'relative overflow-visible transition-all duration-200 flex flex-col justify-between';
+  if (displayMode === 'card') {
+    cardBaseStyle += ' p-3 rounded-lg shadow-md glass-effect border-2 h-full';
+  } else { 
+    cardBaseStyle += ' p-1 items-center flex flex-col w-24'; // Adjusted width to w-24
+  }
 
   let cardClasses = [
-    'p-3 rounded-lg shadow-md glass-effect border-2 relative overflow-visible transition-all duration-200 h-full flex flex-col justify-between',
+    cardBaseStyle,
     type === 'hero' ? 'border-sky-500' : 'border-red-500',
-    isAttacking && displayMode === 'ALIVE' && !participant.channelingState ? 'attacking' : '',
-    (displayMode === 'DYING' && type === 'hero') ? 'animate-death' :
-    (displayMode === 'SHOWING_LOOT' && type === 'enemy') ? 'opacity-0 transition-opacity duration-500 delay-300 pointer-events-none' : 
-    (displayMode === 'DYING' && type === 'enemy') ? 'opacity-50' : 
+    isAttacking && internalDisplayMode === 'ALIVE' && !participant.channelingState ? 'attacking' : '',
+    (internalDisplayMode === 'DYING' && type === 'hero') ? 'animate-death' :
+    (internalDisplayMode === 'SHOWING_LOOT' && type === 'enemy') ? 'opacity-0 transition-opacity duration-500 delay-300 pointer-events-none' : 
+    (internalDisplayMode === 'DYING' && type === 'enemy') ? 'opacity-50' : 
     'opacity-100',
-    isCastingSpecial && displayMode === 'ALIVE' && !participant.channelingState ? `animate-special-cast ${type === 'hero' ? 'hero-cast-pulse' : 'enemy-cast-pulse'}` : '',
-    isTakingCrit && displayMode === 'ALIVE' ? 'target-crit-flash' : (isTakingHit && displayMode === 'ALIVE' ? 'target-hit-flash' : ''),
-    isTakingShieldHit && displayMode === 'ALIVE' ? 'target-shield-flash' : '',
-    isBeingHealed && displayMode === 'ALIVE' ? 'target-healed-flash' : '',
-    isVisuallyStunned && displayMode === 'ALIVE' ? 'status-stunned-pulse' : '',
-    isTargetable && displayMode === 'ALIVE' && type === 'hero' ? 'cursor-pointer hover:ring-2 hover:ring-green-400' : '',
-    isSelectedTarget && displayMode === 'ALIVE' && type === 'enemy' ? 'ring-2 ring-orange-500 shadow-orange-400/50' : '',
-    type === 'enemy' && displayMode === 'ALIVE' && !isTargetable && !isSelectedTarget ? 'cursor-pointer hover:ring-2 hover:ring-orange-400' : '',
+    isCastingSpecial && internalDisplayMode === 'ALIVE' && !participant.channelingState ? `animate-special-cast ${type === 'hero' ? 'hero-cast-pulse' : 'enemy-cast-pulse'}` : '',
+    isTakingCrit && internalDisplayMode === 'ALIVE' ? 'target-crit-flash' : (isTakingHit && internalDisplayMode === 'ALIVE' ? 'target-hit-flash' : ''),
+    isTakingShieldHit && internalDisplayMode === 'ALIVE' ? 'target-shield-flash' : '',
+    isBeingHealed && internalDisplayMode === 'ALIVE' ? 'target-healed-flash' : '',
+    isVisuallyStunned && internalDisplayMode === 'ALIVE' ? 'status-stunned-pulse' : '',
+    isTargetable && internalDisplayMode === 'ALIVE' && type === 'hero' ? 'cursor-pointer hover:ring-2 hover:ring-green-400' : '',
+    isSelectedTarget && internalDisplayMode === 'ALIVE' && type === 'enemy' ? 'ring-2 ring-orange-500 shadow-orange-400/50' : '',
+    type === 'enemy' && internalDisplayMode === 'ALIVE' && !isTargetable && !isSelectedTarget ? 'cursor-pointer hover:ring-2 hover:ring-orange-400' : '',
     participant.channelingState ? 'ring-2 ring-purple-400 shadow-purple-500/40' : ''
   ].filter(Boolean).join(' ');
 
 
-  if (type === 'enemy' && displayMode === 'SHOWING_LOOT') {
+  if (type === 'enemy' && internalDisplayMode === 'SHOWING_LOOT') {
     const lootInfo = gameState.battleState?.defeatedEnemiesWithLoot[participant.uniqueBattleId];
     const Icon = ICONS[lootInfo?.originalIconName || 'ENEMY'];
+    const lootDisplayStyle = displayMode === 'grid' 
+      ? "p-0.5 rounded bg-slate-800/80 border border-slate-700/40 text-center w-24 h-28 flex flex-col items-center justify-center" // Adjusted height for w-24
+      : "p-3 rounded-lg shadow-md glass-effect border-2 border-slate-700/50 bg-slate-800/70 h-full flex flex-col justify-center items-center opacity-80 hover:opacity-100 transition-opacity"; 
+
     return (
-      <div className="p-3 rounded-lg shadow-md glass-effect border-2 border-slate-700/50 bg-slate-800/70 h-full flex flex-col justify-center items-center opacity-80 hover:opacity-100 transition-opacity">
-        {Icon && <Icon className="w-10 h-10 mb-2 text-slate-500" />}
+      <div className={lootDisplayStyle}>
+        {Icon && <Icon className={`mb-0.5 ${displayMode === 'grid' ? 'w-7 h-7 text-slate-500' : 'w-10 h-10 text-slate-500'}`} />} {/* Icon size slightly increased */}
         {lootInfo && lootInfo.loot.length > 0 ? (
           lootInfo.loot.map((item, index) => {
             const LootItemIcon = ICONS[item.resource];
             return (
-              <div key={index} className="flex items-center text-xs text-yellow-300">
-                {LootItemIcon && <LootItemIcon className={`w-3 h-3 mr-1 ${RESOURCE_COLORS[item.resource] || 'text-yellow-200'}`} />}
-                {formatNumber(item.amount)} {item.resource.replace(/_/g, ' ')}
+              <div key={index} className={`flex items-center ${displayMode === 'grid' ? 'text-[9px] justify-center' : 'text-xs'} text-yellow-300 leading-tight`}> {/* Text size for grid mode */}
+                {LootItemIcon && <LootItemIcon className={`w-2.5 h-2.5 mr-0.5 ${RESOURCE_COLORS[item.resource] || 'text-yellow-200'}`} />}
+                {formatNumber(item.amount)} {item.resource.replace(/_/g, ' ').substring(0,5)}
               </div>
             );
           })
         ) : (
-          <p className="text-xs text-slate-400 italic">No loot</p>
+          <p className={`${displayMode === 'grid' ? 'text-[9px]' : 'text-xs'} text-slate-400 italic`}>No loot</p>
         )}
       </div>
     );
   }
-  if (type === 'enemy' && displayMode === 'DYING') {
-     // Minimal rendering for dying enemy before it becomes SHOWING_LOOT or removed
+  if (type === 'enemy' && internalDisplayMode === 'DYING') {
      return (
         <div className={cardClasses} style={{pointerEvents: 'none'}}>
-           {/* Optionally render a faded icon or something simple */}
+          {displayMode === 'grid' && ICONS[participant.iconName] && React.createElement(ICONS[participant.iconName], { className: "w-12 h-12 text-red-700 opacity-50"})} {/* Icon size for dying enemy */}
         </div>
     );
   }
@@ -412,7 +429,7 @@ const BattleParticipantCard: React.FC<BattleParticipantCardProps> = ({ participa
   const handleCardClick = () => {
     if (onClick) {
       onClick();
-    } else if (onSetTarget && type === 'enemy' && displayMode === 'ALIVE') {
+    } else if (onSetTarget && type === 'enemy' && internalDisplayMode === 'ALIVE') {
       if (isSelectedTarget) {
         onSetTarget(null);
       } else {
@@ -422,6 +439,12 @@ const BattleParticipantCard: React.FC<BattleParticipantCardProps> = ({ participa
   };
 
   const activeStatusEffects = participant.statusEffects?.filter(se => se.remainingDurationMs > 0) || [];
+  const ParticipantIcon = ICONS[participant.iconName];
+
+  const gridSpecificIconClass = displayMode === 'grid' ? 'w-12 h-12' : 'w-6 h-6'; // Adjusted for grid
+  const gridSpecificSpecialAttackIconClass = displayMode === 'grid' ? 'special-attack-icon w-2.5 h-2.5' : 'special-attack-icon';
+  const gridSpecificSpecialAttackContainerPadding = displayMode === 'grid' ? 'px-0.5 py-px text-[9px]' : 'px-1.5 py-0.5 text-xs';
+
 
   return (
     <div
@@ -435,8 +458,18 @@ const BattleParticipantCard: React.FC<BattleParticipantCardProps> = ({ participa
     >
       <DamageHealPopups popups={popups} formatNumber={formatNumber} />
 
-      <div className={displayMode === 'DYING' ? 'opacity-0 transition-opacity duration-300 delay-200' : 'opacity-100'}>
-        <ParticipantInfoHeader participant={participant} type={type} isVisuallyStunned={isVisuallyStunned} />
+      <div className={`${internalDisplayMode === 'DYING' ? 'opacity-0 transition-opacity duration-300 delay-200' : 'opacity-100'} w-full flex flex-col`}>
+        {displayMode === 'grid' && ParticipantIcon && (
+          <div className="mb-px"> {/* Reduced margin for grid */}
+            <ParticipantIcon className={`${gridSpecificIconClass} mx-auto ${type === 'hero' ? 'text-sky-400' : 'text-red-400'}`} />
+          </div>
+        )}
+        <ParticipantInfoHeader 
+            participant={participant} 
+            type={type} 
+            isVisuallyStunned={isVisuallyStunned} 
+        />
+
 
         {isChanneling && (
           <div
@@ -448,7 +481,7 @@ const BattleParticipantCard: React.FC<BattleParticipantCardProps> = ({ participa
               style={{ width: `${currentAnimatedChannelProgress}%` }}
             />
             {channelingAbilityName && (
-              <span className="relative z-10 text-xs font-medium text-white pointer-events-none text-on-bar truncate px-1" style={{lineHeight: 'normal'}}>
+              <span className={`relative z-10 font-medium text-white pointer-events-none text-on-bar truncate px-1 ${displayMode === 'grid' ? 'text-[8px]' : 'text-xs'}`} style={{lineHeight: 'normal'}}>
                 {channelingAbilityName}{channelingProgressText}
               </span>
             )}
@@ -474,23 +507,23 @@ const BattleParticipantCard: React.FC<BattleParticipantCardProps> = ({ participa
             currentAnimatedMana={currentAnimatedMana}
             maxMana={battleHero?.calculatedStats.maxMana || 0}
             animatedExpState={animatedExpState}
-            displayMode={displayMode}
+            displayMode={internalDisplayMode}
             formatNumber={formatNumber}
             participant={participant}
             currentAnimatedShield={currentAnimatedShield}
             maxShield={participant.calculatedStats.maxEnergyShield}
         />
-        <ParticipantStatsDisplay stats={stats} type={type} displayMode={displayMode} />
+        {displayMode === 'card' && <ParticipantStatsDisplay stats={stats} type={type} displayMode={internalDisplayMode} />}
 
-        {displayMode === 'ALIVE' && (!participant.channelingState || !participant.channelingState.areActionsBlocked) && (
+        {internalDisplayMode === 'ALIVE' && (!participant.channelingState || !participant.channelingState.areActionsBlocked) && (
             <>
-                <SpecialAttackBadges battleHero={battleHero} type={type} displayMode={displayMode} staticData={staticData} />
-                <TemporaryBuffBadges battleHero={battleHero} type={type} displayMode={displayMode} staticData={staticData} />
+                <SpecialAttackBadges battleHero={battleHero} type={type} displayMode={internalDisplayMode} staticData={staticData} />
+                {displayMode === 'card' && <TemporaryBuffBadges battleHero={battleHero} type={type} displayMode={internalDisplayMode} staticData={staticData} />}
             </>
         )}
 
         {activeStatusEffects.length > 0 && (
-          <div className="mt-1 pt-1 border-t border-slate-700/50 flex flex-wrap gap-1 justify-center">
+          <div className={`mt-px pt-px ${displayMode === 'card' ? 'border-t border-slate-700/50' : ''} flex flex-wrap gap-0.5 justify-center`}>
             {activeStatusEffects.map(effect => {
               const EffectIcon = ICONS[effect.iconName || (effect.type === StatusEffectType.BUFF ? 'BUFF_ICON' : effect.type === StatusEffectType.DEBUFF ? 'WARNING' : 'INFO')];
               const remainingSeconds = Math.ceil(effect.remainingDurationMs / 1000);
@@ -500,16 +533,16 @@ const BattleParticipantCard: React.FC<BattleParticipantCardProps> = ({ participa
               else if (effect.type === StatusEffectType.STUN) iconColorClass = 'text-yellow-400';
 
               return (
-                <div key={effect.instanceId} className="special-attack-icon-container" title={`${effect.name} (${remainingSeconds}s left)`}>
-                  {EffectIcon && <EffectIcon className={`special-attack-icon ${iconColorClass}`} />}
-                  <span className={`text-xs ${iconColorClass}`}>{remainingSeconds}s</span>
+                <div key={effect.instanceId} className={`special-attack-icon-container ${gridSpecificSpecialAttackContainerPadding}`} title={`${effect.name} (${remainingSeconds}s left)`}>
+                  {EffectIcon && <EffectIcon className={`${gridSpecificSpecialAttackIconClass} ${iconColorClass}`} />}
+                  <span className={`text-[0.6rem] ${iconColorClass}`}>{remainingSeconds}s</span>
                 </div>
               );
             })}
           </div>
         )}
 
-        {type === 'enemy' && battleEnemy && displayMode === 'ALIVE' && (
+        {type === 'enemy' && battleEnemy && internalDisplayMode === 'ALIVE' && displayMode === 'card' && (
           <div className="mt-1 pt-1 border-t border-slate-700/50 space-y-0.5">
              {battleEnemy.periodicEffectAbility && (
               <div className="special-attack-icon-container" title={`Periodic: ${battleEnemy.periodicEffectAbility.statusEffect.name}`}>

@@ -1,54 +1,72 @@
 
-import { ResourceType } from './enums';
-import { GameNotification, Cost } from './common'; // Added Cost import
+import { ResourceType, ActiveView } from './enums'; // Added ActiveView
+import { GameNotification, Cost } from './common';
 import { PlayerBuildingState } from './building';
-import { PlayerHeroState, PlayerSharedSkillsState } from './hero'; // Added PlayerSharedSkillsState
-import { BattleState, BuildingLevelUpEventInBattle, BattleHero } from './battle'; // Added BattleHero
-import { GameAction } from './gameActions'; // Corrected import path
+import { PlayerHeroState, PlayerSharedSkillsState } from './hero';
+import { BattleState, BuildingLevelUpEventInBattle, BattleHero } from './battle';
+import { GameAction } from './gameActions';
 import { DungeonRunState, DungeonGridState } from './dungeon';
 import { CraftingQueueItem } from './crafting';
 import { PlayerQuest } from './quests';
-import { StoneQuarryMinigameState, GoldMineMinigameState } from './minigame'; // Added GoldMineMinigameState
+import { StoneQuarryMinigameState, GoldMineMinigameState } from './minigame';
 import { ActionBattleState } from './actionBattle';
-import { HeroStats } from './hero'; // Added HeroStats
-import { ResonanceMoteType } from './aethericResonanceTypes'; // Import ResonanceMoteType
+import { HeroStats } from './hero';
+import { ResonanceMoteType } from './aethericResonanceTypes';
 import { ResearchProgress, CompletedResearchEntry } from './research';
+import { AutoBattlerState } from './autoBattler'; // New import
 
 export type ActionBattleAISystem = 'legacy' | 'behaviorTree';
 
 export interface ActiveDemoniconChallenge {
   enemyId: string;
   currentRank: number;
-  persistedHeroStatesInRun: Record<string, { // Keyed by heroDefinitionId
+  persistedHeroStatesInRun: Record<string, { 
     level: number;
     currentExp: number;
     expToNextLevel: number;
     skillPoints: number;
-    currentHpForNextRank: number; // HP to start the next rank with
-    currentManaForNextRank: number; // Mana to start the next rank with
-    cooldownsForNextRank: Record<string, number>; // Cooldowns to start the next rank with
+    currentHpForNextRank: number; 
+    currentManaForNextRank: number; 
+    cooldownsForNextRank: Record<string, number>; 
   }>;
-  lootThisRun: Cost[]; // For run summary if abandoned, not main loot
-  xpThisRun: number;   // Total HERO EXP gained by heroes this run (for UI summary)
+  lootThisRun: Cost[]; 
+  xpThisRun: number;   
+}
+
+export interface MapPoiCompletionStatus {
+  archer_unlocked_verdant_plains?: boolean;
+  lumber_mill_blueprint_obtained?: boolean;
+  farm_blueprint_obtained?: boolean;       
+  damaged_gold_mine_access_granted?: boolean; 
+  tannery_blueprint_obtained?: boolean; 
+  stone_quarry_blueprint_obtained?: boolean; 
+  goblin_camp_early_battle_won?: boolean;
+  gold_mine_access_battle_battle_won?: boolean; 
+  tannery_guardians_battle_won?: boolean; 
+  stone_quarry_guards_battle_won?: boolean; 
+  gold_mine_blueprint_obtained?: boolean; 
+  demonicon_gate_unlocked?: boolean; 
+  ww_cleric_rescue_poi_completed?: boolean;
+  ww_depths_optional_poi_1_collected?: boolean; 
+  [key: string]: boolean | undefined; 
 }
 
 export interface PerMapState {
   playerCurrentNodeId: string;
   revealedMapNodeIds: string[];
-  mapPoiCompletionStatus: Record<string, boolean>;
+  mapPoiCompletionStatus: MapPoiCompletionStatus;
 }
 
 export interface AccountXpGainEvent {
-  id: string; // Unique ID for the event (e.g., timestamp + random string)
+  id: string; 
   timestamp: number;
   amount: number;
-  source: string; // Description of the source, e.g., "Wave 5 Clear", "Goblin Defeat", "Hero Level Up"
+  source: string; 
 }
 
-// Information about the last applied Resonance Mote for UI feedback
 export interface LastAppliedResonanceMoteInfo {
   statId: keyof HeroStats;
-  qualityName: 'Resonance Shard' | 'Clear Core' | 'Potent Focus'; // English names
+  qualityName: 'Resonance Shard' | 'Clear Core' | 'Potent Focus'; 
   isPercentage: boolean;
   bonusValue: number;
   timestamp: number;
@@ -60,7 +78,7 @@ export interface GameState {
   heroes: PlayerHeroState[];
   unlockedHeroDefinitions: string[];
   currentWaveProgress: number;
-  activeView: 'TOWN' | 'BATTLEFIELD' | 'DUNGEON_REWARD' | 'HERO_ACADEMY' | 'DUNGEON_EXPLORE' | 'STONE_QUARRY_MINIGAME' | 'ACTION_BATTLE_VIEW' | 'SHARED_SKILL_TREE' | 'GOLD_MINE_MINIGAME' | 'DEMONICON_PORTAL' | 'WORLD_MAP';
+  activeView: ActiveView; // Use ActiveView enum/type
   battleState: BattleState | null;
   activeDungeonRun: DungeonRunState | null;
   activeDungeonGrid: DungeonGridState | null;
@@ -74,8 +92,9 @@ export interface GameState {
   guildHallUpgradeLevels: Record<string, number>;
   totalGoldSpentOnTownHallPaths: number;
   buildingLevelUpEvents: Record<string, { timestamp: number }>;
-  potions: Record<string, number>;
+  potions: Record<string, number>; 
   craftingQueue: CraftingQueueItem[];
+  permanentPotionCraftCounts: Record<string, number>; 
   justFusedShardInstanceId?: string | null;
   activeQuests: PlayerQuest[];
   unlockedRunBuffs: string[];
@@ -88,11 +107,9 @@ export interface GameState {
   actionBattleAISystem: ActionBattleAISystem;
   currentMapId: string;
   playerCurrentNodeId: string;
-  revealedMapNodeIds: string[];
-  mapPoiCompletionStatus: Record<string, boolean>; // Status für die aktuelle Karte
-
-  mapStates: Record<string, PerMapState>; // Status für alle Karten
-
+  revealedMapNodeIds: string[]; 
+  mapPoiCompletionStatus: MapPoiCompletionStatus; 
+  mapStates: Record<string, PerMapState>; 
   defeatedEnemyTypes: string[];
   demoniconHighestRankCompleted: Record<string, number>;
   activeDemoniconChallenge: ActiveDemoniconChallenge | null;
@@ -100,23 +117,20 @@ export interface GameState {
   globalDemoniconXP: number;
   expToNextGlobalDemoniconLevel: number;
   achievedDemoniconMilestoneRewards: string[];
-
   accountLevel: number;
   accountXP: number;
   expToNextAccountLevel: number;
   firstTimeEnemyDefeatsAccountXP: string[];
   accountXpHistory: AccountXpGainEvent[];
   achievedBuildingLevelAccXpThresholds: Record<string, number[]>;
-
   aethericResonanceBonuses: Partial<Record<keyof HeroStats, { percentage: number; flat: number }>>;
   resonanceMotes: Partial<Record<keyof HeroStats, { faint: number; clear: number; potent: number }>>;
   lastAppliedResonanceMote: LastAppliedResonanceMoteInfo | null;
-
-  // Research System
-  researchProgress: Record<string, ResearchProgress>; // Keyed by researchId
-  completedResearch: Record<string, CompletedResearchEntry>; // Keyed by researchId (researchId: {level: number})
+  researchProgress: Record<string, ResearchProgress>; 
+  completedResearch: Record<string, CompletedResearchEntry>; 
   researchSlots: number;
-  researchQueue: Array<{ researchId: string; levelToResearch: number }>; // Array of researchIds and target levels
+  researchQueue: Array<{ researchId: string; levelToResearch: number }>;
+  autoBattler: AutoBattlerState | null; // New state for Auto-Battler
 
   _battleCombatTickResult?: { newlyAddedToFirstTimeDefeatsForAccXp?: string[] };
   _deferredCombatActions?: GameAction[];

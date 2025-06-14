@@ -1,14 +1,15 @@
 
-import { ResourceType, CellType, RunBuffRarity } from './enums';
+import { ResourceType, CellType, RunBuffRarity, ActiveView } from './enums'; // Added ActiveView
 import { Cost, GameNotification } from './common';
-import { PermanentHeroBuff, PlayerHeroState, HeroStats } from './hero'; // Moved HeroStats here
-import { BuildingLevelUpEventInBattle, BattleHero, BattleState } from './battle';
+import { PermanentHeroBuff, PlayerHeroState, HeroStats } from './hero'; 
+import { BuildingLevelUpEventInBattle, BattleHero, BattleState } from './battle'; 
 import { MinigameUpgradeType } from './minigame';
-import { ResonanceMoteType } from './aethericResonanceTypes'; // Corrected import for ResonanceMoteType
+import { ResonanceMoteType } from './aethericResonanceTypes'; 
+import { ResearchProgress, CompletedResearchEntry } from './research';
 
 export type GameAction =
   | { type: 'PROCESS_TICK' }
-  | { type: 'SET_ACTIVE_VIEW'; payload: 'TOWN' | 'BATTLEFIELD' | 'DUNGEON_REWARD' | 'HERO_ACADEMY' | 'DUNGEON_EXPLORE' | 'STONE_QUARRY_MINIGAME' | 'ACTION_BATTLE_VIEW' | 'SHARED_SKILL_TREE' | 'GOLD_MINE_MINIGAME' | 'DEMONICON_PORTAL' | 'WORLD_MAP' }
+  | { type: 'SET_ACTIVE_VIEW'; payload: ActiveView } // Use ActiveView enum
   | { type: 'CONSTRUCT_BUILDING'; payload: { buildingId: string } }
   | { type: 'UPGRADE_BUILDING'; payload: { buildingId: string; levelsToUpgrade?: number; totalBatchCost?: Cost[] } }
   | { type: 'RECRUIT_HERO'; payload: { heroId: string } }
@@ -16,6 +17,7 @@ export type GameAction =
   | { type: 'UPGRADE_SKILL'; payload: { heroDefinitionId: string; skillId: string; levelsToUpgrade?: number; totalBatchCost?: Cost[] } }
   | { type: 'LEARN_UPGRADE_SPECIAL_ATTACK'; payload: { heroDefinitionId: string; skillNodeId: string; levelsToUpgrade?: number; totalBatchCost?: Cost[] } }
   | { type: 'UPGRADE_HERO_EQUIPMENT'; payload: { heroDefinitionId: string; equipmentId: string; levelsToUpgrade?: number; totalBatchCost?: Cost[] } }
+  | { type: 'APPLY_PERMANENT_POTION_EFFECT'; payload: { heroId: string; potionId: string } } 
   | { type: 'AWARD_SHARD_TO_HERO'; payload: { heroDefinitionId: string; shardDefinitionId: string; shardLevel: number; } }
   | { type: 'START_BATTLE_PREPARATION'; payload: {
         waveNumber: number;
@@ -73,9 +75,11 @@ export type GameAction =
   | { type: 'END_DUNGEON_RUN'; payload: { outcome: 'SUCCESS' | 'FAILURE' } }
   | { type: 'APPLY_PERMANENT_HERO_BUFF'; payload: { heroDefinitionId: string, buff: PermanentHeroBuff } }
   | { type: 'CRAFT_ITEM'; payload: { itemId: string, quantity: number }}
-  | { type: 'ADD_POTION_TO_QUEUE'; payload: { potionId: string, quantity: number }}
+  | { type: 'ADD_POTION_TO_QUEUE'; payload: { potionId: string, quantity: number, targetHeroIdForPermanent?: string }} 
   | { type: 'SELECT_POTION_FOR_USAGE'; payload: { potionId: string | null } }
   | { type: 'USE_POTION_ON_HERO'; payload: { targetHeroUniqueBattleId: string } }
+  | { type: 'EQUIP_POTION_TO_SLOT'; payload: { heroId: string; potionId: string; slotIndex: number } }
+  | { type: 'UNEQUIP_POTION_FROM_SLOT'; payload: { heroId: string; slotIndex: number } }
   | { type: 'FUSE_SHARDS'; payload: { heroDefinitionId: string, sourceShardInstanceId1: string, sourceShardInstanceId2: string } }
   | { type: 'FUSE_ALL_MATCHING_SHARDS_FOR_HERO'; payload: { heroDefinitionId: string } }
   | { type: 'TRANSFER_SHARD'; payload: { sourceHeroId: string, targetHeroId: string, shardInstanceId: string } }
@@ -159,7 +163,8 @@ export type GameAction =
   | { type: 'GAIN_ACCOUNT_XP'; payload: { amount: number; source: string; } }
   | { type: 'COLLECT_RESONANCE_MOTES'; payload: { statId: keyof HeroStats; quality: ResonanceMoteType; amount: number } }
   | { type: 'INFUSE_STAT_SPECIFIC_MOTE'; payload: { statId: keyof HeroStats; moteType: ResonanceMoteType } }
-  // Research Actions
   | { type: 'START_RESEARCH'; payload: { researchId: string, levelToResearch: number } }
   | { type: 'CANCEL_RESEARCH'; payload: { researchId: string, researchSlotId?: number } }
-  | { type: 'PROCESS_RESEARCH_TICK' }; // Added for tickReducer to process research
+  | { type: 'PROCESS_RESEARCH_TICK' }
+  | { type: 'INITIALIZE_AUTO_BATTLER' } // New action
+  ;

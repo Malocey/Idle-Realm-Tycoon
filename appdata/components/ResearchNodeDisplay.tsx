@@ -30,6 +30,7 @@ const categoryStyles: Record<ResearchCategory, { bg: string; border: string; tex
     Economic: { bg: 'bg-green-800/70', border: 'border-green-600', text: 'text-green-300', pulseRingHover: 'hover:ring-green-500/50', pulseRingActive: 'ring-green-500/70' },
     Exploration: { bg: 'bg-blue-800/70', border: 'border-blue-600', text: 'text-blue-300', pulseRingHover: 'hover:ring-blue-500/50', pulseRingActive: 'ring-blue-500/70' },
     Special: { bg: 'bg-purple-800/70', border: 'border-purple-600', text: 'text-purple-300', pulseRingHover: 'hover:ring-purple-500/50', pulseRingActive: 'ring-purple-500/70' },
+    Alchemy: { bg: 'bg-teal-800/70', border: 'border-teal-600', text: 'text-teal-300', pulseRingHover: 'hover:ring-teal-500/50', pulseRingActive: 'ring-teal-500/70' },
 };
 
 const ResearchNodeDisplay: React.FC<ResearchNodeDisplayProps> = ({

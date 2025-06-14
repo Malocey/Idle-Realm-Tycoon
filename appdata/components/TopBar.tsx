@@ -6,7 +6,7 @@ import { RESOURCE_COLORS } from '../constants';
 import { MAX_ACTIVE_QUESTS }
 from '../types';
 import { BUILDING_DEFINITIONS, HERO_DEFINITIONS, WAVE_DEFINITIONS } from '../gameData/index';
-import { ResourceType, Production, GameState, PlayerSharedSkillProgress, BattleState, GameContextType } from '../types'; // Added GameContextType
+import { ResourceType, Production, GameState, PlayerSharedSkillProgress, BattleState, GameContextType, ActiveView } from '../types'; // Added ActiveView
 import { calculateBuildingProduction, canAfford, formatNumber, getTownHallUpgradeEffectValue } from '../utils'; // Added getTownHallUpgradeEffectValue
 import Button from './Button';
 import Modal from './Modal';
@@ -34,18 +34,18 @@ const getContextualResources = (
   staticData: GameContextType['staticData'] // Added staticData as argument
 ): ResourceType[] => {
   switch (activeView) {
-    case 'TOWN':
+    case ActiveView.TOWN:
       return [ResourceType.GOLD, ResourceType.TOWN_XP]; // Simplified for Town View
-    case 'BATTLEFIELD':
+    case ActiveView.BATTLEFIELD:
       if (battleState?.isDemoniconBattle) {
         return [ResourceType.HEROIC_POINTS, ResourceType.DEMONIC_COIN];
       } else if (battleState?.isDungeonGridBattle || battleState?.isDungeonBattle) {
         return [ResourceType.HEROIC_POINTS, ResourceType.GOLD, ResourceType.CATACOMB_KEY];
       }
       return [ResourceType.HEROIC_POINTS, ResourceType.GOLD];
-    case 'HERO_ACADEMY':
+    case ActiveView.HERO_ACADEMY:
       return [ResourceType.HEROIC_POINTS, ResourceType.GOLD];
-    case 'DUNGEON_EXPLORE': {
+    case ActiveView.DUNGEON_EXPLORE: {
       const resourcesForDungeon = [ResourceType.GOLD];
       if (gameState.activeDungeonRun) {
         const dungeonDef = staticData.dungeonDefinitions[gameState.activeDungeonRun.dungeonDefinitionId];
@@ -55,23 +55,23 @@ const getContextualResources = (
       }
       return resourcesForDungeon;
     }
-    case 'STONE_QUARRY_MINIGAME':
+    case ActiveView.STONE_QUARRY_MINIGAME:
       return [
         ResourceType.MINIGAME_DIRT, ResourceType.MINIGAME_CLAY, ResourceType.MINIGAME_SAND,
         ResourceType.MINIGAME_ESSENCE, ResourceType.MINIGAME_CRYSTAL, ResourceType.MINIGAME_EMERALD,
         ResourceType.MINIGAME_RUBY, ResourceType.MINIGAME_SAPPHIRE
       ];
-    case 'GOLD_MINE_MINIGAME':
+    case ActiveView.GOLD_MINE_MINIGAME:
         return [ResourceType.GOLD, ResourceType.GOLD_ORE, ResourceType.DIAMOND_ORE, ResourceType.DIRT, ResourceType.STONE];
-    case 'ACTION_BATTLE_VIEW':
+    case ActiveView.ACTION_BATTLE_VIEW:
       return [ResourceType.GOLD, ResourceType.HEROIC_POINTS];
-    case 'SHARED_SKILL_TREE':
+    case ActiveView.SHARED_SKILL_TREE:
       return [ResourceType.HEROIC_POINTS, ResourceType.GOLD];
-    case 'DEMONICON_PORTAL':
+    case ActiveView.DEMONICON_PORTAL:
       return [ResourceType.DEMONIC_COIN, ResourceType.GOLD, ResourceType.HEROIC_POINTS];
-    case 'DUNGEON_REWARD':
+    case ActiveView.DUNGEON_REWARD:
       return [ResourceType.GOLD, ResourceType.HEROIC_POINTS];
-    case 'WORLD_MAP': // Add case for World Map
+    case ActiveView.WORLD_MAP: // Add case for World Map
       return [ResourceType.GOLD, ResourceType.FOOD, ResourceType.HEROIC_POINTS]; // Example resources for world map
     default:
       return [ResourceType.GOLD, ResourceType.HEROIC_POINTS];
@@ -141,23 +141,23 @@ const TopBar: React.FC<TopBarProps> = ({ onToggleAccountLevelModal }) => {
   const canAccessHeroAcademy = gameState.heroes.length > 0;
 
   const mainViewButtonText = () => {
-    if (gameState.activeView === 'TOWN' || gameState.activeView === 'WORLD_MAP') return 'Go to Battle';
+    if (gameState.activeView === ActiveView.TOWN || gameState.activeView === ActiveView.WORLD_MAP) return 'Go to Battle';
     return 'Go to Town';
   };
 
   const handleMainViewToggle = () => {
-    if (gameState.activeView === 'TOWN' || gameState.activeView === 'WORLD_MAP') {
+    if (gameState.activeView === ActiveView.TOWN || gameState.activeView === ActiveView.WORLD_MAP) {
       if (gameState.activeDungeonGrid) {
-        dispatch({ type: 'SET_ACTIVE_VIEW', payload: 'DUNGEON_EXPLORE' });
+        dispatch({ type: 'SET_ACTIVE_VIEW', payload: ActiveView.DUNGEON_EXPLORE });
       } else if (gameState.battleState && gameState.battleState.status === 'FIGHTING') {
-        dispatch({ type: 'SET_ACTIVE_VIEW', payload: 'BATTLEFIELD' });
+        dispatch({ type: 'SET_ACTIVE_VIEW', payload: ActiveView.BATTLEFIELD });
       } else if (gameState.actionBattleState && gameState.actionBattleState.status === 'FIGHTING') {
-        dispatch({ type: 'SET_ACTIVE_VIEW', payload: 'ACTION_BATTLE_VIEW' });
+        dispatch({ type: 'SET_ACTIVE_VIEW', payload: ActiveView.ACTION_BATTLE_VIEW });
       } else {
-        dispatch({ type: 'SET_ACTIVE_VIEW', payload: 'BATTLEFIELD' });
+        dispatch({ type: 'SET_ACTIVE_VIEW', payload: ActiveView.BATTLEFIELD });
       }
     } else {
-      dispatch({ type: 'SET_ACTIVE_VIEW', payload: 'TOWN' });
+      dispatch({ type: 'SET_ACTIVE_VIEW', payload: ActiveView.TOWN });
     }
   };
 
@@ -271,11 +271,11 @@ const TopBar: React.FC<TopBarProps> = ({ onToggleAccountLevelModal }) => {
             </div>
           {displayedResourceTypes.map(resType => {
 
-            const isMinigameView = gameState.activeView === 'STONE_QUARRY_MINIGAME' || gameState.activeView === 'GOLD_MINE_MINIGAME';
+            const isMinigameView = gameState.activeView === ActiveView.STONE_QUARRY_MINIGAME || gameState.activeView === ActiveView.GOLD_MINE_MINIGAME;
             const value = resType === ResourceType.TOWN_XP ? gameState.totalTownXp : (gameState.resources[resType] || 0);
             const rate = productionRates[resType];
 
-            if (gameState.activeView === 'TOWN') {
+            if (gameState.activeView === ActiveView.TOWN) {
                  if (resType !== ResourceType.GOLD && resType !== ResourceType.TOWN_XP) return null;
             } else if (!isMinigameView && value === 0 && !rate && ![ResourceType.GOLD, ResourceType.TOWN_XP, ResourceType.HEROIC_POINTS].includes(resType)) {
                 return null;
@@ -312,9 +312,9 @@ const TopBar: React.FC<TopBarProps> = ({ onToggleAccountLevelModal }) => {
                   Dungeons
               </Button>
           )}
-          {gameState.activeView !== 'WORLD_MAP' && ( // New Button for World Map
+          {gameState.activeView !== ActiveView.WORLD_MAP && ( // New Button for World Map
             <Button
-              onClick={() => dispatch({ type: 'SET_ACTIVE_VIEW', payload: 'WORLD_MAP' })}
+              onClick={() => dispatch({ type: 'SET_ACTIVE_VIEW', payload: ActiveView.WORLD_MAP })}
               variant="secondary"
               size="sm"
               icon={ICONS.MAP_ICON && <ICONS.MAP_ICON className="w-4 h-4"/>}
@@ -322,9 +322,9 @@ const TopBar: React.FC<TopBarProps> = ({ onToggleAccountLevelModal }) => {
               World Map
             </Button>
           )}
-          {canAccessHeroAcademy && gameState.activeView !== 'HERO_ACADEMY' && (
+          {canAccessHeroAcademy && gameState.activeView !== ActiveView.HERO_ACADEMY && (
             <Button
-              onClick={() => dispatch({ type: 'SET_ACTIVE_VIEW', payload: 'HERO_ACADEMY' })}
+              onClick={() => dispatch({ type: 'SET_ACTIVE_VIEW', payload: ActiveView.HERO_ACADEMY })}
               variant="secondary"
               size="sm"
               icon={ICONS.SKILL && <ICONS.SKILL className="w-4 h-4"/>}
@@ -334,9 +334,9 @@ const TopBar: React.FC<TopBarProps> = ({ onToggleAccountLevelModal }) => {
               {renderBadge(heroAcademyActionableCount)}
             </Button>
           )}
-          {gameState.activeView !== 'SHARED_SKILL_TREE' && (
+          {gameState.activeView !== ActiveView.SHARED_SKILL_TREE && (
             <Button
-              onClick={() => dispatch({ type: 'SET_ACTIVE_VIEW', payload: 'SHARED_SKILL_TREE' })}
+              onClick={() => dispatch({ type: 'SET_ACTIVE_VIEW', payload: ActiveView.SHARED_SKILL_TREE })}
               variant="secondary"
               size="sm"
               icon={ICONS.UPGRADE && <ICONS.UPGRADE className="w-4 h-4"/>}

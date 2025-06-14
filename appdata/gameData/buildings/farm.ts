@@ -1,3 +1,4 @@
+
 import { ResourceType, BuildingDefinition } from '../../types';
 
 export const FARM_DEFINITION: BuildingDefinition = {
@@ -11,5 +12,5 @@ export const FARM_DEFINITION: BuildingDefinition = {
   maxLevel: -1,
   iconName: 'FOOD',
   isProducer: true,
-  unlockWaveRequirement: 6,
+  // unlockWaveRequirement: 6, // Removed
 };

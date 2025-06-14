@@ -3,13 +3,14 @@ import { ResourceType, GlobalEffectTarget, HeroStats, TownHallUpgradeEffectType 
 import { Cost } from './common';
 import { TownHallUpgradeEffectParams } from './upgrades'; // Re-use for consistency
 
-export type ResearchCategory = 'Military' | 'Economic' | 'Exploration' | 'Special';
+export type ResearchCategory = 'Military' | 'Economic' | 'Exploration' | 'Special' | 'Alchemy'; // Alchemy category added
 
 export interface ResearchEffectDefinition {
   // Similar to TownHallUpgradeEffectDefinition but might need more specific types later
   stat?: keyof HeroStats | keyof GlobalEffectTarget; // Can affect hero stats or global bonuses
   effectParams: TownHallUpgradeEffectParams; // Re-using existing structure
   // OR define specific effect types for research
+  unlockPotionId?: string; // New: ID of the potion recipe to unlock
   // e.g., unlockBuildingId?: string; unlockHeroId?: string;
   description: string; // Describes the effect of this specific part of the research
 }
@@ -20,7 +21,7 @@ export interface ResearchDefinition {
   description: string; // General description of the research
   category: ResearchCategory;
   iconName: string;
-  costPerLevel: (level: number) => Cost[]; // Geändert von costs: Cost[]
+  costPerLevel: (level: number) => Cost[]; 
   researchTimeTicks: number; // Time in game ticks
   prerequisites: Array<{ researchId: string; level: number }>; // Other research needed
   effects: ResearchEffectDefinition[];

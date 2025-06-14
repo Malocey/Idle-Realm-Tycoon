@@ -41,8 +41,15 @@ export interface GlobalBonuses {
   accountXPGainBonus: number; // Percentage
   researchPointProductionBonus: number; // Percentage
   aethericMoteEffectivenessBonus: number; // Percentage
-  buildingCostReductionGeneral: number; // New for ECO_EFFICIENT_TRANSPORT
+  buildingCostReductionGeneral: number; // New for ECO_EFFICIENT_TRANSPORT (General building cost reduction)
   heroDodgeChance: number; // New for MIL_QUICK_REFLEXES (conceptual)
   dungeonMapVisionBonus: number; // New for EXP_MAP_REVELATION
-  researchTimeReduction: number; // New for SPC_RESEARCH_EFFICIENCY
+  researchTimeReduction: number; // New for SPC_RESEARCH_EFFICIENCY (Percentage)
+
+  // Added for new research content
+  ironProductionBonus?: number;
+  crystalProductionBonus?: number;
+  heroDamageBonusVsBosses?: number; // For Siege Engineering
+  potionEffectivenessBonus?: number; // For Alchemical Potency (duration or value)
+  herbYieldBonus?: number; // For Efficient Extraction
 }

@@ -19,6 +19,7 @@ export * from './mapTypes';
 export * from './accountLevelTypes';
 export * from './aethericResonanceTypes';
 export * from './research';
+export * from './autoBattler'; // New export
 export * from './main';
 
 // New Demonicon Milestone Types

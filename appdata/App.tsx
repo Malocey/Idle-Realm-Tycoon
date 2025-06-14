@@ -15,26 +15,28 @@ import ActionBattleView from './views/ActionBattleView';
 import SharedSkillTreeView from './views/SharedSkillTreeView'; 
 import GoldMineMinigameView from './views/GoldMineMinigameView';
 import DemoniconPortalView from './views/DemoniconPortalView';
-import WorldMapView from './views/WorldMapView'; // New Import
-import AccountLevelInfoModal from './components/AccountLevelInfoModal'; // Import the new modal
-import { GameState } from './types'; 
+import WorldMapView from './views/WorldMapView'; 
+import AccountLevelInfoModal from './components/AccountLevelInfoModal'; 
+import AcademyModal from './components/AcademyModal'; 
+import AutoBattlerView from './views/AutoBattlerView'; // New Import
+import { GameState, ActiveView } from './types'; // Added ActiveView
 
 const VIEW_TRANSITION_DURATION = 400; // ms, should match CSS animation duration
 
 const AppContentInternal: React.FC = () => {
   const context = useGameContext(); 
   const [isCheatMenuModalOpen, setIsCheatMenuModalOpen] = useState(false);
-  const [isAccountLevelModalOpen, setIsAccountLevelModalOpen] = useState(false); // State for new modal
+  const [isAccountLevelModalOpen, setIsAccountLevelModalOpen] = useState(false); 
   
-  const [currentView, setCurrentView] = useState<GameState['activeView'] | null>(null);
-  const [previousView, setPreviousView] = useState<GameState['activeView'] | null>(null);
+  const [currentView, setCurrentView] = useState<ActiveView | null>(null); // Use ActiveView enum
+  const [previousView, setPreviousView] = useState<ActiveView | null>(null); // Use ActiveView enum
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   useEffect(() => {
     if (!context) return;
     const newActiveView = context.gameState.activeView;
 
-    if (currentView === null) { // Initial load
+    if (currentView === null) { 
       setCurrentView(newActiveView);
     } else if (newActiveView !== currentView && !isTransitioning) {
       setIsTransitioning(true);
@@ -69,25 +71,34 @@ const AppContentInternal: React.FC = () => {
     setIsCheatMenuModalOpen(prev => !prev);
   };
 
-  const toggleAccountLevelModal = () => { // Handler for new modal
+  const toggleAccountLevelModal = () => { 
     setIsAccountLevelModalOpen(prev => !prev);
   };
 
-  const renderView = (viewName: GameState['activeView'] | null, isExiting: boolean) => {
+  const renderView = (viewName: ActiveView | null, isExiting: boolean) => { // Use ActiveView enum
     if (!viewName) return null;
     
     let viewComponent;
     switch (viewName) {
-      case 'TOWN': viewComponent = <TownView />; break;
-      case 'BATTLEFIELD': viewComponent = <BattleView />; break;
-      case 'HERO_ACADEMY': viewComponent = <HeroAcademyView />; break;
-      case 'DUNGEON_EXPLORE': viewComponent = <DungeonExploreView />; break;
-      case 'STONE_QUARRY_MINIGAME': viewComponent = <StoneQuarryMinigameView />; break;
-      case 'ACTION_BATTLE_VIEW': viewComponent = <ActionBattleView />; break;
-      case 'SHARED_SKILL_TREE': viewComponent = <SharedSkillTreeView />; break; 
-      case 'GOLD_MINE_MINIGAME': viewComponent = <GoldMineMinigameView />; break;
-      case 'DEMONICON_PORTAL': viewComponent = <DemoniconPortalView />; break;
-      case 'WORLD_MAP': viewComponent = <WorldMapView />; break; 
+      case ActiveView.TOWN: viewComponent = <TownView />; break;
+      case ActiveView.BATTLEFIELD: viewComponent = <BattleView />; break;
+      case ActiveView.HERO_ACADEMY: viewComponent = <HeroAcademyView />; break;
+      case ActiveView.DUNGEON_EXPLORE: viewComponent = <DungeonExploreView />; break;
+      case ActiveView.STONE_QUARRY_MINIGAME: viewComponent = <StoneQuarryMinigameView />; break;
+      case ActiveView.ACTION_BATTLE_VIEW: viewComponent = <ActionBattleView />; break;
+      case ActiveView.SHARED_SKILL_TREE: viewComponent = <SharedSkillTreeView />; break; 
+      case ActiveView.GOLD_MINE_MINIGAME: viewComponent = <GoldMineMinigameView />; break;
+      case ActiveView.DEMONICON_PORTAL: viewComponent = <DemoniconPortalView />; break;
+      case ActiveView.WORLD_MAP: viewComponent = <WorldMapView />; break;
+      case ActiveView.ACADEMY_OF_SCHOLARS: 
+        viewComponent = (
+          <AcademyModal 
+            isOpen={true} 
+            onClose={() => context.dispatch({ type: 'SET_ACTIVE_VIEW', payload: ActiveView.TOWN })} 
+          />
+        ); 
+        break;
+      case ActiveView.AUTO_BATTLER: viewComponent = <AutoBattlerView />; break; // New case
       default: return null;
     }
 
@@ -113,7 +124,7 @@ const AppContentInternal: React.FC = () => {
       <Footer onToggleCheatMenu={toggleCheatMenuModal} />
       <NotificationArea />
       <DungeonRewardModal 
-        isOpen={context.gameState.activeView === 'DUNGEON_REWARD'} 
+        isOpen={context.gameState.activeView === ActiveView.DUNGEON_REWARD} 
         onClose={() => context.dispatch({ type: 'END_DUNGEON_RUN', payload: { outcome: 'SUCCESS' }})} 
       />
       <CheatMenuModal 

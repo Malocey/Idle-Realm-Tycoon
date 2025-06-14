@@ -1,5 +1,5 @@
 
-import { GameState, GameAction, DungeonRunState, BattleHero, BattleEnemy, GameNotification, ResourceType, GlobalBonuses, CellType, DungeonGridState, DungeonCell, Cost, DungeonDefinition, DungeonEncounterDefinition, TrapDefinition, DungeonEventDefinition, DungeonEventType, PlayerOwnedShard, PlayerActiveRunBuff, RunBuffDefinition, EnemyChannelingAbilityDefinition } from '../../types';
+import { GameState, GameAction, DungeonRunState, BattleHero, BattleEnemy, GameNotification, ResourceType, GlobalBonuses, CellType, DungeonGridState, DungeonCell, Cost, DungeonDefinition, DungeonEncounterDefinition, TrapDefinition, DungeonEventDefinition, DungeonEventType, PlayerOwnedShard, PlayerActiveRunBuff, RunBuffDefinition, EnemyChannelingAbilityDefinition, ActiveView } from '../../types';
 import { DUNGEON_DEFINITIONS, HERO_DEFINITIONS, SKILL_TREES, ENEMY_DEFINITIONS, TOWN_HALL_UPGRADE_DEFINITIONS, EQUIPMENT_DEFINITIONS, GUILD_HALL_UPGRADE_DEFINITIONS, SHARD_DEFINITIONS, TRAP_DEFINITIONS, DUNGEON_EVENT_DEFINITIONS, RUN_BUFF_DEFINITIONS } from '../../gameData/index';
 import { ICONS } from '../../components/Icons';
 import { NOTIFICATION_ICONS, XP_PER_REVEALED_CELL, XP_PER_LOOT_CELL, XP_PER_EVENT_CELL } from '../../constants';
@@ -211,7 +211,7 @@ export const handleGridInteractionActions = (
           state.activeDungeonGrid && state.activeDungeonGrid.dungeonDefinitionId === dungeonId &&
           state.activeDungeonGrid.currentFloor === floorIndex) {
             notifications.push({id: Date.now().toString(), message: `Resuming ${dungeonDef.name} - Floor ${floorIndex + 1}`, type: 'info', iconName: ICONS.COMPASS ? 'COMPASS': undefined, timestamp: Date.now()});
-            return { ...state, activeView: 'DUNGEON_EXPLORE', battleState: null, notifications };
+            return { ...state, activeView: ActiveView.DUNGEON_EXPLORE, battleState: null, notifications };
       }
 
       if (state.activeDungeonRun && state.activeDungeonRun.dungeonDefinitionId === dungeonId) {
@@ -273,7 +273,7 @@ export const handleGridInteractionActions = (
             expToNextRunLevel: updatedExpToNextRunLevel,
             offeredBuffChoices: updatedOfferedBuffChoices,
         };
-        nextActiveView = 'DUNGEON_EXPLORE';
+        nextActiveView = ActiveView.DUNGEON_EXPLORE;
         const floorEntryMessage = `Proceeding to Floor ${floorIndex + 1} of ${dungeonDef.name}`;
         notifications.push({id: Date.now().toString(), message: floorEntryMessage, type: 'info', iconName: ICONS.COMPASS ? 'COMPASS' : undefined, timestamp: Date.now()});
       } else {
@@ -319,8 +319,8 @@ export const handleGridInteractionActions = (
             const numChoices = (DUNGEON_DEFINITIONS[dungeonId]?.finalReward.permanentBuffChoices || 3) + globalBonuses.dungeonBuffChoicesBonus;
             const availableBuffs = Object.values(RUN_BUFF_DEFINITIONS).filter(buff => state.unlockedRunBuffs.includes(buff.id));
             const chosenBuffIds: string[] = [];
-            if(availableBuffs.length > 0){
-                 for (let i = 0; i < numChoices && availableBuffs.length > 0; i++) {
+            if (availableBuffs.length > 0) {
+                for (let i = 0; i < numChoices && availableBuffs.length > 0; i++) {
                     const randomIndex = Math.floor(Math.random() * availableBuffs.length);
                     chosenBuffIds.push(availableBuffs.splice(randomIndex, 1)[0].id);
                 }
@@ -338,7 +338,7 @@ export const handleGridInteractionActions = (
           activeRunBuffs: [],
           offeredBuffChoices: newRunOfferedBuffs,
         };
-        nextActiveView = 'DUNGEON_EXPLORE';
+        nextActiveView = ActiveView.DUNGEON_EXPLORE;
         notifications.push({id: Date.now().toString(), message: `Entering ${dungeonDef.name} - Floor ${floorIndex + 1}`, type: 'info', iconName: ICONS.COMPASS ? 'COMPASS' : undefined, timestamp: Date.now()});
       }
       return { ...state, resources: nextResources, activeView: nextActiveView, activeDungeonGrid: nextActiveDungeonGrid, activeDungeonRun: nextActiveDungeonRun, battleState: null, notifications };
@@ -465,7 +465,7 @@ export const handleGridInteractionActions = (
                 sessionTotalExp: 0,
                 sessionTotalBuildingLevelUps: [],
             };
-            nextActiveView = 'BATTLEFIELD';
+            nextActiveView = ActiveView.BATTLEFIELD;
             notifications.push({id:Date.now().toString(), message: `Encounter: ${encounterDef.name || 'Enemies'}! ${encounterDef.isElite ? '(Elite)' : ''}`, type:'warning', iconName: ICONS.ENEMY ? 'ENEMY' : undefined, timestamp:Date.now()});
         }
       } else if (targetCell.type === CellType.LOOT) {
@@ -572,7 +572,7 @@ export const handleGridInteractionActions = (
             nextActiveDungeonGrid.grid = updatedGridForTrap;
             if (nextActiveDungeonRun.survivingHeroIds.length === 0) {
                  notifications.push({ id: Date.now().toString(), message: "All heroes defeated by the trap! Run ended.", type: 'error', iconName: ICONS.X_CIRCLE ? 'X_CIRCLE' : undefined, timestamp: Date.now() });
-                 nextActiveView = 'TOWN';
+                 nextActiveView = ActiveView.TOWN;
                  nextActiveDungeonGrid = null;
                  nextActiveDungeonRun = null;
             } else if (anyHeroDied) {
@@ -681,7 +681,7 @@ export const handleGridInteractionActions = (
             nextActiveDungeonGrid.grid = updatedGridForEvent;
              if (nextActiveDungeonRun.survivingHeroIds.length === 0) {
                  notifications.push({ id: Date.now().toString(), message: "All heroes defeated by the event! Run ended.", type: 'error', iconName: ICONS.X_CIRCLE ? 'X_CIRCLE' : undefined, timestamp: Date.now() });
-                 nextActiveView = 'TOWN';
+                 nextActiveView = ActiveView.TOWN;
                  nextActiveDungeonGrid = null;
                  nextActiveDungeonRun = null;
             } else if (anyEventHeroDied) {
@@ -711,10 +711,10 @@ export const handleGridInteractionActions = (
         nextActiveDungeonGrid = null;
         if (nextActiveDungeonRun.currentFloorIndex < dungeonDef.floors.length) {
              notifications.push({ id: Date.now().toString(), message: `Floor ${currentFloorDisplay} cleared! Preparing Floor ${nextActiveDungeonRun.currentFloorIndex + 1}...`, type: 'success', iconName: ICONS.ARROW_UP ? 'ARROW_UP' : undefined, timestamp: Date.now()});
-             nextActiveView = 'DUNGEON_EXPLORE';
+             nextActiveView = ActiveView.DUNGEON_EXPLORE;
         } else {
             notifications.push({ id: Date.now().toString(), message: `${dungeonDef.name} cleared! Claim your reward.`, type: 'success', iconName: ICONS.CHECK_CIRCLE ? 'CHECK_CIRCLE' : undefined, timestamp: Date.now()});
-            nextActiveView = 'DUNGEON_REWARD';
+            nextActiveView = ActiveView.DUNGEON_REWARD;
         }
       }
 

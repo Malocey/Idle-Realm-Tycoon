@@ -1,4 +1,5 @@
 
+
 html, body {
       height: 100%;
       margin: 0;
@@ -182,16 +183,24 @@ html, body {
     .special-attack-icon-container {
         display: flex;
         align-items: center;
-        gap: 4px; /* Space between icon and text */
-        font-size: 0.65rem; /* Smaller text for cooldown */
+        gap: 4px; 
+        font-size: 0.65rem; 
         line-height: 1;
-        padding: 2px 4px;
+        padding: 2px 4px; /* Base padding */
         background-color: rgba(0,0,0,0.2);
         border-radius: 4px;
     }
+    .special-attack-icon-container.grid-mode { /* Specific style for grid mode */
+        padding: 1px 2px; /* Tighter padding */
+        gap: 2px;
+    }
     .special-attack-icon {
-        width: 14px;
+        width: 14px; /* Base size */
         height: 14px;
+    }
+    .special-attack-icon.grid-mode { /* Specific style for grid mode */
+        width: 10px;
+        height: 10px;
     }
     .cooldown-ready {
         color: #22c55e; /* green-500 */
@@ -200,6 +209,14 @@ html, body {
     .cooldown-charging {
         color: #eab308; /* amber-500 */
     }
+    .special-attack-icon-container .text-\[9px\] { /* For grid mode text */
+        font-size: 9px !important;
+    }
+    .special-attack-icon-container .text-\[0\.6rem\] { /* For grid mode text, alternative */
+        font-size: 0.6rem !important;
+        line-height: 0.9;
+    }
+    
 
     /* Hero Death Animation */
     @keyframes death-fade-shrink {
@@ -842,8 +859,13 @@ html, body {
       transform: rotate(-90deg); /* Start progress from top */
     }
 
-    /* Text on Stat Bars - REMOVED, handled by Tailwind in BattleStatBars.tsx */
-    /* .text-on-bar {} */
+    .text-on-bar {
+      font-size: 9px; /* Reduced from 10px in component */
+      color: white;
+      font-weight: 500;
+      text-shadow: 0 0 2px rgba(0,0,0,0.8), 0.5px 0.5px 0.5px rgba(0,0,0,0.6);
+      line-height: 1;
+    }
 
     /* Aetheric Resonance Altar Pulse Animation */
     @keyframes stat-upgrade-pulse {
@@ -864,3 +886,14 @@ html, body {
       animation: stat-upgrade-pulse 0.6s ease-out;
     }
 
+    /* Final Fantasy Battle Background */
+    .ff-battle-background {
+      background: radial-gradient(ellipse at center, #1e2a3a 40%, #0c121a 100%);
+      /* background-image: url('https://images.unsplash.com/photo-1542736410-f94c7756e587?q=80&w=1920&auto=format&fit=crop'); */
+      /* background-size: cover; */
+      /* background-position: bottom center; */
+      border: 2px solid #334155; /* slate-700 */
+      border-radius: 0.5rem; /* Tailwind rounded-lg */
+      box-shadow: 0 0 25px rgba(0,0,0,0.4), inset 0 0 15px rgba(0,0,0,0.2);
+      overflow: hidden; /* Ensures content stays within rounded borders */
+    }

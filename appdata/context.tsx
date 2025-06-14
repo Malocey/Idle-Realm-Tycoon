@@ -18,7 +18,7 @@ import {
   WAVE_DEFINITIONS, TOWN_HALL_UPGRADE_DEFINITIONS, SPECIAL_ATTACK_DEFINITIONS, EQUIPMENT_DEFINITIONS,
   DUNGEON_DEFINITIONS, BUILDING_SPECIFIC_UPGRADE_DEFINITIONS, GUILD_HALL_UPGRADE_DEFINITIONS, POTION_DEFINITIONS, SHARD_DEFINITIONS, QUEST_DEFINITIONS, TRAP_DEFINITIONS, DUNGEON_EVENT_DEFINITIONS, RUN_BUFF_DEFINITIONS, COLOSSEUM_WAVE_DEFINITIONS, SHARED_SKILL_DEFINITIONS, STATUS_EFFECT_DEFINITIONS, 
   DEMONICON_MILESTONE_REWARDS, worldMapDefinitions, ACCOUNT_LEVEL_DEFINITIONS, AETHERIC_RESONANCE_STAT_CONFIGS, RESEARCH_DEFINITIONS
-} from './gameData/index';
+} from './gameData/index'; // Haupt-Barrel-Datei wird hier verwendet
 import {
     calculateBuildingProduction, calculateBuildingUpgradeCost,
     calculateHeroStats, canAfford, getExpToNextHeroLevel,
@@ -45,7 +45,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     heroDefinitions: HERO_DEFINITIONS,
     skillTrees: SKILL_TREES,
     enemyDefinitions: ENEMY_DEFINITIONS,
-    waveDefinitions: WAVE_DEFINITIONS,
+    waveDefinitions: WAVE_DEFINITIONS, // Dies sollte jetzt alle Wellen enthalten
     icons: ICONS,
     townHallUpgradeDefinitions: TOWN_HALL_UPGRADE_DEFINITIONS,
     buildingSpecificUpgradeDefinitions: BUILDING_SPECIFIC_UPGRADE_DEFINITIONS,
@@ -63,10 +63,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     sharedSkillDefinitions: SHARED_SKILL_DEFINITIONS,
     statusEffectDefinitions: STATUS_EFFECT_DEFINITIONS, 
     demoniconMilestoneRewards: DEMONICON_MILESTONE_REWARDS,
-    worldMapDefinitions: worldMapDefinitions,
+    worldMapDefinitions: worldMapDefinitions, // Dies sollte jetzt alle Karten enthalten
     accountLevelDefinitions: ACCOUNT_LEVEL_DEFINITIONS,
     aethericResonanceStatConfigs: AETHERIC_RESONANCE_STAT_CONFIGS,
-    researchDefinitions: RESEARCH_DEFINITIONS, // Added missing property
+    researchDefinitions: RESEARCH_DEFINITIONS,
   }), []);
 
   const reducerWithStaticData = useMemo(() => createGameReducer(staticData), [staticData]);
@@ -99,8 +99,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           staticData.shardDefinitions,
           staticData.runBuffDefinitions,
           staticData.statusEffectDefinitions,
-          isDemoniconBattle, // Pass if it's a demonicon battle
-          gameState.achievedDemoniconMilestoneRewards // Pass achieved milestones
+          isDemoniconBattle, 
+          gameState.achievedDemoniconMilestoneRewards 
       );
   }, [staticData, gameState, getGlobalBonuses]);
 
@@ -133,13 +133,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return getShardDisplayValueUtil(def, level);
   }, [staticData.shardDefinitions]);
 
-  // Use custom hooks for side effects
   useGameTick(dispatch, gameState.gameSpeed);
   useBattleManager(
     dispatch,
     gameState.activeView,
-    gameState.battleState?.status as GameState['battleState_status'], // Type assertion
-    gameState.actionBattleState?.status as GameState['actionBattleState_status'], // Type assertion
+    gameState.battleState?.status as GameState['battleState_status'], 
+    gameState.actionBattleState?.status as GameState['actionBattleState_status'], 
     gameState.gameSpeed
   );
   useNotificationManager(dispatch, gameState.notifications);
@@ -160,7 +159,6 @@ export const useGameContext = (): GameContextType => {
   return context;
 };
 
-// Helper types for useBattleManager hook arguments
 declare module './types' {
     interface GameState {
         battleState_status?: BattleState['status'] | null;

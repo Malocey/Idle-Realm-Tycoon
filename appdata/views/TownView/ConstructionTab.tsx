@@ -23,11 +23,12 @@ const ConstructionTab: React.FC<ConstructionTabProps> = ({
 }) => {
 
   const buildingsToShow = unbuiltBuildings.filter(def => {
+    // Blueprint checks (primary unlock mechanism for these)
     if (def.id === 'LUMBER_MILL' && !gameState.mapPoiCompletionStatus['lumber_mill_blueprint_obtained']) {
-        return false;
+      return false;
     }
     if (def.id === 'FARM' && !gameState.mapPoiCompletionStatus['farm_blueprint_obtained']) {
-        return false;
+      return false;
     }
     if (def.id === 'GOLD_MINE' && !gameState.mapPoiCompletionStatus['gold_mine_blueprint_obtained']) {
       return false;
@@ -41,10 +42,10 @@ const ConstructionTab: React.FC<ConstructionTabProps> = ({
     if (def.id === 'DEMONICON_GATE' && !gameState.mapPoiCompletionStatus['demonicon_gate_unlocked']) {
       return false;
     }
-    // Original wave requirement check (for buildings not covered by blueprints)
-    if (def.unlockWaveRequirement && gameState.currentWaveProgress < def.unlockWaveRequirement && 
-        !gameState.mapPoiCompletionStatus[`${def.id.toLowerCase()}_blueprint_obtained`] && // Double check for generic blueprint pattern
-        !(def.id === 'DEMONICON_GATE' && gameState.mapPoiCompletionStatus['demonicon_gate_unlocked']) ) {
+
+    // Original wave requirement check (for buildings not covered by specific blueprints mentioned above)
+    // This will now NOT apply to Lumber Mill and Farm as their wave requirements were removed from their definitions.
+    if (def.unlockWaveRequirement && gameState.currentWaveProgress < def.unlockWaveRequirement) {
       return false;
     }
     return true;
@@ -68,7 +69,14 @@ const ConstructionTab: React.FC<ConstructionTabProps> = ({
             let isLocked = false;
             let lockMessage = "";
 
-            if (def.id === 'GOLD_MINE' && !gameState.mapPoiCompletionStatus['gold_mine_blueprint_obtained']) {
+            // Specific blueprint lock messages
+            if (def.id === 'LUMBER_MILL' && !gameState.mapPoiCompletionStatus['lumber_mill_blueprint_obtained']) {
+              isLocked = true;
+              lockMessage = "Requires Lumber Mill Schematics. Explore the Old Lumber Mill Site.";
+            } else if (def.id === 'FARM' && !gameState.mapPoiCompletionStatus['farm_blueprint_obtained']) {
+              isLocked = true;
+              lockMessage = "Requires Farming Almanac. Investigate the Abandoned Farmstead Ruins.";
+            } else if (def.id === 'GOLD_MINE' && !gameState.mapPoiCompletionStatus['gold_mine_blueprint_obtained']) {
               isLocked = true;
               lockMessage = "Requires Gold Mine Blueprint obtained from the Gold Mine Depths.";
             } else if (def.id === 'STONE_QUARRY' && !gameState.mapPoiCompletionStatus['stone_quarry_blueprint_obtained']) {
@@ -80,10 +88,11 @@ const ConstructionTab: React.FC<ConstructionTabProps> = ({
             } else if (def.id === 'DEMONICON_GATE' && !gameState.mapPoiCompletionStatus['demonicon_gate_unlocked']) {
               isLocked = true;
               lockMessage = "Requires the Corrupted Shrine on the World Map to be cleansed.";
-            } else if (def.unlockWaveRequirement && gameState.currentWaveProgress < def.unlockWaveRequirement) {
+            } else if (def.unlockWaveRequirement && gameState.currentWaveProgress < def.unlockWaveRequirement) { // Fallback for other wave-locked buildings
               isLocked = true;
               lockMessage = `Unlocks after completing Wave ${def.unlockWaveRequirement}.`;
             }
+
 
             const isAnimatingThisCard = animatingCardId === def.id;
 

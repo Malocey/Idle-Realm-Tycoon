@@ -11,12 +11,21 @@ interface ParticipantInfoHeaderProps {
 
 const ParticipantInfoHeader: React.FC<ParticipantInfoHeaderProps> = ({ participant, type, isVisuallyStunned }) => {
   const Icon = ICONS[participant.iconName];
+  const isHero = type === 'hero';
+  const levelDisplay = isHero ? ` Lvl ${(participant as BattleHero).level}` : '';
+  const nameColor = isHero ? 'text-sky-300' : 'text-red-300';
+  
+  // Note: Icon display for grid mode is handled in BattleParticipantCard itself.
+  // This component is now primarily for the text part in grid mode.
+  
   return (
-    <div className="flex items-center mb-1">
-      {Icon && <Icon className={`w-6 h-6 mr-2 ${type === 'hero' ? 'text-sky-400' : 'text-red-400'}`} />}
-      <h4 className="text-md font-semibold">{participant.name} {type === 'hero' && `Lvl ${(participant as BattleHero).level}`}</h4>
+    <div className="flex flex-col items-center text-center"> {/* Removed mb-0.5 */}
+      {/* Icon display for 'card' mode would go here, or conditionally render based on a prop if needed */}
+      <h4 className={`text-[0.65rem] font-semibold truncate max-w-full px-1 ${nameColor} leading-tight`}> {/* Reduced font, added leading-tight */}
+        {participant.name}{levelDisplay}
+      </h4>
       {isVisuallyStunned && (
-        <span className="ml-2 px-1.5 py-0.5 text-xs font-bold text-yellow-900 bg-yellow-400 rounded-full">
+        <span className="mt-0.5 px-1 py-0 text-[9px] font-bold text-yellow-900 bg-yellow-400 rounded-full">
           STUNNED
         </span>
       )}

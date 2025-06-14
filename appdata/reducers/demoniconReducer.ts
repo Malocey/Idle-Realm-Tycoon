@@ -1,5 +1,5 @@
 
-import { GameState, GameAction, GlobalBonuses, BattleHero, ActiveDemoniconChallenge, ResourceType, GameNotification, GameContextType, BattleState, Cost, PlayerHeroState } from '../types';
+import { GameState, GameAction, GlobalBonuses, BattleHero, ActiveDemoniconChallenge, ResourceType, GameNotification, GameContextType, BattleState, Cost, PlayerHeroState, ActiveView } from '../types';
 import { HERO_DEFINITIONS, SKILL_TREES, TOWN_HALL_UPGRADE_DEFINITIONS, GUILD_HALL_UPGRADE_DEFINITIONS, EQUIPMENT_DEFINITIONS, SHARD_DEFINITIONS, RUN_BUFF_DEFINITIONS, STATUS_EFFECT_DEFINITIONS } from '../gameData/index';
 import { calculateHeroStats as calculateHeroStatsUtil, calculateDemoniconEnemyStats as calculateDemoniconEnemyStatsUtil, formatNumber, mergeCosts, getExpToNextHeroLevel } from '../utils';
 import { NOTIFICATION_ICONS } from '../constants';
@@ -102,7 +102,7 @@ export const demoniconReducer = (
           sessionTotalExp: 0,  
           sessionTotalBuildingLevelUps: [],
         },
-        activeView: 'BATTLEFIELD',
+        activeView: ActiveView.BATTLEFIELD,
       };
     }
     case 'END_BATTLE': { 
@@ -286,7 +286,7 @@ export const demoniconReducer = (
           ...newState,
           activeDemoniconChallenge: { ...newState.activeDemoniconChallenge!, currentRank: nextRank },
           battleState: newBattleState,
-          activeView: 'BATTLEFIELD',
+          activeView: ActiveView.BATTLEFIELD,
         };
       } else { 
         return demoniconReducer(newState, { type: 'CLEANUP_DEMONICON_STATE' }, globalBonuses, staticData);
@@ -345,7 +345,7 @@ export const demoniconReducer = (
           sessionTotalExp: xpThisRun,         
           sessionTotalBuildingLevelUps: [],
         },
-        activeView: 'BATTLEFIELD',
+        activeView: ActiveView.BATTLEFIELD,
       };
     }
 
@@ -398,7 +398,7 @@ export const demoniconReducer = (
         heroes: finalHeroesState,
         activeDemoniconChallenge: null,
         battleState: null,
-        activeView: 'DEMONICON_PORTAL',
+        activeView: ActiveView.DEMONICON_PORTAL,
         notifications: [...newNotifications, {id: Date.now().toString(), message: "Returned to Demonicon Portal.", type: 'info', iconName: ICONS.REPLAY ? 'REPLAY': undefined, timestamp: Date.now()}],
       };
     }

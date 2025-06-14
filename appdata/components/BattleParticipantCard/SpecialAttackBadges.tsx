@@ -18,7 +18,7 @@ const SpecialAttackBadges: React.FC<SpecialAttackBadgesProps> = ({ battleHero, t
   }
 
   return (
-    <div className="mt-1 pt-1 border-t border-slate-700/50 flex flex-wrap gap-1 justify-center">
+    <div className="mt-0.5 pt-0.5 border-t border-slate-700/50 flex flex-wrap gap-0.5 justify-center">
       {Object.entries(battleHero.specialAttackLevels).map(([saId, level]) => {
         if (level === 0) return null;
         const saDef = staticData.specialAttackDefinitions[saId];
@@ -44,9 +44,9 @@ const SpecialAttackBadges: React.FC<SpecialAttackBadgesProps> = ({ battleHero, t
         }
 
         return (
-          <div key={saId} className="special-attack-icon-container" title={`${saDef.name} Lvl ${level} (Cost: ${currentSaManaCost} MP)`}>
-            {SpecialAttackIcon && <SpecialAttackIcon className={`special-attack-icon ${!isFullyReady && isReadyByCooldown && !hasEnoughMana ? 'opacity-60' : ''}`} />}
-            <span className={statusColor}>{statusText}</span>
+          <div key={saId} className="special-attack-icon-container px-1 py-px" title={`${saDef.name} Lvl ${level} (Cost: ${currentSaManaCost} MP)`}> {/* Adjusted padding */}
+            {SpecialAttackIcon && <SpecialAttackIcon className={`special-attack-icon w-2.5 h-2.5 ${!isFullyReady && isReadyByCooldown && !hasEnoughMana ? 'opacity-60' : ''}`} />} {/* Adjusted icon size */}
+            <span className={`${statusColor} text-[9px]`}>{statusText}</span> {/* Adjusted text size */}
           </div>
         );
       })}

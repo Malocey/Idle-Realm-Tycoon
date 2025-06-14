@@ -1,39 +1,31 @@
 
 import React from 'react';
-import { PlayerBuildingState } from '../../types';
+import { PlayerBuildingState, ActiveView } from '../../types'; // Added ActiveView
 import BuildingCard from '../../components/BuildingCard';
-import { useGameContext } from '../../context'; // Needed for BuildingCard internals
+import { useGameContext } from '../../context'; 
 
 interface MyBuildingsTabProps {
   buildings: PlayerBuildingState[];
   onOpenTownHallUpgrades: () => void;
   onOpenGuildHallUpgrades: () => void;
-  onOpenAlchemistLab: () => void;
-  onOpenForgeUpgrades: () => void;
   onOpenDungeonSelection: () => void;
   onOpenBuildingSpecificUpgrades: (buildingId: string) => void;
-  onOpenLibrary: () => void;
-  onOpenStoneQuarryMinigame: () => void;
   onEnterColosseum: () => void;
-  onOpenGoldMineMinigame: () => void;
   onOpenDemoniconPortal: () => void;
-  onOpenAltarOfConvergence: () => void; // New prop
+  onOpenAcademy?: () => void; 
+  onEnterAutoBattler?: () => void; // New prop
 }
 
 const MyBuildingsTab: React.FC<MyBuildingsTabProps> = ({
   buildings,
   onOpenTownHallUpgrades,
   onOpenGuildHallUpgrades,
-  onOpenAlchemistLab,
-  onOpenForgeUpgrades,
   onOpenDungeonSelection,
   onOpenBuildingSpecificUpgrades,
-  onOpenLibrary,
-  onOpenStoneQuarryMinigame,
   onEnterColosseum,
-  onOpenGoldMineMinigame,
   onOpenDemoniconPortal,
-  onOpenAltarOfConvergence, // New
+  onOpenAcademy,
+  onEnterAutoBattler, // New prop
 }) => {
   return (
     <div>
@@ -45,20 +37,16 @@ const MyBuildingsTab: React.FC<MyBuildingsTabProps> = ({
             buildingState={b}
             onOpenTownHallUpgrades={b.id === 'TOWN_HALL' ? onOpenTownHallUpgrades : undefined}
             onOpenGuildHallUpgrades={b.id === 'GUILD_HALL' ? onOpenGuildHallUpgrades : undefined}
-            onOpenAlchemistLab={b.id === 'ALCHEMISTS_LAB' ? onOpenAlchemistLab : undefined}
-            onOpenForgeUpgrades={b.id === 'FORGE' ? onOpenForgeUpgrades : undefined}
             onOpenDungeonSelection={b.id === 'EXPLORERS_GUILD' ? onOpenDungeonSelection : undefined}
             onOpenBuildingSpecificUpgrades={
-              (b.id === 'MAGE_TOWER' || b.id === 'FARM' || b.id === 'ALCHEMISTS_LAB')
+              (b.id === 'MAGE_TOWER' || b.id === 'FARM' || b.id === 'ALCHEMISTS_LAB') 
               ? onOpenBuildingSpecificUpgrades
               : undefined
             }
-            onOpenLibrary={b.id === 'LIBRARY' ? onOpenLibrary : undefined}
-            onOpenStoneQuarryMinigame={b.id === 'STONE_QUARRY' ? onOpenStoneQuarryMinigame : undefined}
-            onOpenGoldMineMinigame={b.id === 'GOLD_MINE' ? onOpenGoldMineMinigame : undefined}
             onEnterColosseum={b.id === 'COLOSSEUM' ? onEnterColosseum : undefined}
             onOpenDemoniconPortal={b.id === 'DEMONICON_GATE' ? onOpenDemoniconPortal : undefined}
-            onOpenAltarOfConvergence={b.id === 'ALTAR_OF_CONVERGENCE' ? onOpenAltarOfConvergence : undefined} // Pass to card
+            onOpenAcademy={b.id === 'ACADEMY_OF_SCHOLARS' ? onOpenAcademy : undefined}
+            onEnterAutoBattler={b.id === 'KRIEGSAKADEMIE' ? onEnterAutoBattler : undefined} // Pass to BuildingCard
           />
         ))}
         {buildings.length === 0 && (

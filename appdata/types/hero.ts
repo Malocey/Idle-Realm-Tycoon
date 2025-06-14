@@ -5,6 +5,8 @@ import { PlayerOwnedShard } from './shards';
 import { StatusEffectDefinition } from './battle/effects';
 import { GlobalBonuses } from './globalBonuses'; // Added GlobalBonuses
 
+export const MAX_POTION_SLOTS_PER_HERO = 3; // Max Trank-Slots pro Held
+
 export interface HeroStats {
   maxHp: number;
   damage: number;
@@ -51,6 +53,8 @@ export interface PlayerHeroState {
   equipmentLevels: Record<string, number>;
   permanentBuffs: Array<PermanentHeroBuff>;
   ownedShards: PlayerOwnedShard[];
+  appliedPermanentStats?: Partial<Record<keyof HeroStats, {flat: number, percent: number}>>; // Added for permanent potions
+  potionSlots: Array<string | null>; 
 }
 
 // --- Ability Effect Definitions ---

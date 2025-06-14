@@ -30,7 +30,7 @@ export const RESEARCH_DEFINITIONS: Record<string, ResearchDefinition> = {
     researchTimeTicks: 7000,
     prerequisites: [{ researchId: 'ECO_EFFICIENT_MASONRY', level: 1 }],
     effects: [{
-      stat: 'woodProductionBonus' as any, // Specific bonus type
+      stat: 'woodProductionBonus' as any, 
       effectParams: { type: TownHallUpgradeEffectType.PercentageBonus, baseAmount: 0.03, additiveStep: 0.015 },
       description: "+X% Wood Production",
     }],
@@ -47,7 +47,7 @@ export const RESEARCH_DEFINITIONS: Record<string, ResearchDefinition> = {
     researchTimeTicks: 8000,
     prerequisites: [{ researchId: 'ECO_ADVANCED_LOGGING', level: 1 }],
     effects: [{
-      stat: 'foodProductionBonus' as any, // Specific bonus type
+      stat: 'foodProductionBonus' as any, 
       effectParams: { type: TownHallUpgradeEffectType.PercentageBonus, baseAmount: 0.03, additiveStep: 0.015 },
       description: "+X% Food Production",
     }],
@@ -64,7 +64,7 @@ export const RESEARCH_DEFINITIONS: Record<string, ResearchDefinition> = {
     researchTimeTicks: 9000,
     prerequisites: [{ researchId: 'ECO_MASTER_FARMERS', level: 1 }],
     effects: [{
-      stat: 'goldProductionBonus' as any, // Specific bonus type
+      stat: 'goldProductionBonus' as any, 
       effectParams: { type: TownHallUpgradeEffectType.PercentageBonus, baseAmount: 0.02, additiveStep: 0.01 },
       description: "+X% Gold Production",
     }],
@@ -93,7 +93,7 @@ export const RESEARCH_DEFINITIONS: Record<string, ResearchDefinition> = {
     name: 'Trade Routes',
     description: 'Develops trade routes, increasing gold income from enemy defeats and world map sources.',
     category: 'Economic',
-    iconName: 'MAP_ICON', // Better icon for trade routes
+    iconName: 'MAP_ICON', 
     costPerLevel: (level) => [{ resource: ResourceType.RESEARCH_POINTS, amount: 500 + (level-1)*120 }, { resource: ResourceType.WOOD, amount: 2000 + (level-1)*400 }, { resource: ResourceType.STONE, amount: 2000 + (level-1)*400 }],
     researchTimeTicks: 15000,
     prerequisites: [{ researchId: 'ECO_GUILD_ACCOUNTING', level: 1 }, { researchId: 'ECO_GOLD_PROD_1', level: 2 }],
@@ -162,8 +162,8 @@ export const RESEARCH_DEFINITIONS: Record<string, ResearchDefinition> = {
     costPerLevel: (level) => [{ resource: ResourceType.RESEARCH_POINTS, amount: 600 + (level-1)*150 }, { resource: ResourceType.IRON, amount: 1000 + (level-1)*200 }],
     researchTimeTicks: 18000,
     prerequisites: [{ researchId: 'ECO_ALCHEMY_BREAKTHROUGHS', level: 2 }],
-    effects: [{ // This needs a specific GlobalBonus, for now a placeholder effect
-      stat: 'buildingCostReduction' as any, // Placeholder, should be 'equipmentCraftingCostReduction'
+    effects: [{ 
+      stat: 'buildingCostReduction' as any, 
       effectParams: { type: TownHallUpgradeEffectType.PercentageBonus, baseAmount: 0.02, additiveStep: 0.01 },
       description: "-X% Equipment Crafting Cost",
     }],
@@ -188,7 +188,7 @@ export const RESEARCH_DEFINITIONS: Record<string, ResearchDefinition> = {
       description: "+X% Base Damage (All Heroes)",
     }],
     maxLevel: 10,
-    position: { x: 0, y: 2 }, // Adjusted position
+    position: { x: 0, y: 2 }, 
   },
   'MIL_IMPROVED_ARMOR': {
     id: 'MIL_IMPROVED_ARMOR',
@@ -205,7 +205,7 @@ export const RESEARCH_DEFINITIONS: Record<string, ResearchDefinition> = {
       description: "+X% Defense (All Heroes)",
     }],
     maxLevel: 10,
-    position: { x: 1, y: 2 }, // Adjusted position
+    position: { x: 1, y: 2 }, 
   },
    'MIL_ENDURANCE_REGIMEN': {
     id: 'MIL_ENDURANCE_REGIMEN',
@@ -222,7 +222,7 @@ export const RESEARCH_DEFINITIONS: Record<string, ResearchDefinition> = {
       description: "+X% Max HP (All Heroes)",
     }],
     maxLevel: 8,
-    position: { x: 0, y: 3 }, // Adjusted position
+    position: { x: 0, y: 3 }, 
   },
   'MIL_ADVANCED_HEALING_LORE': {
     id: 'MIL_ADVANCED_HEALING_LORE',
@@ -239,7 +239,7 @@ export const RESEARCH_DEFINITIONS: Record<string, ResearchDefinition> = {
       description: "+X% Healing Effectiveness (All Heroes)",
     }],
     maxLevel: 5,
-    position: { x: 0, y: 4 }, // Adjusted position
+    position: { x: 0, y: 4 }, 
   },
   'MIL_SIEGE_TACTICS': {
     id: 'MIL_SIEGE_TACTICS',
@@ -249,14 +249,31 @@ export const RESEARCH_DEFINITIONS: Record<string, ResearchDefinition> = {
     iconName: 'FIGHT',
     costPerLevel: (level) => [{ resource: ResourceType.RESEARCH_POINTS, amount: 400 + (level-1)*100 }, { resource: ResourceType.IRON, amount: 500 + (level-1)*120 }],
     researchTimeTicks: 14000,
-    prerequisites: [{ researchId: 'MIL_MELEE_MASTERY', level: 2 }, { researchId: 'MIL_RANGED_PRECISION', level: 2 }],
-    effects: [{ // This requires a new GlobalBonus: `heroDamageBonusVsBosses`
-      stat: 'heroDamageBonus' as any, // Placeholder
+    prerequisites: [{ researchId: 'MIL_IMPROVED_ARMOR', level: 2 }], // Changed Prereq
+    effects: [{ 
+      stat: 'heroDamageBonusVsBosses' as any, 
       effectParams: { type: TownHallUpgradeEffectType.PercentageBonus, baseAmount: 0.03, additiveStep: 0.015 },
       description: "+X% Damage to Bosses",
     }],
     maxLevel: 5,
     position: { x: 2, y: 3 },
+  },
+  'MIL_QUICK_REFLEXES': {
+    id: 'MIL_QUICK_REFLEXES',
+    name: 'Quick Reflexes',
+    description: 'Improves hero agility, granting a small chance to dodge incoming attacks.',
+    category: 'Military',
+    iconName: 'WIND_SLASH',
+    costPerLevel: (level) => [{ resource: ResourceType.RESEARCH_POINTS, amount: 450 + (level-1)*110 }, { resource: ResourceType.LEATHER, amount: 800 + (level-1)*150 }],
+    researchTimeTicks: 15000,
+    prerequisites: [{ researchId: 'MIL_ENDURANCE_REGIMEN', level: 3 }],
+    effects: [{
+      stat: 'heroDodgeChance' as any, // New GlobalBonus
+      effectParams: { type: TownHallUpgradeEffectType.PercentageBonus, baseAmount: 0.005, additiveStep: 0.0025 }, // +0.5% base, +0.25% per level
+      description: "+X% Dodge Chance",
+    }],
+    maxLevel: 5,
+    position: { x: 0, y: 5 },
   },
 
   // --- ERKUNDUNG (Exploration) ---
@@ -275,7 +292,24 @@ export const RESEARCH_DEFINITIONS: Record<string, ResearchDefinition> = {
       description: "+X% Gold from Dungeon Loot Cells",
     }],
     maxLevel: 5,
-    position: { x: 0, y: 5 }, // Adjusted position
+    position: { x: 0, y: 6 }, 
+  },
+  'EXP_DUNGEON_LORE': { 
+    id: 'EXP_DUNGEON_LORE',
+    name: 'Dungeon Lore',
+    description: 'Increases Heroic Points gained from dungeon encounters.',
+    category: 'Exploration',
+    iconName: 'BOOK_ICON',
+    costPerLevel: (level) => [{ resource: ResourceType.RESEARCH_POINTS, amount: 250 + (level-1)*60 }, { resource: ResourceType.CRYSTALS, amount: 50 + (level-1)*10 }],
+    researchTimeTicks: 9000,
+    prerequisites: [{ researchId: 'EXP_CARTOGRAPHY_BASICS', level: 1 }],
+    effects: [{
+      stat: 'heroicPointsGainBonus' as keyof GlobalEffectTarget,
+      effectParams: { type: TownHallUpgradeEffectType.PercentageBonus, baseAmount: 0.02, additiveStep: 0.01 },
+      description: "+X% Heroic Points from Dungeons",
+    }],
+    maxLevel: 5,
+    position: { x: 0, y: 7 },
   },
    'EXP_SURVIVAL_INSTINCTS': {
     id: 'EXP_SURVIVAL_INSTINCTS',
@@ -292,7 +326,24 @@ export const RESEARCH_DEFINITIONS: Record<string, ResearchDefinition> = {
       description: "-X% Damage from Dungeon Traps",
     }],
     maxLevel: 5,
-    position: { x: 1, y: 6 },
+    position: { x: 1, y: 7 },
+  },
+  'EXP_AETHERIC_SENSITIVITY': { 
+    id: 'EXP_AETHERIC_SENSITIVITY',
+    name: 'Aetheric Sensitivity',
+    description: 'Increases the chance to find Aetheric Resonance Motes from enemies.',
+    category: 'Exploration',
+    iconName: 'ATOM_ICON',
+    costPerLevel: (level) => [{ resource: ResourceType.RESEARCH_POINTS, amount: 380 + (level-1)*90 }, { resource: ResourceType.CRYSTALS, amount: 100 + (level-1)*25 }],
+    researchTimeTicks: 13000,
+    prerequisites: [{ researchId: 'EXP_DUNGEON_LORE', level: 3 }],
+    effects: [{
+      stat: 'aethericMoteDropChanceBonus' as any,
+      effectParams: { type: TownHallUpgradeEffectType.PercentageBonus, baseAmount: 0.01, additiveStep: 0.005 },
+      description: "+X% Aetheric Mote Drop Chance",
+    }],
+    maxLevel: 5,
+    position: { x: 0, y: 8 },
   },
   'EXP_ANCIENT_KNOWLEDGE': {
     id: 'EXP_ANCIENT_KNOWLEDGE',
@@ -303,13 +354,30 @@ export const RESEARCH_DEFINITIONS: Record<string, ResearchDefinition> = {
     costPerLevel: (level) => [{ resource: ResourceType.RESEARCH_POINTS, amount: 450 + (level-1)*110 }, { resource: ResourceType.CRYSTALS, amount: 200 + (level-1)*50 }],
     researchTimeTicks: 16000,
     prerequisites: [{ researchId: 'EXP_AETHERIC_SENSITIVITY', level: 2 }],
-    effects: [{ // This needs a specific mechanism to grant RP on event completion
-      stat: 'researchPointProductionBonus' as any, // Placeholder
-      effectParams: { type: TownHallUpgradeEffectType.PercentageBonus, baseAmount: 0.01, additiveStep: 0.002 }, // Represents a general small gain
+    effects: [{ 
+      stat: 'researchPointProductionBonus' as any, 
+      effectParams: { type: TownHallUpgradeEffectType.PercentageBonus, baseAmount: 0.01, additiveStep: 0.002 }, 
       description: "+X% Chance for Research Points from Dungeon Events",
     }],
     maxLevel: 5,
-    position: { x: 3, y: 5 },
+    position: { x: 3, y: 6 },
+  },
+  'EXP_MAP_REVELATION': {
+    id: 'EXP_MAP_REVELATION',
+    name: 'Map Revelation',
+    description: 'Improves map reading and pathfinding, slightly increasing vision radius in dungeons.',
+    category: 'Exploration',
+    iconName: 'MAP_ICON',
+    costPerLevel: (level) => [{ resource: ResourceType.RESEARCH_POINTS, amount: 500 + (level-1)*120 }, { resource: ResourceType.LEATHER, amount: 400 + (level-1)*80 }],
+    researchTimeTicks: 17000,
+    prerequisites: [{ researchId: 'EXP_ANCIENT_KNOWLEDGE', level: 1 }],
+    effects: [{
+      stat: 'dungeonMapVisionBonus' as any, // New GlobalBonus
+      effectParams: { type: TownHallUpgradeEffectType.Additive, baseIncrease: 0, additiveStep: 1 }, // +1 vision radius per level
+      description: "+X Vision Radius in Dungeons (Conceptual)",
+    }],
+    maxLevel: 3,
+    position: { x: 3, y: 7 },
   },
 
   // --- SPEZIAL (Special) ---
@@ -328,7 +396,7 @@ export const RESEARCH_DEFINITIONS: Record<string, ResearchDefinition> = {
       description: "+X% Effectiveness of Resonance Motes",
     }],
     maxLevel: 5,
-    position: { x: 2, y: 6 },
+    position: { x: 2, y: 7 },
   },
   'SPC_ACCELERATED_LEARNING': {
     id: 'SPC_ACCELERATED_LEARNING',
@@ -338,7 +406,7 @@ export const RESEARCH_DEFINITIONS: Record<string, ResearchDefinition> = {
     iconName: 'XP_ICON',
     costPerLevel: (level) => [{ resource: ResourceType.RESEARCH_POINTS, amount: 1000 + (level-1)*250 }, { resource: ResourceType.CRYSTALS, amount: 500 + (level-1)*100 }],
     researchTimeTicks: 30000,
-    prerequisites: [{ researchId: 'ECO_TRADE_ROUTES', level: 2 }, { researchId: 'MIL_RANGED_PRECISION', level: 2 }],
+    prerequisites: [{ researchId: 'ECO_TRADE_ROUTES', level: 2 }], // Prereq geändert
     effects: [{
       stat: 'accountXPGainBonus' as any,
       effectParams: { type: TownHallUpgradeEffectType.PercentageBonus, baseAmount: 0.01, additiveStep: 0.005 },
@@ -364,4 +432,53 @@ export const RESEARCH_DEFINITIONS: Record<string, ResearchDefinition> = {
     maxLevel: 5,
     position: { x: 4, y: -2 },
   },
-};
+  // New Alchemy Research
+  'UNLOCK_PERMANENT_POTIONS_MINOR': {
+    id: 'UNLOCK_PERMANENT_POTIONS_MINOR',
+    name: 'Minor Permanent Elixirs',
+    description: 'Unlocks recipes for Minor Elixirs that grant small permanent bonuses to heroes.',
+    category: 'Alchemy',
+    iconName: 'STRENGTH_POTION', // Example, could be a generic elixir icon
+    costPerLevel: () => [{ resource: ResourceType.RESEARCH_POINTS, amount: 1500 }, {resource: ResourceType.CRYSTALS, amount: 250}, {resource: ResourceType.AETHERIUM, amount: 5}],
+    researchTimeTicks: 15000,
+    prerequisites: [{ researchId: 'ECO_ALCHEMY_BREAKTHROUGHS', level: 3 }],
+    effects: [
+        { unlockPotionId: 'PERMANENT_HP_ELIXIR_1', description: "Unlocks Minor Elixir of Vitality recipe.", effectParams: { type: TownHallUpgradeEffectType.Additive, baseIncrease: 0, additiveStep: 0} }, 
+        { unlockPotionId: 'PERMANENT_DAMAGE_ELIXIR_1', description: "Unlocks Minor Elixir of Power recipe.", effectParams: { type: TownHallUpgradeEffectType.Additive, baseIncrease: 0, additiveStep: 0} }
+    ],
+    maxLevel: 1,
+    position: { x: 5, y: -2 }, // Position near alchemy
+  },
+  'UNLOCK_PERMANENT_POTIONS_ADVANCED': {
+    id: 'UNLOCK_PERMANENT_POTIONS_ADVANCED',
+    name: 'Advanced Permanent Elixirs',
+    description: 'Unlocks recipes for more potent Elixirs that grant significant permanent bonuses to heroes.',
+    category: 'Alchemy',
+    iconName: 'DEFENSE_POTION', // Example
+    costPerLevel: () => [{ resource: ResourceType.RESEARCH_POINTS, amount: 3000 }, {resource: ResourceType.CRYSTALS, amount: 500}, {resource: ResourceType.AETHERIUM, amount: 10}],
+    researchTimeTicks: 25000,
+    prerequisites: [{ researchId: 'UNLOCK_PERMANENT_POTIONS_MINOR', level: 1 }],
+    effects: [
+        { unlockPotionId: 'PERMANENT_DEFENSE_ELIXIR_1', description: "Unlocks Minor Elixir of Resilience recipe.", effectParams: { type: TownHallUpgradeEffectType.Additive, baseIncrease: 0, additiveStep: 0} }
+    ],
+    maxLevel: 1,
+    position: { x: 6, y: -2 }, // Position near alchemy
+  },
+  'ALC_POTION_POTENCY_1': {
+    id: 'ALC_POTION_POTENCY_1',
+    name: 'Potion Potency I',
+    description: 'Increases the effectiveness (value and duration) of temporary potions.',
+    category: 'Alchemy',
+    iconName: 'STAFF_ICON', // Placeholder
+    costPerLevel: (level) => [{ resource: ResourceType.RESEARCH_POINTS, amount: 600 + (level-1)*150 }, { resource: ResourceType.HERB_BLOODTHISTLE, amount: 100 + (level-1)*20 }, { resource: ResourceType.HERB_IRONWOOD_LEAF, amount: 100 + (level-1)*20 }],
+    researchTimeTicks: 18000,
+    prerequisites: [{ researchId: 'ECO_ALCHEMY_BREAKTHROUGHS', level: 2 }],
+    effects: [{
+        stat: 'potionEffectivenessBonus' as any, // New GlobalBonus
+        effectParams: { type: TownHallUpgradeEffectType.PercentageBonus, baseAmount: 0.05, additiveStep: 0.02 },
+        description: "+X% Potion Effectiveness",
+    }],
+    maxLevel: 5,
+    position: { x: 5, y: 0 },
+  },
+];

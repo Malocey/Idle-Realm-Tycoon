@@ -41,6 +41,7 @@ export interface BattleHero extends HeroDefinition, PlayerHeroState {
   aiRepositioningTarget?: {x: number, y: number};
   channelingState?: ParticipantChannelingState | null; 
   isUsingSpecialAttack?: { definitionId: string, targetId?: string | null } | null; // Added optional property
+  potionSlots: Array<string | null>; // Added for equipped potions
 }
 
 export interface BattleEnemy extends EnemyDefinition {

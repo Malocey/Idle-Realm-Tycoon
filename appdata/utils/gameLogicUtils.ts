@@ -2,7 +2,7 @@
 import {
     GameState, GlobalBonuses, TownHallUpgradeDefinition, BuildingSpecificUpgradeDefinition, GuildHallUpgradeDefinition,
     TownHallUpgradeEffectDefinition, TownHallUpgradeEffectType, GlobalEffectTarget, BuildingDefinition, Production,
-    Cost, ResourceType, ShardDefinition, BuildingSpecificUpgradeEffectDefinition, SharedSkillDefinition,
+    Cost, ResourceType, ShardDefinition, BuildingSpecificUpgradeEffectDefinition, SharedSkillDefinition, SharedSkillEffect,
     AccountLevelDefinition, ResearchDefinition, ResearchEffectDefinition
 } from '../types';
 import { ENEMY_DEFINITIONS, SHARED_SKILL_DEFINITIONS, ACCOUNT_LEVEL_DEFINITIONS, RESEARCH_DEFINITIONS } from '../gameData/index';
@@ -81,6 +81,12 @@ export const calculateGlobalBonusesFromAllSources = (
         heroDodgeChance: 0,
         dungeonMapVisionBonus: 0,
         researchTimeReduction: 0,
+        // Initialize new specific bonuses
+        ironProductionBonus: 0,
+        crystalProductionBonus: 0,
+        heroDamageBonusVsBosses: 0,
+        potionEffectivenessBonus: 0,
+        herbYieldBonus: 0,
     };
 
     // Town Hall Upgrades
@@ -222,8 +228,6 @@ export const calculateGlobalBonusesFromAllSources = (
             if (effectDef.effectParams.type === TownHallUpgradeEffectType.PercentageBonus) {
                 (bonuses[statKey] as number) += effectValue;
             } else if (effectDef.effectParams.type === TownHallUpgradeEffectType.Additive) {
-                // Assuming direct addition for flat bonuses from research to potentially percentage-based global bonuses.
-                // This might need more nuanced handling if a flat value should modify a percentage, or vice-versa.
                 (bonuses[statKey] as number) += effectValue; 
             }
           } else if (statKey) { 

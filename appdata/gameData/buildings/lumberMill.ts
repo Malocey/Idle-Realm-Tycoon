@@ -1,3 +1,4 @@
+
 import { ResourceType, BuildingDefinition } from '../../types';
 
 export const LUMBER_MILL_DEFINITION: BuildingDefinition = {
@@ -11,5 +12,5 @@ export const LUMBER_MILL_DEFINITION: BuildingDefinition = {
   maxLevel: -1,
   iconName: 'WOOD',
   isProducer: true,
-  unlockWaveRequirement: 4,
+  // unlockWaveRequirement: 4, // Removed
 };

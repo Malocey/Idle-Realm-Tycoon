@@ -1,3 +1,4 @@
+
 import { HeroStats } from './hero';
 import { Cost } from './common';
 import { ResourceType } from './enums';
@@ -16,9 +17,16 @@ export interface PotionDefinition {
   name: string;
   description: string;
   iconName: string;
-  costs: Cost[];
+  costs: Cost[]; // For non-permanent potions
   effects: PotionEffectDefinition[];
-  baseCraftTimeMs: number;
+  baseCraftTimeMs: number; // For non-permanent potions
+
+  // Fields for Permanent Potions
+  isPermanent?: boolean;
+  permanentStatBonuses?: Array<{ stat: keyof HeroStats; value: number; isPercentage?: boolean }>;
+  baseCostForPermanentPotion?: Cost[];
+  costScalingFactorPerCraft?: number; // e.g., 1.2 for 20% cost increase per global craft
+  researchUnlockId?: string;
 }
 
 export interface CraftingQueueItem {
