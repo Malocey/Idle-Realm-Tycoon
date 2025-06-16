@@ -13,10 +13,6 @@ import { ActionBattleState } from './actionBattle';
 import { HeroStats } from './hero'; // Added HeroStats
 import { ResonanceMoteType } from './aethericResonanceTypes'; // Import ResonanceMoteType
 import { ResearchProgress, CompletedResearchEntry } from './research';
-<<<<<<< Updated upstream
-=======
-import { AutoBattlerState } from './autoBattler'; 
->>>>>>> Stashed changes
 
 export type ActionBattleAISystem = 'legacy' | 'behaviorTree';
 
@@ -64,11 +60,7 @@ export interface GameState {
   heroes: PlayerHeroState[];
   unlockedHeroDefinitions: string[];
   currentWaveProgress: number;
-<<<<<<< Updated upstream
   activeView: 'TOWN' | 'BATTLEFIELD' | 'DUNGEON_REWARD' | 'HERO_ACADEMY' | 'DUNGEON_EXPLORE' | 'STONE_QUARRY_MINIGAME' | 'ACTION_BATTLE_VIEW' | 'SHARED_SKILL_TREE' | 'GOLD_MINE_MINIGAME' | 'DEMONICON_PORTAL' | 'WORLD_MAP';
-=======
-  activeView: ActiveView; 
->>>>>>> Stashed changes
   battleState: BattleState | null;
   activeDungeonRun: DungeonRunState | null;
   activeDungeonGrid: DungeonGridState | null;
@@ -124,12 +116,7 @@ export interface GameState {
   researchProgress: Record<string, ResearchProgress>; // Keyed by researchId
   completedResearch: Record<string, CompletedResearchEntry>; // Keyed by researchId (researchId: {level: number})
   researchSlots: number;
-<<<<<<< Updated upstream
   researchQueue: Array<{ researchId: string; levelToResearch: number }>; // Array of researchIds and target levels
-=======
-  researchQueue: Array<{ researchId: string; levelToResearch: number }>;
-  autoBattler: AutoBattlerState | null;
->>>>>>> Stashed changes
 
   _battleCombatTickResult?: { newlyAddedToFirstTimeDefeatsForAccXp?: string[] };
   _deferredCombatActions?: GameAction[];
