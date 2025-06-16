@@ -1,10 +1,19 @@
 
+<<<<<<< Updated upstream
 import { ResourceType, CellType, RunBuffRarity } from './enums';
+=======
+import { ResourceType, CellType, RunBuffRarity, ActiveView } from './enums'; // Added ActiveView
+>>>>>>> Stashed changes
 import { Cost, GameNotification } from './common';
 import { PermanentHeroBuff, PlayerHeroState, HeroStats } from './hero'; // Moved HeroStats here
 import { BuildingLevelUpEventInBattle, BattleHero, BattleState } from './battle';
 import { MinigameUpgradeType } from './minigame';
+<<<<<<< Updated upstream
 import { ResonanceMoteType } from './aethericResonanceTypes'; // Corrected import for ResonanceMoteType
+=======
+import { ResonanceMoteType } from './aethericResonanceTypes'; 
+import { ResearchProgress, CompletedResearchEntry } from './research';
+>>>>>>> Stashed changes
 
 export type GameAction =
   | { type: 'PROCESS_TICK' }
@@ -120,7 +129,6 @@ export type GameAction =
   | { type: 'COLOSSEUM_WAVE_CLEARED' }
   | { type: 'COLOSSEUM_ENEMY_TAKE_DAMAGE'; payload: { enemyUniqueId: string; damage: number } }
   | { type: 'COLOSSEUM_HERO_TAKE_DAMAGE'; payload: { heroUniqueId: string; damage: number } }
-  | { type: 'TOGGLE_ACTION_BATTLE_AI_SYSTEM' }
   | { type: 'UPGRADE_SHARED_SKILL_MAJOR'; payload: { skillId: string } }
   | { type: 'UPGRADE_SHARED_SKILL_MINOR'; payload: { skillId: string } }
   | { type: 'GOLD_MINE_MINIGAME_INIT'; payload?: { depth?: number } }
@@ -162,4 +170,13 @@ export type GameAction =
   // Research Actions
   | { type: 'START_RESEARCH'; payload: { researchId: string, levelToResearch: number } }
   | { type: 'CANCEL_RESEARCH'; payload: { researchId: string, researchSlotId?: number } }
+<<<<<<< Updated upstream
   | { type: 'PROCESS_RESEARCH_TICK' }; // Added for tickReducer to process research
+=======
+  | { type: 'PROCESS_RESEARCH_TICK' }
+  | { type: 'INITIALIZE_AUTO_BATTLER' }
+  | { type: 'PLAY_AUTOBATTLER_CARD'; payload: { handIndex: number; position: { x: number; y: number } } }
+  | { type: 'AUTOBATTLER_GAME_TICK'; payload: { canvasWidth: number, canvasHeight: number } }
+  | { type: 'AUTOBATTLER_CAMERA_PAN'; payload: { dx: number; dy: number } } // New camera pan action
+  | { type: 'AUTOBATTLER_UNIT_ATTACK'; payload: { attackerId: string; targetId: string } };
+>>>>>>> Stashed changes
