@@ -1,5 +1,6 @@
 
-import { GameState, GameAction, DungeonRunState, BattleHero, BattleEnemy, GameNotification, ResourceType, GlobalBonuses, CellType, DungeonGridState, DungeonCell, Cost, DungeonDefinition, DungeonEncounterDefinition, TrapDefinition, DungeonEventDefinition, DungeonEventType, PlayerOwnedShard, PlayerActiveRunBuff, RunBuffDefinition, EnemyChannelingAbilityDefinition, ActiveView } from '../../types';
+
+import { GameState, GameAction, DungeonRunState, BattleHero, BattleEnemy, GameNotification, ResourceType, GlobalBonuses, CellType, DungeonGridState, DungeonCell, Cost, DungeonDefinition, DungeonEncounterDefinition, TrapDefinition, DungeonEventDefinition, DungeonEventType, PlayerOwnedShard, PlayerActiveRunBuff, RunBuffDefinition, EnemyChannelingAbilityDefinition, ActiveView, BattleState } from '../../types';
 import { DUNGEON_DEFINITIONS, HERO_DEFINITIONS, SKILL_TREES, ENEMY_DEFINITIONS, TOWN_HALL_UPGRADE_DEFINITIONS, EQUIPMENT_DEFINITIONS, GUILD_HALL_UPGRADE_DEFINITIONS, SHARD_DEFINITIONS, TRAP_DEFINITIONS, DUNGEON_EVENT_DEFINITIONS, RUN_BUFF_DEFINITIONS } from '../../gameData/index';
 import { ICONS } from '../../components/Icons';
 import { NOTIFICATION_ICONS, XP_PER_REVEALED_CELL, XP_PER_LOOT_CELL, XP_PER_EVENT_CELL } from '../../constants';
@@ -222,11 +223,16 @@ export const handleGridInteractionActions = (
         const updatedHeroStatesForRun: DungeonRunState['heroStatesAtFloorStart'] = {};
         state.heroes.forEach(h => {
             const persistedState = state.activeDungeonRun!.heroStatesAtFloorStart[h.definitionId];
-            if (persistedState) {
+            const playerHero = state.heroes.find(ph => ph.definitionId === h.definitionId); 
+            if (persistedState && playerHero) {
                 const heroDef = HERO_DEFINITIONS[h.definitionId];
                 const skillTree = SKILL_TREES[heroDef.skillTreeId];
                 const calculatedStats = calculateHeroStats(h, heroDef, skillTree, state, TOWN_HALL_UPGRADE_DEFINITIONS, GUILD_HALL_UPGRADE_DEFINITIONS, EQUIPMENT_DEFINITIONS, globalBonuses, SHARD_DEFINITIONS, RUN_BUFF_DEFINITIONS);
                 updatedHeroStatesForRun[h.definitionId] = {
+                    level: playerHero.level,
+                    currentExp: playerHero.currentExp,
+                    expToNextLevel: playerHero.expToNextLevel,
+                    skillPoints: playerHero.skillPoints,
                     currentHp: Math.min(persistedState.currentHp, calculatedStats.maxHp),
                     currentMana: Math.min(persistedState.currentMana, calculatedStats.maxMana || 0),
                     maxHp: calculatedStats.maxHp,
@@ -293,6 +299,10 @@ export const handleGridInteractionActions = (
             const initialCooldowns: Record<string, number> = {};
             Object.keys(h.specialAttackLevels).forEach(saId => { if(h.specialAttackLevels[saId] > 0) initialCooldowns[saId] = 0; });
             heroStatesAtFloorStart[h.definitionId] = {
+                level: h.level,
+                currentExp: h.currentExp,
+                expToNextLevel: h.expToNextLevel,
+                skillPoints: h.skillPoints,
                 currentHp: calculatedStats.maxHp,
                 currentMana: calculatedStats.maxMana || 0,
                 maxHp: calculatedStats.maxHp,
@@ -329,7 +339,7 @@ export const handleGridInteractionActions = (
         }
         nextActiveDungeonRun = {
           dungeonDefinitionId: dungeonId,
-          currentFloorIndex: floorIndex,
+          currentFloorIndex: floorIndex, 
           heroStatesAtFloorStart,
           survivingHeroIds: state.heroes.map(h => h.definitionId),
           runXP: newRunRunXP,
@@ -360,7 +370,7 @@ export const handleGridInteractionActions = (
 
       const targetCell = newGridState.grid[newR][newC];
       let nextActiveView = state.activeView;
-      let nextBattleState = state.battleState;
+      let nextBattleState: BattleState | null = state.battleState;
       let nextResources = { ...state.resources };
       let nextActiveDungeonRun = { ...state.activeDungeonRun };
       let nextActiveDungeonGrid: DungeonGridState | null = state.activeDungeonGrid ? { ...state.activeDungeonGrid, ...newGridState } : null;
@@ -410,6 +420,8 @@ export const handleGridInteractionActions = (
                     statusEffects: [], temporaryBuffs: [],
                     currentEnergyShield: calculatedStats.maxEnergyShield || 0,
                     shieldRechargeDelayTicksRemaining: 0,
+                    initialLevelForSummary: h.level, 
+                    initialExpForSummary: h.currentExp, 
                 };
             });
             const battleEnemies: BattleEnemy[] = [];
@@ -435,7 +447,7 @@ export const handleGridInteractionActions = (
                             statusEffects: [],
                             temporaryBuffs: [],
                             isElite: encounterDef.isElite,
-                            specialAttackCooldownsRemaining: {}, 
+                            specialAttackCooldownsRemaining: {},
                             summonStrengthModifier: enemyDef.summonAbility ? 1.0 : undefined,
                             currentShieldHealCooldownMs: enemyDef.shieldHealAbility?.initialCooldownMs ?? enemyDef.shieldHealAbility?.cooldownMs,
                         };
@@ -460,10 +472,15 @@ export const handleGridInteractionActions = (
                 enemies: battleEnemies,
                 battleLog: [`Encounter: ${encounterDef.name || 'Enemies'} at (${newC}, ${newR})!`],
                 status: 'FIGHTING',
-                ticksElapsed: 0, lastAttackEvents: [], battleLootCollected: [], defeatedEnemiesWithLoot: {}, battleExpCollected: 0, buildingLevelUpEventsInBattle: [], activePotionIdForUsage: null,
-                sessionTotalLoot: [], 
+                ticksElapsed: 0, lastAttackEvents: [],
+                damagePopups: [],
+                fusionAnchors: [],
+                feederParticles: [], 
+                battleLootCollected: [], defeatedEnemiesWithLoot: {}, battleExpCollected: 0, buildingLevelUpEventsInBattle: [], activePotionIdForUsage: null,
+                sessionTotalLoot: [],
                 sessionTotalExp: 0,
                 sessionTotalBuildingLevelUps: [],
+                stats: {},
             };
             nextActiveView = ActiveView.BATTLEFIELD;
             notifications.push({id:Date.now().toString(), message: `Encounter: ${encounterDef.name || 'Enemies'}! ${encounterDef.isElite ? '(Elite)' : ''}`, type:'warning', iconName: ICONS.ENEMY ? 'ENEMY' : undefined, timestamp:Date.now()});
@@ -697,9 +714,13 @@ export const handleGridInteractionActions = (
                 const currentBattleHeroData = state.battleState?.heroes.find(bh => bh.definitionId === h.definitionId);
                 const runHeroData = nextActiveDungeonRun.heroStatesAtFloorStart[h.definitionId];
                 finalHeroStatesForFloor[h.definitionId] = {
+                    level: currentBattleHeroData ? currentBattleHeroData.level : runHeroData.level,
+                    currentExp: currentBattleHeroData ? currentBattleHeroData.currentExp : runHeroData.currentExp,
+                    expToNextLevel: currentBattleHeroData ? currentBattleHeroData.expToNextLevel : runHeroData.expToNextLevel,
+                    skillPoints: currentBattleHeroData ? currentBattleHeroData.skillPoints : runHeroData.skillPoints,
                     currentHp: currentBattleHeroData ? currentBattleHeroData.currentHp : runHeroData.currentHp,
                     currentMana: currentBattleHeroData ? currentBattleHeroData.currentMana : runHeroData.currentMana,
-                    maxHp: runHeroData.maxHp,
+                    maxHp: runHeroData.maxHp, 
                     maxMana: runHeroData.maxMana,
                     specialAttackCooldownsRemaining: currentBattleHeroData ? currentBattleHeroData.specialAttackCooldownsRemaining : runHeroData.specialAttackCooldownsRemaining,
                 };

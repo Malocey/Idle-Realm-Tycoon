@@ -1,8 +1,8 @@
 
-import { GameState, GameAction, GlobalBonuses, Cost, GameNotification, ResourceType, RunBuffDefinition, AttackEvent, BattleState, GameContextType, StatusEffectType, BattleHero } from '../types';
+import { GameState, GameAction, GlobalBonuses, Cost, GameNotification, ResourceType, RunBuffDefinition, AttackEvent, BattleState, GameContextType, StatusEffectType, BattleHero, FusionAnchor, DamagePopupInState, FeederParticle } from '../types';
 import { calculateGlobalBonusesFromAllSources, formatNumber, canAfford, calculateHeroStats as calculateHeroStatsUtil, mergeCosts, calculateDemoniconEnemyStats as calculateDemoniconEnemyStatsUtil, calculateWaveEnemyStats } from '../utils';
 import { TOWN_HALL_UPGRADE_DEFINITIONS, BUILDING_SPECIFIC_UPGRADE_DEFINITIONS, GUILD_HALL_UPGRADE_DEFINITIONS, HERO_DEFINITIONS, ENEMY_DEFINITIONS, BUILDING_DEFINITIONS, SPECIAL_ATTACK_DEFINITIONS, EQUIPMENT_DEFINITIONS, RUN_BUFF_DEFINITIONS, SKILL_TREES, SHARD_DEFINITIONS, STATUS_EFFECT_DEFINITIONS } from '../gameData/index';
-import { NOTIFICATION_ICONS, GAME_TICK_MS } from '../constants';
+import { NOTIFICATION_ICONS, GAME_TICK_MS, DAMAGE_POPUP_ANIMATION_DURATION_MS, MAX_DAMAGE_POPUPS_IN_STATE, DAMAGE_POPUP_LIFESPAN_BUFFER_MS, FUSION_FEEDER_ANIMATION_DURATION_MS } from '../constants';
 import { ICONS } from '../components/Icons';
 
 // Import combat helper functions from their original location
@@ -34,14 +34,13 @@ export const processDemoniconBattleTick = (
   let allDeferredActionsThisTick: GameAction[] = [];
 
   let currentBattleLog = [...currentBattleState.battleLog];
-  // battleLootCollected & battleExpCollected are for the CURRENT RANK's rewards
   let currentRankLootCollected: Cost[] = [...currentBattleState.battleLootCollected];
   let currentRankExpCollected = currentBattleState.battleExpCollected;
-
-  // sessionTotalLoot & sessionTotalExp are for the ENTIRE DEMONICON RUN (for display)
-  // These are initialized from activeDemoniconChallenge at rank start, then accumulated here.
   let currentSessionTotalLootForDisplay: Cost[] = currentBattleState.sessionTotalLoot ? [...currentBattleState.sessionTotalLoot] : [];
   let currentSessionTotalExpForDisplay: number = currentBattleState.sessionTotalExp || 0;
+  let currentDamagePopups = [...(currentBattleState.damagePopups || [])];
+  let currentFusionAnchors = [...(currentBattleState.fusionAnchors || [])];
+  let currentFeederParticles = [...(currentBattleState.feederParticles || [])];
 
 
   let currentDefeatedEnemiesWithLoot = {...currentBattleState.defeatedEnemiesWithLoot};
@@ -50,7 +49,6 @@ export const processDemoniconBattleTick = (
 
 
   let currentNotifications = [...state.notifications];
-  // Building-related state is not typically modified by Demonicon battles
   let currentBuildings = [...state.buildings];
   let currentBuildingLevelUpEventsGameState = {...state.buildingLevelUpEvents};
   let currentBuildingLevelUpEventsInBattle = [...(currentBattleState.buildingLevelUpEventsInBattle || [])];
@@ -108,6 +106,9 @@ export const processDemoniconBattleTick = (
   currentUpdatedBattleEnemies = eventProcessingResult.updatedEnemies;
   currentBattleLog.push(...eventProcessingResult.logMessages);
   const enemyIdsToRecalculateStats = eventProcessingResult.statsRecalculationNeededForEnemyIds;
+  const newDamagePopupsFromEvents = eventProcessingResult.newDamagePopupsForCanvas;
+  currentFusionAnchors = eventProcessingResult.updatedFusionAnchors;
+  currentFeederParticles = [...currentFeederParticles, ...eventProcessingResult.newFeederParticles]; // Append new feeder particles
 
   if (eventProcessingResult.newSummonsFromPhase && eventProcessingResult.newSummonsFromPhase.length > 0) {
     currentUpdatedBattleEnemies.push(...eventProcessingResult.newSummonsFromPhase);
@@ -135,19 +136,19 @@ export const processDemoniconBattleTick = (
     currentUpdatedBattleEnemies = currentUpdatedBattleEnemies.map(enemy => {
         if (enemyIdsToRecalculateStats.includes(enemy.uniqueBattleId)) {
             const enemyDef = staticData.enemyDefinitions[enemy.id];
-            let newStats = calculateDemoniconEnemyStatsUtil( // Use Demonicon specific scaler
+            let newStats = calculateDemoniconEnemyStatsUtil( 
                 enemyDef,
                 state.battleState!.demoniconRank || 0,
                 staticData,
                 globalBonuses
-            )[0].calculatedStats; // Assuming it returns an array with one enemy for this purpose, take first.
+            )[0].calculatedStats; 
 
             if (enemy.temporaryBuffs) {
                 enemy.temporaryBuffs.forEach(buff => {
                     if (buff.stat && newStats[buff.stat] !== undefined && buff.value !== undefined) {
                         if (buff.modifierType === 'FLAT') {
                             (newStats[buff.stat] as number) += buff.value;
-                        } else if (buff.modifierType === 'PERCENTAGE') {
+                        } else if (buff.modifierType === 'PERCENTAGE_ADDITIVE') { // Corrected comparison
                             (newStats[buff.stat] as number) *= (1 + buff.value);
                         }
                     }
@@ -162,29 +163,38 @@ export const processDemoniconBattleTick = (
     });
   }
 
+  // Manage Damage Popups for Canvas
+  const now = Date.now();
+  currentDamagePopups = currentDamagePopups.filter(
+    popup => now - popup.timestamp < (DAMAGE_POPUP_ANIMATION_DURATION_MS + DAMAGE_POPUP_LIFESPAN_BUFFER_MS)
+  );
+  currentDamagePopups.push(...newDamagePopupsFromEvents);
+  if (currentDamagePopups.length > MAX_DAMAGE_POPUPS_IN_STATE) {
+    currentDamagePopups = currentDamagePopups.slice(currentDamagePopups.length - MAX_DAMAGE_POPUPS_IN_STATE);
+  }
+  // Feeder particle cleanup is handled in tickReducer now.
+
   // 5. Handle Loot & XP from defeated enemies this tick
   const newlyDefeatedThisTick = currentUpdatedBattleEnemies.filter(e => e.currentHp <= 0 && !currentDefeatedEnemiesWithLoot[e.uniqueBattleId]);
   const demoniconLootAndXPResult = handleLootAndXP(
     newlyDefeatedThisTick,
     currentUpdatedBattleHeroes,
-    currentRankLootCollected, // Pass this rank's loot accumulator
-    currentRankExpCollected,   // Pass this rank's XP accumulator
+    currentRankLootCollected, 
+    currentRankExpCollected,   
     currentBuildings, currentBuildingLevelUpEventsGameState, currentBuildingLevelUpEventsInBattle,
     currentNotifications, state, globalBonuses
   );
-  // Update per-rank accumulators
   currentRankLootCollected = demoniconLootAndXPResult.updatedLootCollected;
   currentRankExpCollected = demoniconLootAndXPResult.updatedBattleExpCollected;
-  allDeferredActionsThisTick.push(...demoniconLootAndXPResult.deferredActions); // Collect deferred actions
+  allDeferredActionsThisTick.push(...demoniconLootAndXPResult.deferredActions); 
 
-  // Update session total accumulators for display
   newlyDefeatedThisTick.forEach(defeatedEnemy => {
       const lootData = demoniconLootAndXPResult.newlyDefeatedWithLoot[defeatedEnemy.uniqueBattleId];
       if (lootData) {
           currentSessionTotalLootForDisplay = mergeCosts(currentSessionTotalLootForDisplay, lootData.loot);
           const enemyDef = staticData.enemyDefinitions[defeatedEnemy.id];
           if (enemyDef) {
-            currentSessionTotalExpForDisplay += enemyDef.expReward; // Use base XP from def for session total display
+            currentSessionTotalExpForDisplay += enemyDef.expReward; 
           }
       }
   });
@@ -193,7 +203,7 @@ export const processDemoniconBattleTick = (
   currentDefeatedEnemiesWithLoot = { ...currentDefeatedEnemiesWithLoot, ...demoniconLootAndXPResult.newlyDefeatedWithLoot };
   currentBattleLog.push(...demoniconLootAndXPResult.logMessages);
   currentNotifications = demoniconLootAndXPResult.updatedNotifications;
-  playerSharedSkillPointsFromBattle += demoniconLootAndXPResult.sharedSkillPointsGained; // Update shared skill points
+  playerSharedSkillPointsFromBattle += demoniconLootAndXPResult.sharedSkillPointsGained; 
 
 
   currentUpdatedBattleEnemies = currentUpdatedBattleEnemies.filter(e => e.currentHp > 0 || e.isDying);
@@ -203,13 +213,15 @@ export const processDemoniconBattleTick = (
 
   const finalBattleLog = currentBattleLog.slice(-50);
 
-  // Update the battleState
   currentBattleState.heroes = currentUpdatedBattleHeroes;
   currentBattleState.enemies = currentUpdatedBattleEnemies;
   currentBattleState.battleLog = finalBattleLog;
   currentBattleState.status = nextBattleStatus;
   currentBattleState.ticksElapsed += 1;
   currentBattleState.lastAttackEvents = allAttackEventsThisTick.slice(-10);
+  currentBattleState.damagePopups = currentDamagePopups;
+  currentBattleState.fusionAnchors = currentFusionAnchors; 
+  currentBattleState.feederParticles = currentFeederParticles; // Assign updated feeder particles
   currentBattleState.battleLootCollected = currentRankLootCollected;
   currentBattleState.defeatedEnemiesWithLoot = currentDefeatedEnemiesWithLoot;
   currentBattleState.battleExpCollected = currentRankExpCollected;

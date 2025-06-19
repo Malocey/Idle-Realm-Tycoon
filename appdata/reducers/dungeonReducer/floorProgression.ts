@@ -36,6 +36,23 @@ export const handleFloorProgressionActions = (
       }
 
       if (outcome === 'VICTORY') {
+        // Update PlayerHeroState with final BattleHero stats
+        nextState.heroes = nextState.heroes.map(playerHero => {
+          const battleVersion = state.battleState!.heroes.find(bh => bh.definitionId === playerHero.definitionId);
+          if (battleVersion) {
+            return {
+              ...playerHero,
+              level: battleVersion.level,
+              currentExp: battleVersion.currentExp,
+              expToNextLevel: battleVersion.expToNextLevel,
+              skillPoints: battleVersion.skillPoints,
+              // HP/Mana are handled by heroStatesAtFloorStart for next floor
+            };
+          }
+          return playerHero;
+        });
+
+
         // If it was a grid battle, the cell type should be updated.
         if (state.battleState.isDungeonGridBattle && state.activeDungeonGrid && state.battleState.sourceGridCell) {
             const {r, c} = state.battleState.sourceGridCell;

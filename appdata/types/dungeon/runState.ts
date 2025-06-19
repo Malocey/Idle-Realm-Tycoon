@@ -1,3 +1,5 @@
+
+
 export interface PlayerActiveRunBuff {
   definitionId: string;
   stacks: number;
@@ -7,11 +9,15 @@ export interface DungeonRunState {
   dungeonDefinitionId: string;
   currentFloorIndex: number;
   heroStatesAtFloorStart: Record<string, { // Keyed by heroDefinitionId
+    level: number;                      // Added
+    currentExp: number;                 // Added
+    expToNextLevel: number;             // Added
+    skillPoints: number;                // Added
     currentHp: number;
     currentMana: number;
-    maxHp: number; // Store max for the floor start, in case buffs change it mid-floor
-    maxMana: number; // Store max for the floor start
-    specialAttackCooldownsRemaining: Record<string, number> // Keyed by specialAttackId
+    maxHp: number; 
+    maxMana: number; 
+    specialAttackCooldownsRemaining: Record<string, number> 
   }>;
   survivingHeroIds: string[]; // To track who is still up
   runXP: number;

@@ -1,4 +1,3 @@
-
 import { HeroDefinition, PlayerHeroState, HeroStats } from '../hero';
 import { EnemyDefinition, BossPhaseDefinition } from '../enemy'; 
 import { StatusEffect, TemporaryBuff } from './effects';
@@ -40,8 +39,10 @@ export interface BattleHero extends HeroDefinition, PlayerHeroState {
   aiState?: ActionBattleParticipantAIState;
   aiRepositioningTarget?: {x: number, y: number};
   channelingState?: ParticipantChannelingState | null; 
-  isUsingSpecialAttack?: { definitionId: string, targetId?: string | null } | null; // Added optional property
-  potionSlots: Array<string | null>; // Added for equipped potions
+  isUsingSpecialAttack?: { definitionId: string, targetId?: string | null } | null;
+  potionSlots: Array<string | null>; 
+  initialLevelForSummary: number; // New: For battle summary
+  initialExpForSummary: number;   // New: For battle summary
 }
 
 export interface BattleEnemy extends EnemyDefinition {
@@ -52,7 +53,7 @@ export interface BattleEnemy extends EnemyDefinition {
   attackCooldownRemainingTicks: number; 
   movementSpeed: number; 
   currentSummonCooldownMs?: number; 
-  currentShieldHealCooldownMs?: number; // New property for shield healing
+  currentShieldHealCooldownMs?: number;
   currentHealCooldownMs?: number;   
   currentAoeAttackCooldownMs?: number;
   currentPeriodicEffectCooldownMs?: number; 
@@ -78,6 +79,6 @@ export interface BattleEnemy extends EnemyDefinition {
   temporaryBuffs: TemporaryBuff[]; 
   channelingState?: ParticipantChannelingState | null; 
   specialAttackCooldownsRemaining?: Record<string, number>; 
-  isUsingSpecialAttack?: { definitionId: string, targetId?: string | null } | null; // Added optional property
-  summonStrengthModifier?: number; // New property for boss summon scaling
+  isUsingSpecialAttack?: { definitionId: string, targetId?: string | null } | null;
+  summonStrengthModifier?: number;
 }

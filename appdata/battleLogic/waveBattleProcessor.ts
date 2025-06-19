@@ -1,8 +1,8 @@
 
-import { GameState, GameAction, GlobalBonuses, Cost, GameNotification, ResourceType, RunBuffDefinition, AttackEvent, BattleState, GameContextType, StatusEffectType, BattleHero } from '../types';
-import { calculateGlobalBonusesFromAllSources, formatNumber, canAfford, calculateHeroStats as calculateHeroStatsUtil, calculateWaveEnemyStats } from '../utils';
+import { GameState, GameAction, GlobalBonuses, Cost, GameNotification, ResourceType, RunBuffDefinition, AttackEvent, BattleState, GameContextType, StatusEffectType, BattleHero, FusionAnchor, DamagePopupInState, FeederParticle } from '../types';
+import { calculateGlobalBonusesFromAllSources, formatNumber, canAfford, calculateHeroStats as calculateHeroStatsUtil, calculateWaveEnemyStats, mergeCosts } from '../utils'; // Added mergeCosts
 import { TOWN_HALL_UPGRADE_DEFINITIONS, BUILDING_SPECIFIC_UPGRADE_DEFINITIONS, GUILD_HALL_UPGRADE_DEFINITIONS, HERO_DEFINITIONS, ENEMY_DEFINITIONS, BUILDING_DEFINITIONS, SPECIAL_ATTACK_DEFINITIONS, EQUIPMENT_DEFINITIONS, RUN_BUFF_DEFINITIONS, SKILL_TREES, SHARD_DEFINITIONS, STATUS_EFFECT_DEFINITIONS } from '../gameData/index';
-import { NOTIFICATION_ICONS, GAME_TICK_MS } from '../constants';
+import { NOTIFICATION_ICONS, GAME_TICK_MS, DAMAGE_POPUP_ANIMATION_DURATION_MS, MAX_DAMAGE_POPUPS_IN_STATE, DAMAGE_POPUP_LIFESPAN_BUFFER_MS, FUSION_FEEDER_ANIMATION_DURATION_MS } from '../constants';
 import { ICONS } from '../components/Icons';
 
 // Import combat helper functions from their original location
@@ -32,19 +32,27 @@ export const processWaveBattleTick = (
   const battleTickDurationMs = GAME_TICK_MS / state.gameSpeed;
   let allDeferredActionsThisTick: GameAction[] = [];
 
-  let currentBattleLog = [...state.battleState.battleLog];
-  let currentBattleLootCollected: Cost[] = [...state.battleState.battleLootCollected];
+  // Use a mutable copy of battleState for this tick's processing
+  let currentTickBattleState = { ...state.battleState }; 
 
-  let currentDefeatedEnemiesWithLoot = {...state.battleState.defeatedEnemiesWithLoot};
-  let currentBattleExpCollected = state.battleState.battleExpCollected;
-  let currentUpdatedBattleHeroes = state.battleState.heroes.map(h => ({...h, statusEffects: [...(h.statusEffects || [])], temporaryBuffs: [...(h.temporaryBuffs || [])] }));
-  let currentUpdatedBattleEnemies = state.battleState.enemies.map(e => ({...e, statusEffects: [...(e.statusEffects || [])], temporaryBuffs: [...(e.temporaryBuffs || [])] }));
+  let currentBattleLog = [...currentTickBattleState.battleLog];
+  // Note: currentBattleLootCollected and currentBattleExpCollected now represent PER-TICK values within this function
+  let currentTickLootCollected: Cost[] = []; // Initialize as empty for this tick
+  let currentTickExpCollected = 0;       // Initialize as zero for this tick
+
+  let currentDefeatedEnemiesWithLoot = {...currentTickBattleState.defeatedEnemiesWithLoot};
+  let currentUpdatedBattleHeroes = currentTickBattleState.heroes.map(h => ({...h, statusEffects: [...(h.statusEffects || [])], temporaryBuffs: [...(h.temporaryBuffs || [])] }));
+  let currentUpdatedBattleEnemies = currentTickBattleState.enemies.map(e => ({...e, statusEffects: [...(e.statusEffects || [])], temporaryBuffs: [...(e.temporaryBuffs || [])] }));
+  
+  let currentDamagePopups = [...(currentTickBattleState.damagePopups || [])];
+  let currentFusionAnchors = [...(currentTickBattleState.fusionAnchors || [])];
+  let currentFeederParticles = [...(currentTickBattleState.feederParticles || [])];
 
 
   let currentNotifications = [...state.notifications];
   let currentBuildings = [...state.buildings];
   let currentBuildingLevelUpEventsGameState = {...state.buildingLevelUpEvents};
-  let currentBuildingLevelUpEventsInBattle = [...(state.battleState.buildingLevelUpEventsInBattle || [])];
+  let currentBuildingLevelUpEventsInBattle = [...(currentTickBattleState.buildingLevelUpEventsInBattle || [])];
   
   let playerSharedSkillPointsFromBattle = state.playerSharedSkillPoints;
 
@@ -103,6 +111,9 @@ export const processWaveBattleTick = (
   currentUpdatedBattleEnemies = eventProcessingResult.updatedEnemies;
   currentBattleLog.push(...eventProcessingResult.logMessages);
   const enemyIdsToRecalculateStats = eventProcessingResult.statsRecalculationNeededForEnemyIds;
+  const newDamagePopupsFromEvents = eventProcessingResult.newDamagePopupsForCanvas;
+  currentFusionAnchors = eventProcessingResult.updatedFusionAnchors;
+  currentFeederParticles = [...currentFeederParticles, ...eventProcessingResult.newFeederParticles]; 
 
 
   if (eventProcessingResult.newSummonsFromPhase && eventProcessingResult.newSummonsFromPhase.length > 0) {
@@ -114,7 +125,7 @@ export const processWaveBattleTick = (
       if (statsRecalculationNeededForHeroIds.includes(hero.uniqueBattleId)) {
         const heroDef = staticData.heroDefinitions[hero.definitionId];
         const skillTree = staticData.skillTrees[heroDef.skillTreeId];
-        const newStats = calculateHeroStatsUtil(
+        const newStats = calculateHeroStatsUtil( 
             hero,
             heroDef,
             skillTree,
@@ -149,7 +160,7 @@ export const processWaveBattleTick = (
     currentUpdatedBattleEnemies = currentUpdatedBattleEnemies.map(enemy => {
         if (enemyIdsToRecalculateStats.includes(enemy.uniqueBattleId)) {
             const enemyDef = staticData.enemyDefinitions[enemy.id];
-            let newStats = calculateWaveEnemyStats( // Or appropriate scaler (dungeon/demonicon)
+            let newStats = calculateWaveEnemyStats( 
                 enemyDef,
                 state.battleState!.waveNumber || 1,
                 enemy.isElite,
@@ -161,7 +172,7 @@ export const processWaveBattleTick = (
                     if (buff.stat && newStats[buff.stat] !== undefined && buff.value !== undefined) {
                         if (buff.modifierType === 'FLAT') {
                             (newStats[buff.stat] as number) += buff.value;
-                        } else if (buff.modifierType === 'PERCENTAGE') { // Assuming 'PERCENTAGE' is multiplicative from temp buffs
+                        } else if (buff.modifierType === 'PERCENTAGE_ADDITIVE') { 
                             (newStats[buff.stat] as number) *= (1 + buff.value);
                         }
                     }
@@ -176,13 +187,22 @@ export const processWaveBattleTick = (
     });
   }
 
-
+  // Manage Damage Popups for Canvas
+  const now = Date.now();
+  currentDamagePopups = currentDamagePopups.filter(
+    popup => now - popup.timestamp < (DAMAGE_POPUP_ANIMATION_DURATION_MS + DAMAGE_POPUP_LIFESPAN_BUFFER_MS)
+  );
+  currentDamagePopups.push(...newDamagePopupsFromEvents);
+  if (currentDamagePopups.length > MAX_DAMAGE_POPUPS_IN_STATE) {
+    currentDamagePopups = currentDamagePopups.slice(currentDamagePopups.length - MAX_DAMAGE_POPUPS_IN_STATE);
+  }
+  
   // 5. Handle Loot, XP, and Building Level Ups from defeated enemies
   const lootAndXPResult = handleLootAndXP(
     currentUpdatedBattleEnemies.filter(e => e.currentHp <= 0 && !currentDefeatedEnemiesWithLoot[e.uniqueBattleId]),
     currentUpdatedBattleHeroes,
-    currentBattleLootCollected,
-    currentBattleExpCollected,
+    currentTickLootCollected, // Pass the per-tick loot accumulator
+    currentTickExpCollected,   // Pass the per-tick XP accumulator
     currentBuildings,
     currentBuildingLevelUpEventsGameState,
     currentBuildingLevelUpEventsInBattle,
@@ -190,8 +210,8 @@ export const processWaveBattleTick = (
     state,
     globalBonuses
   );
-  currentBattleLootCollected = lootAndXPResult.updatedLootCollected;
-  currentBattleExpCollected = lootAndXPResult.updatedBattleExpCollected;
+  currentTickLootCollected = lootAndXPResult.updatedLootCollected; // This is loot from this tick
+  currentTickExpCollected = lootAndXPResult.updatedBattleExpCollected; // This is XP from this tick
   currentUpdatedBattleHeroes = lootAndXPResult.updatedHeroes;
   currentDefeatedEnemiesWithLoot = { ...currentDefeatedEnemiesWithLoot, ...lootAndXPResult.newlyDefeatedWithLoot };
   currentBuildings = lootAndXPResult.updatedBuildings;
@@ -199,7 +219,7 @@ export const processWaveBattleTick = (
   currentBuildingLevelUpEventsInBattle = lootAndXPResult.updatedBuildingLevelUpEventsInBattle;
   currentBattleLog.push(...lootAndXPResult.logMessages);
   currentNotifications = lootAndXPResult.updatedNotifications;
-  allDeferredActionsThisTick.push(...lootAndXPResult.deferredActions); // Collect deferred actions
+  allDeferredActionsThisTick.push(...lootAndXPResult.deferredActions); 
 
   if (lootAndXPResult.sharedSkillPointsGained > 0) {
     playerSharedSkillPointsFromBattle += lootAndXPResult.sharedSkillPointsGained;
@@ -219,24 +239,34 @@ export const processWaveBattleTick = (
 
   const finalBattleLog = currentBattleLog.slice(-50);
 
+  // Update session totals
+  const updatedSessionTotalLoot = mergeCosts(currentTickBattleState.sessionTotalLoot || [], currentTickLootCollected);
+  const updatedSessionTotalExp = (currentTickBattleState.sessionTotalExp || 0) + currentTickExpCollected;
+  const updatedSessionBuildingLevelUps = [...(currentTickBattleState.sessionTotalBuildingLevelUps || []), ...currentBuildingLevelUpEventsInBattle.filter(e => !(currentTickBattleState.sessionTotalBuildingLevelUps || []).find(existing => existing.id === e.id))];
+
+
   const finalBattleState: BattleState = {
-    ...state.battleState,
+    ...currentTickBattleState, // Use the state from the start of this tick as base
     heroes: currentUpdatedBattleHeroes,
     enemies: currentUpdatedBattleEnemies,
     battleLog: finalBattleLog,
     status: nextBattleStatus,
-    ticksElapsed: state.battleState.ticksElapsed + 1,
+    ticksElapsed: currentTickBattleState.ticksElapsed + 1,
     lastAttackEvents: allAttackEventsThisTick.slice(-10),
-    battleLootCollected: currentBattleLootCollected,
+    damagePopups: currentDamagePopups,
+    fusionAnchors: currentFusionAnchors, 
+    feederParticles: currentFeederParticles, 
+    battleLootCollected: currentTickLootCollected, // Store this tick's loot
     defeatedEnemiesWithLoot: currentDefeatedEnemiesWithLoot,
-    battleExpCollected: currentBattleExpCollected,
-    buildingLevelUpEventsInBattle: currentBuildingLevelUpEventsInBattle,
+    battleExpCollected: currentTickExpCollected, // Store this tick's XP
+    buildingLevelUpEventsInBattle: currentBuildingLevelUpEventsInBattle, // Store this tick's building level ups
+    sessionTotalLoot: updatedSessionTotalLoot,
+    sessionTotalExp: updatedSessionTotalExp,
+    sessionTotalBuildingLevelUps: updatedSessionBuildingLevelUps,
   };
 
   let finalGameState = { ...state, battleState: finalBattleState, buildings: currentBuildings, buildingLevelUpEvents: currentBuildingLevelUpEventsGameState, notifications: currentNotifications, playerSharedSkillPoints: playerSharedSkillPointsFromBattle };
   
-  // Process specific deferred actions that might modify run state directly within this tick's scope
-  // Other deferred actions like GAIN_ACCOUNT_XP will be returned for the main reducer.
   lootAndXPResult.deferredActions.forEach(deferredAction => {
     if (deferredAction.type === 'GAIN_RUN_XP') {
         if (finalGameState.activeDungeonRun) {
@@ -278,7 +308,6 @@ export const processWaveBattleTick = (
                 offeredBuffChoices: updatedOfferedBuffChoices,
             };
             finalGameState.notifications = [...finalGameState.notifications, ...runLevelUpNotifications];
-             // Filter out GAIN_RUN_XP as it's handled, keep others like GAIN_ACCOUNT_XP
             allDeferredActionsThisTick = allDeferredActionsThisTick.filter(da => da.type !== 'GAIN_RUN_XP');
         }
     }

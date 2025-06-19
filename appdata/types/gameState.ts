@@ -1,9 +1,8 @@
-
 import { ResourceType, ActiveView } from './enums'; // Added ActiveView
 import { GameNotification, Cost } from './common';
 import { PlayerBuildingState } from './building';
 import { PlayerHeroState, PlayerSharedSkillsState } from './hero';
-import { BattleState, BuildingLevelUpEventInBattle, BattleHero } from './battle';
+import { BattleState, BuildingLevelUpEventInBattle, BattleHero, BattleSummary } from './battle'; // Added BattleSummary
 import { GameAction } from './gameActions';
 import { DungeonRunState, DungeonGridState } from './dungeon';
 import { CraftingQueueItem } from './crafting';
@@ -13,7 +12,7 @@ import { ActionBattleState } from './actionBattle';
 import { HeroStats } from './hero';
 import { ResonanceMoteType } from './aethericResonanceTypes';
 import { ResearchProgress, CompletedResearchEntry } from './research';
-import { AutoBattlerState } from './autoBattler'; // New import
+import { AutoBattlerState } from './autoBattler'; 
 
 export type ActionBattleAISystem = 'legacy' | 'behaviorTree';
 
@@ -78,7 +77,7 @@ export interface GameState {
   heroes: PlayerHeroState[];
   unlockedHeroDefinitions: string[];
   currentWaveProgress: number;
-  activeView: ActiveView; // Use ActiveView enum/type
+  activeView: ActiveView; 
   battleState: BattleState | null;
   activeDungeonRun: DungeonRunState | null;
   activeDungeonGrid: DungeonGridState | null;
@@ -130,7 +129,8 @@ export interface GameState {
   completedResearch: Record<string, CompletedResearchEntry>; 
   researchSlots: number;
   researchQueue: Array<{ researchId: string; levelToResearch: number }>;
-  autoBattler: AutoBattlerState | null; // New state for Auto-Battler
+  autoBattler: AutoBattlerState | null;
+  battleSummary: BattleSummary | null; // New: For end of battle summary
 
   _battleCombatTickResult?: { newlyAddedToFirstTimeDefeatsForAccXp?: string[] };
   _deferredCombatActions?: GameAction[];

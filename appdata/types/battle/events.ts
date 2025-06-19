@@ -1,4 +1,3 @@
-
 export interface AttackEvent {
   attackerId: string;
   targetId: string;
@@ -22,4 +21,12 @@ export interface BuildingLevelUpEventInBattle {
   newLevel: number;
   iconName: string;
   timestamp: number;
+}
+
+export interface DamagePopupInState {
+  id: string; // Unique ID for React key
+  targetParticipantId: string; // To find the participant for positioning
+  amount: number;
+  type: 'damage' | 'crit' | 'heal' | 'shield'; // For styling
+  timestamp: number; // Creation timestamp for animation timing
 }

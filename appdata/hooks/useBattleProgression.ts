@@ -1,7 +1,6 @@
 
-
 import { useEffect } from 'react';
-import { GameState, GameAction, Cost, BattleState } from '../types';
+import { GameState, GameAction, Cost, BattleState, BattleHero } from '../types';
 import { WAVE_DEFINITIONS }  from '../gameData/index';
 import { MAX_WAVE_NUMBER, NOTIFICATION_ICONS } from '../constants';
 import { ICONS } from '../components/Icons'; // Import ICONS
@@ -51,19 +50,21 @@ export const useBattleProgression = (
         }, 100); 
       } else { // Normal Wave Battles or Custom Map Sequence Battles
         const {
-          waveNumber, // This is the current wave number or the current step in a custom sequence (1-indexed for display)
+          waveNumber, 
           heroes: heroesInCompletedBattle,
           status: outcome,
           buildingLevelUpEventsInBattle,
           defeatedEnemiesWithLoot,
-          customWaveSequence, // Added to destructure
-          currentCustomWaveIndex, // Added to destructure (0-indexed)
-          sourceMapNodeId // Added to destructure
+          customWaveSequence, 
+          currentCustomWaveIndex, 
+          sourceMapNodeId,
+          sessionTotalLoot, // Added
+          sessionTotalExp   // Added
         } = currentBattleState;
 
-        if (waveNumber === undefined) return; // Should not happen for these battle types
+        if (waveNumber === undefined && !(customWaveSequence && currentCustomWaveIndex !== undefined)) return;
 
-        // Determine if this is part of a custom map sequence
+
         const isCustomMapSequence = !!(customWaveSequence && currentCustomWaveIndex !== undefined && sourceMapNodeId);
         
         const waveDef = isCustomMapSequence 
@@ -92,24 +93,26 @@ export const useBattleProgression = (
           const previousBattleOutcomeForQuestProcessing = {
               lootCollected: [...lootForDistribution],
               defeatedEnemyOriginalIds: defeatedEnemyOriginalIdsForQuestProcessing,
-              waveNumberReached: isCustomMapSequence ? (currentCustomWaveIndex! + 1) : waveNumber,
+              waveNumberReached: isCustomMapSequence ? (currentCustomWaveIndex! + 1) : (waveNumber || 0),
           };
 
           if (survivingHeroes.length > 0) {
             const persistedHp: Record<string, number> = {};
             const persistedMana: Record<string, number> = {};
             const persistedCooldowns: Record<string, Record<string, number>> = {};
+            const persistedFullHeroStatesFromPreviousWave: Record<string, BattleHero> = {};
+
 
             survivingHeroes.forEach(h => {
               persistedHp[h.definitionId] = h.currentHp;
               persistedMana[h.definitionId] = h.currentMana;
               persistedCooldowns[h.definitionId] = { ...h.specialAttackCooldownsRemaining };
+              persistedFullHeroStatesFromPreviousWave[h.definitionId] = { ...h }; // Persist full state
             });
 
             if (isCustomMapSequence) {
               const nextCustomWaveIndex = currentCustomWaveIndex! + 1;
               if (nextCustomWaveIndex < customWaveSequence.length) {
-                // Proceed to the next wave in the custom sequence
                 dispatch({
                   type: 'ADD_NOTIFICATION',
                   payload: {
@@ -122,27 +125,29 @@ export const useBattleProgression = (
                   dispatch({
                     type: 'START_BATTLE_PREPARATION',
                     payload: {
-                      waveNumber: 0, // Not used directly for wave lookup, index is used
+                      waveNumber: 0, 
                       isAutoProgression: true,
                       persistedHeroHp: persistedHp,
                       persistedHeroMana: persistedMana,
                       persistedHeroSpecialCooldowns: persistedCooldowns,
+                      persistedFullHeroStatesFromPreviousWave, 
                       rewardsForPreviousWave: lootForDistribution,
                       expFromPreviousWave: expFromThisWaveEnemies,
-                      previousWaveNumberCleared: currentCustomWaveIndex, // 0-indexed index of the cleared wave
+                      previousWaveNumberCleared: currentCustomWaveIndex, 
                       buildingLevelUpEventsFromPreviousWave: buildingLevelUpEventsInBattle,
                       previousBattleOutcomeForQuestProcessing,
-                      sourceMapNodeId: sourceMapNodeId, // Carry over
-                      customWaveSequence: customWaveSequence, // Carry over
-                      currentCustomWaveIndex: nextCustomWaveIndex // Incremented index for the next wave
+                      sourceMapNodeId: sourceMapNodeId, 
+                      customWaveSequence: customWaveSequence, 
+                      currentCustomWaveIndex: nextCustomWaveIndex,
+                      persistedSessionTotalLoot: sessionTotalLoot || [], // Pass session totals
+                      persistedSessionTotalExp: sessionTotalExp || 0    // Pass session totals
                     }
                   });
                 }, 1200);
               } else {
-                // Last wave of custom sequence cleared
                 dispatch({ type: 'END_BATTLE', payload: { outcome: 'VICTORY', collectedLoot: lootForDistribution, expRewardToHeroes: expFromThisWaveEnemies } });
               }
-            } else { // Normal wave progression
+            } else if (waveNumber) { // Normal wave progression
               if (waveNumber < MAX_WAVE_NUMBER) {
                 const nextWaveNumber = waveNumber + 1;
                 dispatch({
@@ -162,20 +167,22 @@ export const useBattleProgression = (
                       persistedHeroHp: persistedHp,
                       persistedHeroMana: persistedMana,
                       persistedHeroSpecialCooldowns: persistedCooldowns,
+                      persistedFullHeroStatesFromPreviousWave, 
                       rewardsForPreviousWave: lootForDistribution,
                       expFromPreviousWave: expFromThisWaveEnemies,
                       previousWaveNumberCleared: waveNumber,
                       buildingLevelUpEventsFromPreviousWave: buildingLevelUpEventsInBattle,
                       previousBattleOutcomeForQuestProcessing,
+                      persistedSessionTotalLoot: sessionTotalLoot || [], // Pass session totals
+                      persistedSessionTotalExp: sessionTotalExp || 0    // Pass session totals
                     }
                   });
                 }, 1200);
               } else {
-                // Max normal wave cleared
                 dispatch({ type: 'END_BATTLE', payload: { outcome: 'VICTORY', waveClearBonus: waveDef?.reward, collectedLoot: lootForDistribution, expRewardToHeroes: expFromThisWaveEnemies } });
               }
             }
-          } else { // No surviving heroes
+          } else { 
              dispatch({ type: 'END_BATTLE', payload: { outcome: 'DEFEAT', collectedLoot: lootForDistribution, expRewardToHeroes: expFromThisWaveEnemies } });
           }
         } else { // DEFEAT
@@ -190,5 +197,5 @@ export const useBattleProgression = (
         clearTimeout(autoProgressionTimerId);
       }
     };
-  }, [battleState?.status, dispatch]); // Added battleState as a whole
-};
+  }, [battleState?.status, dispatch]); 
+}

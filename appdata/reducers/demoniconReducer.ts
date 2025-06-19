@@ -13,7 +13,7 @@ export const demoniconReducer = (
 ): GameState => {
   switch (action.type) {
     case 'START_DEMONICON_CHALLENGE': {
-      const { enemyId } = action.payload;
+      const { enemyId, rank } = action.payload; // Use rank from payload
       const enemyDef = staticData.enemyDefinitions[enemyId];
       if (!enemyDef) {
         return { ...state, notifications: [...state.notifications, {id: Date.now().toString(), message: `Error: Enemy data for ${enemyId} not found.`, type: 'error', iconName: NOTIFICATION_ICONS.error, timestamp: Date.now()}] };
@@ -21,7 +21,7 @@ export const demoniconReducer = (
 
       const initialPersistedHeroStates: ActiveDemoniconChallenge['persistedHeroStatesInRun'] = {};
       state.heroes
-        .filter(h => h.level > 0) 
+        .filter(h => h.level > 0)
         .forEach(h => {
           const heroBattleDef = staticData.heroDefinitions[h.definitionId];
           const skillTree = staticData.skillTrees[heroBattleDef.skillTreeId];
@@ -35,7 +35,7 @@ export const demoniconReducer = (
             currentExp: h.currentExp,
             expToNextLevel: h.expToNextLevel,
             skillPoints: h.skillPoints,
-            currentHpForNextRank: calculatedStats.maxHp, 
+            currentHpForNextRank: calculatedStats.maxHp,
             currentManaForNextRank: calculatedStats.maxMana || 0,
             cooldownsForNextRank: initialCooldowns,
           };
@@ -45,7 +45,7 @@ export const demoniconReducer = (
         return { ...state, notifications: [...state.notifications, {id: Date.now().toString(), message: "No heroes available for Demonicon challenge.", type: 'warning', iconName: NOTIFICATION_ICONS.warning, timestamp: Date.now()}] };
       }
 
-      const initialRank = 0;
+      const initialRank = rank; // Use rank from payload
       const initialEnemies = calculateDemoniconEnemyStatsUtil(enemyDef, initialRank, staticData, globalBonuses);
 
       const heroesForBattle: BattleHero[] = Object.entries(initialPersistedHeroStates).map(([heroDefId, phs]) => {
@@ -58,19 +58,21 @@ export const demoniconReducer = (
           attackType: heroDefForBattle.attackType || 'MELEE',
           rangedAttackRangeUnits: heroDefForBattle.rangedAttackRangeUnits,
           uniqueBattleId: `${heroDefId}_demonicon_${initialRank}_${Date.now()}`,
-          level: phs.level, 
-          currentExp: phs.currentExp, 
+          level: phs.level,
+          currentExp: phs.currentExp,
           expToNextLevel: phs.expToNextLevel,
           skillPoints: phs.skillPoints,
-          currentHp: phs.currentHpForNextRank, 
+          currentHp: phs.currentHpForNextRank,
           currentMana: phs.currentManaForNextRank,
-          calculatedStats, 
+          calculatedStats,
           attackCooldown: (1000 / calculatedStats.attackSpeed), attackCooldownRemainingTicks: 0,
           movementSpeed: 0, x: 0, y: 0,
           specialAttackCooldownsRemaining: { ...phs.cooldownsForNextRank },
           statusEffects: [], temporaryBuffs: [],
           currentEnergyShield: calculatedStats.maxEnergyShield || 0,
           shieldRechargeDelayTicksRemaining: 0,
+          initialLevelForSummary: playerHeroState.level, 
+          initialExpForSummary: playerHeroState.currentExp, 
         };
       });
 
@@ -81,7 +83,7 @@ export const demoniconReducer = (
           currentRank: initialRank,
           persistedHeroStatesInRun: initialPersistedHeroStates,
           lootThisRun: [],
-          xpThisRun: 0, 
+          xpThisRun: 0,
         },
         battleState: {
           isDemoniconBattle: true,
@@ -93,24 +95,28 @@ export const demoniconReducer = (
           status: 'FIGHTING',
           ticksElapsed: 0,
           lastAttackEvents: [],
-          battleLootCollected: [], 
+          damagePopups: [],
+          fusionAnchors: [],
+          feederParticles: [], 
+          battleLootCollected: [],
           defeatedEnemiesWithLoot: {},
-          battleExpCollected: 0,   
+          battleExpCollected: 0,
           buildingLevelUpEventsInBattle: [],
           activePotionIdForUsage: null,
-          sessionTotalLoot: [], 
-          sessionTotalExp: 0,  
+          sessionTotalLoot: [],
+          sessionTotalExp: 0,
           sessionTotalBuildingLevelUps: [],
+          stats: {}, 
         },
         activeView: ActiveView.BATTLEFIELD,
       };
     }
-    case 'END_BATTLE': { 
-      if (!state.activeDemoniconChallenge || !state.battleState || !state.battleState.isDemoniconBattle) return state; 
+    case 'END_BATTLE': {
+      if (!state.activeDemoniconChallenge || !state.battleState || !state.battleState.isDemoniconBattle) return state;
       const { outcome } = action.payload;
       const { enemyId, currentRank } = state.activeDemoniconChallenge;
       const battleStateFromEnd = state.battleState;
-      
+
       // Prepare payload for PROCESS_DEMONICON_VICTORY_REWARDS which expects hero states
       const survivingHeroesWithFullState = battleStateFromEnd.heroes
         .filter(h => h.currentHp > 0)
@@ -132,14 +138,14 @@ export const demoniconReducer = (
           enemyId,
           clearedRank: currentRank,
           survivingHeroesWithState: survivingHeroesWithFullState,
-          rankLootCollected: battleStateFromEnd.battleLootCollected, 
-          rankExpCollected: battleStateFromEnd.battleExpCollected,    
+          rankLootCollected: battleStateFromEnd.battleLootCollected,
+          rankExpCollected: battleStateFromEnd.battleExpCollected,
         }
       };
 
       if (outcome === 'VICTORY') {
         return demoniconReducer(state, processRewardsAction, globalBonuses, staticData);
-      } else { 
+      } else {
         return demoniconReducer(state, { type: 'CLEANUP_DEMONICON_STATE' }, globalBonuses, staticData);
       }
     }
@@ -149,7 +155,7 @@ export const demoniconReducer = (
       const currentChallenge = state.activeDemoniconChallenge;
 
       if (!currentChallenge || currentChallenge.enemyId !== enemyId || currentChallenge.currentRank !== clearedRank) {
-        return state; 
+        return state;
       }
 
       let newState = { ...state };
@@ -174,13 +180,13 @@ export const demoniconReducer = (
               cooldownsForNextRank: { ...shs.specialAttackCooldownsRemaining }
           };
       });
-      
+
       const updatedLootThisRun = mergeCosts(currentChallenge.lootThisRun, rankLootCollected || []);
       const updatedXpThisRun = (currentChallenge.xpThisRun || 0) + (rankExpCollected || 0); // Accumulate HERO EXP
 
       const prevHighestRank = state.demoniconHighestRankCompleted[enemyId] ?? -1;
       if (clearedRank > prevHighestRank) {
-        const demonicCoinsEarned = 5 + Math.floor(clearedRank / 5); 
+        const demonicCoinsEarned = 5 + Math.floor(clearedRank / 5);
         newResources.DEMONIC_COIN = (newResources.DEMONIC_COIN || 0) + demonicCoinsEarned;
         newDemoniconHighestRank[enemyId] = clearedRank;
         notifications.push({
@@ -189,7 +195,7 @@ export const demoniconReducer = (
           type: 'success', iconName: ICONS.DEMONIC_COIN ? 'DEMONIC_COIN' : undefined, timestamp: Date.now()
         });
 
-        const globalXPEarned = (clearedRank + 1) * 2; 
+        const globalXPEarned = (clearedRank + 1) * 2;
         newGlobalXP += globalXPEarned;
         notifications.push({
           id: Date.now().toString() + "-demoniconGlobalXP",
@@ -215,10 +221,10 @@ export const demoniconReducer = (
           }
         });
       }
-      
+
       newState = {
         ...state,
-        resources: newResources, 
+        resources: newResources,
         demoniconHighestRankCompleted: newDemoniconHighestRank,
         globalDemoniconXP: newGlobalXP,
         globalDemoniconLevel: newGlobalLevel,
@@ -242,7 +248,7 @@ export const demoniconReducer = (
                 const heroDefForBattle = staticData.heroDefinitions[heroDefId];
                 const skillTree = staticData.skillTrees[heroDefForBattle.skillTreeId];
                 const heroStateForCalc: PlayerHeroState = {
-                    ...playerHeroState, 
+                    ...playerHeroState,
                     level: phs.level,
                     currentExp: phs.currentExp,
                     expToNextLevel: phs.expToNextLevel,
@@ -263,6 +269,8 @@ export const demoniconReducer = (
                     statusEffects: [], temporaryBuffs: [],
                     currentEnergyShield: calculatedStats.maxEnergyShield || 0,
                     shieldRechargeDelayTicksRemaining: 0,
+                    initialLevelForSummary: phs.level, 
+                    initialExpForSummary: phs.currentExp, 
                 };
         });
 
@@ -275,25 +283,29 @@ export const demoniconReducer = (
           heroes: heroesForNextRank, enemies: calculateDemoniconEnemyStatsUtil(enemyDef, nextRank, staticData, globalBonuses),
           battleLog: [`Demonicon Challenge: ${enemyDef.name} - Rank ${nextRank + 1} starting!`],
           status: 'FIGHTING', ticksElapsed: 0, lastAttackEvents: [],
+          damagePopups: [],
+          fusionAnchors: [],
+          feederParticles: [], 
           battleLootCollected: [], defeatedEnemiesWithLoot: {}, battleExpCollected: 0,
           buildingLevelUpEventsInBattle: [], activePotionIdForUsage: null,
-          sessionTotalLoot: [...updatedLootThisRun], 
-          sessionTotalExp: updatedXpThisRun,       
+          sessionTotalLoot: [...updatedLootThisRun],
+          sessionTotalExp: updatedXpThisRun,
           sessionTotalBuildingLevelUps: [],
+          stats: {}, 
         };
-        
+
         return {
           ...newState,
           activeDemoniconChallenge: { ...newState.activeDemoniconChallenge!, currentRank: nextRank },
           battleState: newBattleState,
           activeView: ActiveView.BATTLEFIELD,
         };
-      } else { 
+      } else {
         return demoniconReducer(newState, { type: 'CLEANUP_DEMONICON_STATE' }, globalBonuses, staticData);
       }
     }
 
-    case 'CONTINUE_DEMONICON_CHALLENGE': { 
+    case 'CONTINUE_DEMONICON_CHALLENGE': {
       if (!state.activeDemoniconChallenge || Object.keys(state.activeDemoniconChallenge.persistedHeroStatesInRun).length === 0) {
         return demoniconReducer(state, { type: 'CLEANUP_DEMONICON_STATE' }, globalBonuses, staticData);
       }
@@ -325,6 +337,8 @@ export const demoniconReducer = (
               statusEffects: [], temporaryBuffs: [],
               currentEnergyShield: calculatedStats.maxEnergyShield || 0,
               shieldRechargeDelayTicksRemaining: 0,
+              initialLevelForSummary: phs.level, 
+              initialExpForSummary: phs.currentExp, 
             };
       });
 
@@ -339,11 +353,15 @@ export const demoniconReducer = (
           heroes: heroesForNextRank, enemies: calculateDemoniconEnemyStatsUtil(enemyDef, currentRank, staticData, globalBonuses),
           battleLog: [`Demonicon Challenge: ${enemyDef.name} - Rank ${currentRank + 1} starting!`],
           status: 'FIGHTING', ticksElapsed: 0, lastAttackEvents: [],
+          damagePopups: [],
+          fusionAnchors: [],
+          feederParticles: [], 
           battleLootCollected: [], defeatedEnemiesWithLoot: {}, battleExpCollected: 0,
           buildingLevelUpEventsInBattle: [], activePotionIdForUsage: null,
-          sessionTotalLoot: [...lootThisRun], 
-          sessionTotalExp: xpThisRun,         
+          sessionTotalLoot: [...lootThisRun],
+          sessionTotalExp: xpThisRun,
           sessionTotalBuildingLevelUps: [],
+          stats: {}, 
         },
         activeView: ActiveView.BATTLEFIELD,
       };
@@ -357,7 +375,7 @@ export const demoniconReducer = (
       if (state.activeDemoniconChallenge) {
         const { persistedHeroStatesInRun, lootThisRun, xpThisRun, enemyId, currentRank } = state.activeDemoniconChallenge;
         const enemyName = staticData.enemyDefinitions[enemyId]?.name || enemyId;
-        
+
         finalHeroesState = state.heroes.map(hero => {
           const persistedData = persistedHeroStatesInRun[hero.definitionId];
           if (persistedData) {
@@ -375,10 +393,10 @@ export const demoniconReducer = (
         lootThisRun.forEach(lootItem => {
             newResources[lootItem.resource] = (newResources[lootItem.resource] || 0) + lootItem.amount;
         });
-        
+
         const lootSummary = lootThisRun.map(l => `${formatNumber(l.amount)} ${l.resource.replace(/_/g, ' ')}`).join(', ');
         const xpSummary = xpThisRun > 0 ? `${formatNumber(xpThisRun)} total Hero EXP gained by heroes this run` : "";
-        
+
         let summaryMessage = `Demonicon run vs ${enemyName} (ended at Rank ${currentRank + 1}) concluded.`;
         if (lootSummary) summaryMessage += ` Rewards: ${lootSummary}.`;
         if (xpSummary) summaryMessage += ` ${xpSummary}.`;

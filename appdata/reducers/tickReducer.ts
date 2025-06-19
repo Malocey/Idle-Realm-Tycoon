@@ -1,169 +1,84 @@
 
-import { GameState, GameAction, ResourceType, GlobalBonuses, GameNotification, BuildingSpecificUpgradeDefinition, ResearchProgress, CompletedResearchEntry } from '../types';
-import { BUILDING_DEFINITIONS, HERO_DEFINITIONS, POTION_DEFINITIONS, BUILDING_SPECIFIC_UPGRADE_DEFINITIONS, RESEARCH_DEFINITIONS } from '../gameData/index';
-import { calculateBuildingProduction, getExpToNextHeroLevel, formatNumber, getTownHallUpgradeEffectValue } from '../utils';
-import { NOTIFICATION_ICONS, GAME_TICK_MS } from '../constants';
-import { ICONS } from '../components/Icons'; // Import ICONS
+import { GameState, GameAction, GlobalBonuses, GameNotification, BuildingSpecificUpgradeDefinition, ResearchProgress, CompletedResearchEntry, FeederParticle } from '../types'; // Added FeederParticle
+import { GAME_TICK_MS, FUSION_ANCHOR_FADE_OUT_DURATION_MS, FEEDER_PARTICLE_DURATION_MS, FEEDER_SPAWN_INTERVAL_MS } from '../constants'; // Added FEEDER_SPAWN_INTERVAL_MS
+
+// Korrigierte Importpfade
+import { processBuildingProduction } from './tickActions/buildingProduction';
+import { processPotionCrafting } from './tickActions/potionCrafting';
+import { processResearchProgress } from './tickActions/researchProgress';
+import { processAutoBattlerTick } from './tickActions/autoBattlerTick'; 
+
+// Helper function to generate a unique ID
+const generateUniqueIdForParticle = () => `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
 
 export const handleProcessTick = (state: GameState, action: Extract<GameAction, { type: 'PROCESS_TICK' }>, globalBonuses: GlobalBonuses): GameState => {
-  let newResources = { ...state.resources };
-  let newTotalTownXp = state.totalTownXp;
-  let newPotions = { ...state.potions };
-  let newCraftingQueue = [...state.craftingQueue];
-  let newNotifications = [...state.notifications];
-  let newResearchProgress = { ...state.researchProgress };
-  let newCompletedResearch = { ...state.completedResearch };
-  let newResearchQueue = [...state.researchQueue];
+  let newState = { ...state };
+  const currentTime = Date.now();
+  // Ensure at least GAME_TICK_MS passes, scaled by gameSpeed for actual time progression
+  const timeSinceLastTick = Math.max(GAME_TICK_MS, currentTime - newState.lastTickTimestamp);
 
-  // Building Production
-  state.buildings.forEach(b => {
-    if (b.level === 0) return;
-    const def = BUILDING_DEFINITIONS[b.id];
-    if (def && def.isProducer) {
-      const production = calculateBuildingProduction(def, b.level);
-      production.forEach(p => {
-        let amount = p.amountPerTick * state.gameSpeed;
-        if (p.resource !== ResourceType.TOWN_XP &&
-            p.resource !== ResourceType.HEROIC_POINTS &&
-            p.resource !== ResourceType.CATACOMB_BLUEPRINT &&
-            p.resource !== ResourceType.AETHERIUM &&
-            p.resource !== ResourceType.RESEARCH_POINTS) {
-             amount *= (1 + globalBonuses.allResourceProductionBonus);
+  // 1. Process Building Production
+  newState = processBuildingProduction(newState, globalBonuses, timeSinceLastTick, state.gameSpeed);
+
+  // 2. Process Potion Crafting
+  newState = processPotionCrafting(newState, globalBonuses, timeSinceLastTick, state.gameSpeed);
+
+  // 3. Process Research
+  newState = processResearchProgress(newState, globalBonuses, timeSinceLastTick, state.gameSpeed);
+
+  // 4. Process Auto-Battler Minigame Tick if active (Passive elements only)
+  // newState = processAutoBattlerTick(newState, timeSinceLastTick, state.gameSpeed);
+
+  // 5. Fusion Anchor & Feeder Particle Management
+  if (newState.battleState) {
+    const now = Date.now();
+    let updatedBattleState = { 
+        ...newState.battleState,
+        // Ensure arrays exist before operating on them
+        fusionAnchors: [...(newState.battleState.fusionAnchors || [])],
+        feederParticles: [...(newState.battleState.feederParticles || [])]
+    };
+
+    // Feeder Particle Spawner from Queues
+    let newFeederParticlesThisTick: FeederParticle[] = [];
+    updatedBattleState.fusionAnchors = updatedBattleState.fusionAnchors.map(anchor => {
+      let updatedAnchor = { ...anchor };
+      if (!updatedAnchor.feederQueue) updatedAnchor.feederQueue = []; // Ensure queue exists
+      if (updatedAnchor.feederQueue.length > 0 && (now - (updatedAnchor.lastFeederSpawnTime || 0) > FEEDER_SPAWN_INTERVAL_MS)) {
+        const itemToSpawn = updatedAnchor.feederQueue.shift();
+        if (itemToSpawn) {
+          newFeederParticlesThisTick.push({
+            id: generateUniqueIdForParticle(),
+            targetAnchorId: updatedAnchor.id,
+            amount: itemToSpawn.amount,
+            isCritical: itemToSpawn.isCritical,
+            timestamp: now,
+          });
+          updatedAnchor.lastFeederSpawnTime = now;
         }
-
-        if (p.resource === ResourceType.TOWN_XP) {
-          newTotalTownXp += amount;
-        } else if (p.resource === ResourceType.HEROIC_POINTS) {
-          amount *= (1 + globalBonuses.heroXpGainBonus);
-          newResources[p.resource] = (newResources[p.resource] || 0) + amount;
-        } else if (p.resource === ResourceType.RESEARCH_POINTS) {
-          amount *= (1 + globalBonuses.researchPointProductionBonus);
-          newResources[p.resource] = (newResources[p.resource] || 0) + amount;
-        }
-        else {
-          newResources[p.resource] = (newResources[p.resource] || 0) + amount;
-        }
-      });
-    }
-    if (def?.id === 'FARM') {
-        const farmUpgrades = BUILDING_SPECIFIC_UPGRADE_DEFINITIONS['FARM'];
-        const herbCultivationUpgradeDef = farmUpgrades?.find(upg => upg.id === 'FARM_HERB_CULTIVATION');
-        const herbCultivationLevel = state.buildingSpecificUpgradeLevels['FARM']?.['FARM_HERB_CULTIVATION'] || 0;
-
-        if (herbCultivationUpgradeDef && herbCultivationLevel > 0) {
-            herbCultivationUpgradeDef.effects.forEach(effect => {
-                if (effect.passiveHerbProduction) {
-                    const effectValue = getTownHallUpgradeEffectValue(effect, herbCultivationLevel);
-                    const amountPerTick = effectValue * state.gameSpeed;
-                    newResources[effect.passiveHerbProduction.herbType] = (newResources[effect.passiveHerbProduction.herbType] || 0) + amountPerTick;
-                }
-            });
-        }
-    }
-  });
-
-  // Hero XP (Not handled in tick, but kept hero update logic for consistency if other per-tick hero logic added later)
-  const updatedHeroes = state.heroes.map(hero => {
-    let currentExp = hero.currentExp;
-    let level = hero.level;
-    let skillPoints = hero.skillPoints;
-    let expToNextLevel = hero.expToNextLevel;
-    while (currentExp >= expToNextLevel && level < (HERO_DEFINITIONS[hero.definitionId] ? 100 : 100)) {
-      currentExp -= expToNextLevel;
-      level++; skillPoints++;
-      expToNextLevel = getExpToNextHeroLevel(level);
-    }
-    return { ...hero, currentExp, level, skillPoints, expToNextLevel };
-  });
-
-  // Process Crafting Queue
-  if (newCraftingQueue.length > 0) {
-    const currentItem = { ...newCraftingQueue[0] };
-    let craftTimeReductionFactor = 0;
-    const alchemistLabUpgrades = BUILDING_SPECIFIC_UPGRADE_DEFINITIONS['ALCHEMISTS_LAB'];
-    const efficientBrewingUpgradeDef = alchemistLabUpgrades?.find(upg => upg.id === 'AL_EFFICIENT_BREWING');
-    const efficientBrewingLevel = state.buildingSpecificUpgradeLevels['ALCHEMISTS_LAB']?.['AL_EFFICIENT_BREWING'] || 0;
-    if (efficientBrewingUpgradeDef && efficientBrewingLevel > 0) {
-        const effect = efficientBrewingUpgradeDef.effects.find(e => e.potionCraftTimeReduction);
-        if (effect) craftTimeReductionFactor = getTownHallUpgradeEffectValue(effect, efficientBrewingLevel);
-    }
-    const tickProgress = GAME_TICK_MS * state.gameSpeed;
-    const effectiveTickProgress = craftTimeReductionFactor > 0 ? tickProgress * (1 + craftTimeReductionFactor) : tickProgress;
-    currentItem.remainingCraftTimeMs -= effectiveTickProgress;
-
-    if (currentItem.remainingCraftTimeMs <= 0) {
-      const potionDef = POTION_DEFINITIONS[currentItem.potionId];
-      if (potionDef) {
-        newPotions[currentItem.potionId] = (newPotions[currentItem.potionId] || 0) + currentItem.quantity;
-        newNotifications.push({ id: Date.now().toString() + "-potionBrewed-" + currentItem.id, message: `${currentItem.quantity}x ${potionDef.name} finished brewing!`, type: 'success', iconName: 'POTION_BREWED', timestamp: Date.now() });
       }
-      newCraftingQueue.shift();
-      if (newCraftingQueue.length > 0) {
-        newCraftingQueue[0] = { ...newCraftingQueue[0], remainingCraftTimeMs: newCraftingQueue[0].totalCraftTimeMs, startTime: Date.now() };
-      }
-    } else {
-      newCraftingQueue[0] = currentItem;
+      return updatedAnchor;
+    });
+
+    if (newFeederParticlesThisTick.length > 0) {
+      updatedBattleState.feederParticles = [...updatedBattleState.feederParticles, ...newFeederParticlesThisTick];
     }
+    
+    // Fusion Anchor Fade-out Cleanup
+    updatedBattleState.fusionAnchors = updatedBattleState.fusionAnchors.filter(
+      anchor => (now - anchor.lastUpdateTime) <= FUSION_ANCHOR_FADE_OUT_DURATION_MS || anchor.feederQueue.length > 0
+    );
+    
+    // Feeder Particle Lifetime Cleanup
+    updatedBattleState.feederParticles = updatedBattleState.feederParticles.filter(
+      particle => (now - particle.timestamp) <= FEEDER_PARTICLE_DURATION_MS 
+    );
+    
+    newState.battleState = updatedBattleState;
   }
 
-  // Process Research Queue
-  const researchSlotIdsInUse = new Set<number>();
-  Object.values(newResearchProgress).forEach(p => researchSlotIdsInUse.add(p.researchSlotId));
-
-  Object.keys(newResearchProgress).forEach(instanceId => {
-    const researchingItem = { ...newResearchProgress[instanceId] }; // Make a mutable copy
-    const researchDef = RESEARCH_DEFINITIONS[researchingItem.researchId];
-    if (!researchDef) return;
-
-    researchingItem.currentProgressTicks += 1; // Increment by 1 game tick
-
-    const researchTimeReductionBonus = globalBonuses.researchTimeReduction || 0;
-    const effectiveTargetTicks = Math.max(1, Math.floor(researchingItem.targetTicks * (1 - researchTimeReductionBonus)));
-
-    if (researchingItem.currentProgressTicks >= effectiveTargetTicks) {
-      newCompletedResearch[researchingItem.researchId] = {
-        level: researchingItem.levelBeingResearched,
-      };
-      delete newResearchProgress[instanceId];
-      researchSlotIdsInUse.delete(researchingItem.researchSlotId); // Free up slot
-
-      newNotifications.push({
-        id: Date.now().toString() + "-researchComplete-" + researchDef.id,
-        message: `Research Complete: ${researchDef.name} Lvl ${researchingItem.levelBeingResearched}!`,
-        type: 'success',
-        iconName: researchDef.iconName || 'UPGRADE',
-        timestamp: Date.now(),
-      });
-    } else {
-      newResearchProgress[instanceId] = researchingItem; // Update progress
-    }
-  });
-  
-  // Check queue if slots are free
-  if (newResearchQueue.length > 0 && researchSlotIdsInUse.size < state.researchSlots) {
-      for (let i = 0; i < state.researchSlots; i++) {
-          if (!researchSlotIdsInUse.has(i) && newResearchQueue.length > 0) {
-              const nextQueuedItem = newResearchQueue.shift()!;
-              const nextResearchDef = RESEARCH_DEFINITIONS[nextQueuedItem.researchId];
-              if (nextResearchDef) {
-                const newInstanceId = `${nextQueuedItem.researchId}-${nextQueuedItem.levelToResearch}-${Date.now()}`;
-                newResearchProgress[newInstanceId] = {
-                    researchId: nextQueuedItem.researchId,
-                    levelBeingResearched: nextQueuedItem.levelToResearch,
-                    currentProgressTicks: 0,
-                    targetTicks: nextResearchDef.researchTimeTicks,
-                    researchSlotId: i,
-                    startTime: Date.now(),
-                };
-                researchSlotIdsInUse.add(i); // Mark slot as used
-                newNotifications.push({ id: Date.now().toString() + "-researchStartedFromQueue", message: `Started ${nextResearchDef.name} Lvl ${nextQueuedItem.levelToResearch} from queue.`, type: 'info', iconName: nextResearchDef.iconName, timestamp: Date.now() });
-              }
-          }
-      }
-  }
-
-
-  // Cleanup old building level up events
+  // 6. Cleanup old building level up events
   const nowForCleanup = Date.now();
   const LEVEL_UP_EVENT_DURATION_MS = 10000;
   const activeLevelUpEvents: Record<string, { timestamp: number }> = {};
@@ -175,21 +90,14 @@ export const handleProcessTick = (state: GameState, action: Extract<GameAction, 
       levelUpEventsChanged = true;
     }
   });
-  const finalLevelUpEvents = levelUpEventsChanged || Object.keys(state.buildingLevelUpEvents).length !== Object.keys(activeLevelUpEvents).length
-    ? activeLevelUpEvents : state.buildingLevelUpEvents;
 
-  return {
-    ...state,
-    resources: newResources,
-    totalTownXp: newTotalTownXp,
-    heroes: updatedHeroes,
-    potions: newPotions,
-    craftingQueue: newCraftingQueue,
-    notifications: newNotifications,
-    lastTickTimestamp: Date.now(),
-    buildingLevelUpEvents: finalLevelUpEvents,
-    researchProgress: newResearchProgress,
-    completedResearch: newCompletedResearch,
-    researchQueue: newResearchQueue,
-  };
+  if (levelUpEventsChanged || Object.keys(state.buildingLevelUpEvents).length !== Object.keys(activeLevelUpEvents).length) {
+    newState.buildingLevelUpEvents = activeLevelUpEvents;
+  }
+
+
+  // Update last tick timestamp
+  newState.lastTickTimestamp = currentTime;
+
+  return newState;
 };

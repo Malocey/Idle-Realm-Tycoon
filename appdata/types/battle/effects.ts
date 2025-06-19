@@ -45,7 +45,7 @@ export interface TemporaryBuff {
   potionId: string;
   effectType: PotionEffectDefinition['type'];
   stat?: keyof HeroStats;
-  modifierType?: 'FLAT' | 'PERCENTAGE';
+  modifierType?: 'FLAT' | 'PERCENTAGE_ADDITIVE'; // Changed to include 'PERCENTAGE_ADDITIVE'
   value: number;
   remainingDurationMs: number;
   appliedAtTick: number;

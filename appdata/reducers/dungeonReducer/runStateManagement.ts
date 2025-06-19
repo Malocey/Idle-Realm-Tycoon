@@ -12,13 +12,6 @@ export const handleRunStateActions = (
 ): GameState => {
   switch (action.type) {
     case 'START_DUNGEON_RUN': {
-        // This action is currently mostly superseded by START_DUNGEON_EXPLORATION for the initial floor.
-        // If it's meant to be a pre-exploration setup or for a different system, its logic would go here.
-        // For now, let's assume START_DUNGEON_EXPLORATION handles the primary setup.
-        // If this action is truly distinct, its full logic for creating an activeDungeonRun would be here.
-        // console.warn("START_DUNGEON_RUN called, but START_DUNGEON_EXPLORATION usually handles initial floor setup.");
-        
-        // Minimal setup to allow proceeding to START_DUNGEON_EXPLORATION if this action MUST exist first.
         const { dungeonId } = action.payload;
         const dungeonDef = DUNGEON_DEFINITIONS[dungeonId];
         if (!dungeonDef) return state;
@@ -34,18 +27,24 @@ export const handleRunStateActions = (
             const heroDef = HERO_DEFINITIONS[h.definitionId];
             const skillTree = SKILL_TREES[heroDef.skillTreeId];
             const calculatedStats = calculateHeroStats(h, heroDef, skillTree, state, TOWN_HALL_UPGRADE_DEFINITIONS, GUILD_HALL_UPGRADE_DEFINITIONS, EQUIPMENT_DEFINITIONS, globalBonuses, SHARD_DEFINITIONS, RUN_BUFF_DEFINITIONS);
+            const initialCooldowns: Record<string, number> = {};
+            Object.keys(h.specialAttackLevels).forEach(saId => { if(h.specialAttackLevels[saId] > 0) initialCooldowns[saId] = 0; });
             heroStatesAtFloorStart[h.definitionId] = {
+                level: h.level,
+                currentExp: h.currentExp,
+                expToNextLevel: h.expToNextLevel,
+                skillPoints: h.skillPoints,
                 currentHp: calculatedStats.maxHp,
                 currentMana: calculatedStats.maxMana || 0,
                 maxHp: calculatedStats.maxHp,
                 maxMana: calculatedStats.maxMana || 0,
-                specialAttackCooldownsRemaining: {}
+                specialAttackCooldownsRemaining: initialCooldowns
             };
         });
 
         const newActiveDungeonRun: DungeonRunState = {
             dungeonDefinitionId: dungeonId,
-            currentFloorIndex: 0, // Start at the first floor
+            currentFloorIndex: 0, 
             heroStatesAtFloorStart,
             survivingHeroIds: state.heroes.map(h => h.definitionId),
             runXP: 0,
@@ -54,18 +53,23 @@ export const handleRunStateActions = (
             activeRunBuffs: [],
             offeredBuffChoices: null,
         };
-        // This action typically would not directly set activeView or activeDungeonGrid.
-        // It prepares the run state, and then START_DUNGEON_EXPLORATION would be called for the first floor.
         return { ...state, resources: newResources, activeDungeonRun: newActiveDungeonRun };
     }
     case 'END_DUNGEON_RUN': {
         let notifications = [...state.notifications];
+        let updatedHeroes = [...state.heroes];
+
+        if (state.activeDungeonRun) {
+           // Hero progression (XP, levels, skill points) should have been updated via END_DUNGEON_FLOOR
+           // and reflected in state.heroes. This action primarily cleans up the run.
+        }
+
         if (action.payload.outcome === 'SUCCESS') {
             notifications.push({id: Date.now().toString(), message: `Dungeon Run Completed!`, type: 'success', iconName: ICONS.CHECK_CIRCLE ? 'CHECK_CIRCLE' : undefined, timestamp: Date.now()});
         } else {
              notifications.push({id: Date.now().toString(), message: `Dungeon Run Failed.`, type: 'error', iconName: ICONS.X_CIRCLE ? 'X_CIRCLE' : undefined, timestamp: Date.now()});
         }
-        return { ...state, activeDungeonRun: null, activeDungeonGrid: null, battleState: null, activeView: ActiveView.TOWN, notifications };
+        return { ...state, heroes: updatedHeroes, activeDungeonRun: null, activeDungeonGrid: null, battleState: null, activeView: ActiveView.TOWN, notifications };
     }
     case 'EXIT_DUNGEON_EXPLORATION': {
         const notifications = [...state.notifications];

@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { GameProvider, useGameContext } from './context';
 import TopBar from './components/TopBar';
@@ -20,7 +19,8 @@ import WorldMapView from './views/WorldMapView';
 import AccountLevelInfoModal from './components/AccountLevelInfoModal'; 
 import AcademyModal from './components/AcademyModal'; 
 import AutoBattlerView from './views/AutoBattlerView';
-import { GameState, ActiveView } from './types'; 
+import EndOfBattleModal from './components/EndOfBattleModal'; 
+import { GameState, ActiveView, BattleSummary, ResourceType } from './types'; 
 
 const VIEW_TRANSITION_DURATION = 400; // ms, should match CSS animation duration
 
@@ -32,6 +32,8 @@ const AppContentInternal: React.FC = () => {
   const [currentView, setCurrentView] = useState<ActiveView | null>(null); 
   const [previousView, setPreviousView] = useState<ActiveView | null>(null); 
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [battleSummaryForModal, setBattleSummaryForModal] = useState<BattleSummary | null>(null);
+
 
   useEffect(() => {
     if (!context) return;
@@ -39,17 +41,31 @@ const AppContentInternal: React.FC = () => {
 
     if (currentView === null) { 
       setCurrentView(newActiveView);
+      if (newActiveView === ActiveView.END_OF_BATTLE_SUMMARY) {
+        setBattleSummaryForModal(context.gameState.battleSummary); 
+      }
     } else if (newActiveView !== currentView && !isTransitioning) {
       setIsTransitioning(true);
       setPreviousView(currentView);
       setCurrentView(newActiveView); 
+
+      if (newActiveView === ActiveView.END_OF_BATTLE_SUMMARY) {
+        setBattleSummaryForModal(context.gameState.battleSummary);
+      } else {
+        if (currentView === ActiveView.END_OF_BATTLE_SUMMARY) {
+           if (battleSummaryForModal) { 
+             context.dispatch({ type: 'CLEAR_BATTLE_SUMMARY' });
+           }
+           setBattleSummaryForModal(null);
+        }
+      }
 
       setTimeout(() => {
         setIsTransitioning(false);
         setPreviousView(null); 
       }, VIEW_TRANSITION_DURATION);
     }
-  }, [context?.gameState.activeView, currentView, isTransitioning]);
+  }, [context?.gameState.activeView, context?.gameState.battleSummary, currentView, isTransitioning, battleSummaryForModal, context]);
 
 
   if (!context) {
@@ -99,7 +115,7 @@ const AppContentInternal: React.FC = () => {
           />
         ); 
         break;
-      case ActiveView.AUTO_BATTLER: viewComponent = <AutoBattlerView />; break; 
+      case ActiveView.AUTO_BATTLER: viewComponent = <AutoBattlerView />; break;
       default: return null;
     }
 
@@ -114,6 +130,46 @@ const AppContentInternal: React.FC = () => {
         </div>
     );
   };
+
+  const handleReturnToTownFromModal = () => {
+    context.dispatch({ type: 'CLEAR_BATTLE_SUMMARY' });
+    context.dispatch({ type: 'SET_ACTIVE_VIEW', payload: ActiveView.TOWN });
+  };
+
+  const handleRetryChallengeFromModal = () => {
+    if (!battleSummaryForModal) return;
+    context.dispatch({ type: 'CLEAR_BATTLE_SUMMARY' });
+
+    if (battleSummaryForModal.wasDemoniconBattle && battleSummaryForModal.demoniconEnemyIdForRetry && battleSummaryForModal.demoniconRankForRetry !== undefined) {
+        context.dispatch({ type: 'START_DEMONICON_CHALLENGE', payload: { enemyId: battleSummaryForModal.demoniconEnemyIdForRetry, rank: battleSummaryForModal.demoniconRankForRetry } });
+    } else if (battleSummaryForModal.sourceMapNodeId) {
+        const mapNode = context.staticData.worldMapDefinitions[context.gameState.currentMapId]?.nodes.find(n => n.id === battleSummaryForModal.sourceMapNodeId);
+        if (mapNode) {
+            const payload: any = {
+                isAutoProgression: false,
+                sourceMapNodeId: battleSummaryForModal.sourceMapNodeId,
+            };
+            if (battleSummaryForModal.customWaveSequenceForRetry && battleSummaryForModal.customWaveSequenceForRetry.length > 0) {
+                payload.customWaveSequence = battleSummaryForModal.customWaveSequenceForRetry;
+                payload.currentCustomWaveIndex = battleSummaryForModal.currentCustomWaveIndexForRetry !== undefined ? battleSummaryForModal.currentCustomWaveIndexForRetry : 0;
+            } else {
+                // For non-custom sequence map battles, waveNumberForRetry should be the starting wave of that node.
+                payload.waveNumber = battleSummaryForModal.waveNumberForRetry || 1;
+            }
+            context.dispatch({ type: 'START_BATTLE_PREPARATION', payload });
+        } else {
+            // Fallback if map node definition is somehow lost
+            context.dispatch({ type: 'SET_ACTIVE_VIEW', payload: ActiveView.WORLD_MAP }); 
+        }
+    } else if (battleSummaryForModal.wasDungeonGridBattle || battleSummaryForModal.wasDungeonBattle) {
+        // Retrying a specific dungeon battle is complex; for now, return to explore.
+        // A more complete retry would involve restarting the floor or a specific encounter.
+        context.dispatch({ type: 'SET_ACTIVE_VIEW', payload: ActiveView.DUNGEON_EXPLORE });
+    } else {
+        // Standard wave battle retry, waveNumberForRetry should be 1
+        context.dispatch({ type: 'START_BATTLE_PREPARATION', payload: { waveNumber: battleSummaryForModal.waveNumberForRetry || 1 } });
+    }
+  };
   
   return (
     <div className="min-h-screen flex flex-col bg-slate-900">
@@ -127,6 +183,26 @@ const AppContentInternal: React.FC = () => {
       <DungeonRewardModal 
         isOpen={context.gameState.activeView === ActiveView.DUNGEON_REWARD} 
         onClose={() => context.dispatch({ type: 'END_DUNGEON_RUN', payload: { outcome: 'SUCCESS' }})} 
+      />
+      <EndOfBattleModal
+        isOpen={context.gameState.activeView === ActiveView.END_OF_BATTLE_SUMMARY && !!battleSummaryForModal}
+        summary={battleSummaryForModal}
+        onClose={() => { 
+            if (!battleSummaryForModal) { 
+                context.dispatch({ type: 'SET_ACTIVE_VIEW', payload: ActiveView.TOWN });
+            } else if (battleSummaryForModal.wasDungeonGridBattle || battleSummaryForModal.wasDungeonBattle) {
+                context.dispatch({ type: 'SET_ACTIVE_VIEW', payload: ActiveView.DUNGEON_EXPLORE });
+            } else if (battleSummaryForModal.sourceMapNodeId) {
+                 context.dispatch({ type: 'SET_ACTIVE_VIEW', payload: ActiveView.WORLD_MAP });
+            } else if (battleSummaryForModal.wasDemoniconBattle) {
+                 context.dispatch({ type: 'CLEANUP_DEMONICON_STATE' }); 
+            } else { 
+                context.dispatch({ type: 'SET_ACTIVE_VIEW', payload: ActiveView.TOWN });
+            }
+            context.dispatch({ type: 'CLEAR_BATTLE_SUMMARY' }); 
+        }}
+        onRetry={handleRetryChallengeFromModal}
+        onReturnToTown={handleReturnToTownFromModal}
       />
       <CheatMenuModal 
         isOpen={isCheatMenuModalOpen}

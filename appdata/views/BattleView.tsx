@@ -6,9 +6,10 @@ import { NOTIFICATION_ICONS, MAX_WAVE_NUMBER, RESOURCE_COLORS } from '../constan
 import { WAVE_DEFINITIONS, ENEMY_DEFINITIONS } from '../gameData/index';
 import BattleParticipantCard from '../components/BattleParticipantCard';
 import Button from '../components/Button';
-import { GameNotification, ResourceType, Cost, PotionDefinition, ActiveView } from '../types';
+import { GameNotification, ResourceType, Cost, PotionDefinition, ActiveView, FusionAnchor, FeederParticle } from '../types'; // Added FusionAnchor, FeederParticle
 import { formatNumber } from '../utils';
 import BattleSpoilsPanel from '../components/BattleSpoilsPanel';
+import BattleEffectsCanvas from '../components/BattleEffectsCanvas'; 
 
 const BattleView: React.FC = () => {
   const { gameState, dispatch, staticData } = useGameContext();
@@ -145,7 +146,9 @@ const BattleView: React.FC = () => {
     demoniconRank,
     sourceMapNodeId,
     customWaveSequence,
-    currentCustomWaveIndex
+    currentCustomWaveIndex,
+    fusionAnchors,
+    feederParticles // Destructure feederParticles
   } = gameState.battleState;
 
   const dungeonDef = (isDungeonBattle || isDungeonGridBattle) && dungeonRunId ? staticData.dungeonDefinitions[dungeonRunId] : null;
@@ -271,7 +274,8 @@ const BattleView: React.FC = () => {
       
       <div className="flex-grow flex flex-col overflow-hidden">
         {/* Battle Scene Area */}
-        <div className="ff-battle-background flex-grow flex flex-row justify-around items-center p-4 rounded-lg">
+        <div className="ff-battle-background flex-grow flex flex-row justify-around items-center p-4 rounded-lg relative">
+          <BattleEffectsCanvas anchors={fusionAnchors || []} particles={feederParticles || []} />
           {/* Enemy Zone */}
           <div className="flex-1 p-1 rounded-lg grid grid-cols-[repeat(3,auto)] grid-rows-[repeat(5,auto)] gap-1 content-start justify-center">
             {enemies.map(e => 
@@ -286,7 +290,7 @@ const BattleView: React.FC = () => {
             )}
           </div>
 
-          {/* Spacer/Center Area - This is implicit with justify-around in the parent */}
+          {/* Spacer/Center Area */}
 
           {/* Hero Zone */}
           <div className="flex-1 p-1 rounded-lg grid grid-cols-[repeat(3,auto)] grid-rows-[repeat(5,auto)] gap-1 content-start justify-center">

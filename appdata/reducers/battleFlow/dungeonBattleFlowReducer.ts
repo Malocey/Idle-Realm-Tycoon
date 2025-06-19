@@ -33,6 +33,22 @@ export const dungeonBattleFlowReducer = (
       }
 
       if (outcome === 'VICTORY') {
+        // Update PlayerHeroState with final BattleHero stats (XP, level, skill points)
+        nextState.heroes = nextState.heroes.map(playerHero => {
+          const battleVersion = battleStateFromEnd.heroes.find(bh => bh.definitionId === playerHero.definitionId);
+          if (battleVersion) {
+            return {
+              ...playerHero,
+              level: battleVersion.level,
+              currentExp: battleVersion.currentExp,
+              expToNextLevel: battleVersion.expToNextLevel,
+              skillPoints: battleVersion.skillPoints,
+              // HP/Mana are handled by heroStatesAtFloorStart for next floor
+            };
+          }
+          return playerHero;
+        });
+
         if (nextState.activeDungeonGrid && battleStateFromEnd.sourceGridCell) {
             const {r, c} = battleStateFromEnd.sourceGridCell;
             const newGrid = nextState.activeDungeonGrid.grid.map(row => row.map(cell => ({...cell})));

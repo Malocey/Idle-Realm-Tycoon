@@ -126,7 +126,7 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
     nextState = demoniconReducer(state, action, globalBonuses, staticData);
   }
   else if (action.type === 'START_BATTLE_PREPARATION') { 
-    const preparationResult = startBattleReducer(state, {type: 'START_WAVE_BATTLE_PREPARATION', payload: action.payload}, globalBonuses); 
+    const preparationResult = startBattleReducer(state, {type: 'START_WAVE_BATTLE_PREPARATION', payload: action.payload}, globalBonuses, staticData); 
     nextState = preparationResult.updatedState;
     deferredActionsFromSubReducer = preparationResult.deferredActions; 
     if (action.payload.isAutoProgression && action.payload.previousBattleOutcomeForQuestProcessing) {
@@ -137,10 +137,14 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
         nextState = questReducer(nextState, questProgressAction);
     }
   }
-  else if (action.type === 'END_WAVE_BATTLE_RESULT') { 
-    const waveBattleResult = waveBattleFlowReducer(state, action, globalBonuses);
-    nextState = waveBattleResult.updatedState;
-    deferredActionsFromSubReducer = waveBattleResult.deferredActions;
+  else if (action.type === 'END_WAVE_BATTLE_RESULT') {
+    // This action indicates the outcome of a wave battle tick is ready.
+    // The state should already reflect this from the BATTLE_ACTION that triggered it.
+    // We'll use the payload directly.
+    nextState = { ...state, battleState: action.payload.battleStateFromEnd };
+    // Any deferred actions would have been part of the BATTLE_ACTION that led to this.
+    // If specific follow-up actions are needed for END_WAVE_BATTLE_RESULT itself, they'd be added here.
+    deferredActionsFromSubReducer = []; 
   }
   else if (action.type === 'END_BATTLE') {
     if (!originalBattleState) {
@@ -154,8 +158,8 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
     } else if (originalBattleState.isDungeonBattle) { 
       nextState = handleDungeonActions(state, { type: 'END_DUNGEON_FLOOR', payload: { outcome: action.payload.outcome, collectedLoot: action.payload.collectedLoot, collectedExp: action.payload.expRewardToHeroes, buildingLevelUpEventsInBattle: originalBattleState.buildingLevelUpEventsInBattle } }, globalBonuses);
     } else { 
-      const waveEndResult = waveBattleFlowReducer(state, { type: 'END_WAVE_BATTLE_RESULT', payload: { outcome: action.payload.outcome, battleStateFromEnd: originalBattleState } }, globalBonuses);
-      nextState = waveEndResult.updatedState;
+      const waveEndResult = waveBattleFlowReducer(state, globalBonuses, staticData);
+      nextState = waveEndResult.updatedGameState;
       deferredActionsFromSubReducer = waveEndResult.deferredActions; 
 
       const lootForQuests: Cost[] = [];

@@ -27,7 +27,7 @@ const TemporaryBuffBadges: React.FC<TemporaryBuffBadgesProps> = ({ battleHero, t
         
         const remainingSeconds = Math.ceil(buff.remainingDurationMs / 1000);
         return (
-          <div key={buff.id} className="special-attack-icon-container" title={`${potionDef?.name || 'Buff'} - ${buff.stat || ''} ${buff.modifierType === 'PERCENTAGE' ? (buff.value * 100) + '%' : buff.value} (${remainingSeconds}s left)`}>
+          <div key={buff.id} className="special-attack-icon-container" title={`${potionDef?.name || 'Buff'} - ${buff.stat || ''} ${buff.modifierType === 'PERCENTAGE_ADDITIVE' ? (buff.value * 100) + '%' : buff.value} (${remainingSeconds}s left)`}>
             {BuffIcon && <BuffIcon className="special-attack-icon text-yellow-400" />}
             <span className="text-yellow-400 text-xs">{remainingSeconds}s</span>
           </div>

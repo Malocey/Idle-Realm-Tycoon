@@ -1,5 +1,4 @@
 
-
 import { ResourceType, CellType, RunBuffRarity, ActiveView } from './enums'; // Added ActiveView
 import { Cost, GameNotification } from './common';
 import { PermanentHeroBuff, PlayerHeroState, HeroStats } from './hero'; 
@@ -7,7 +6,6 @@ import { BuildingLevelUpEventInBattle, BattleHero, BattleState } from './battle'
 import { MinigameUpgradeType } from './minigame';
 import { ResonanceMoteType } from './aethericResonanceTypes'; 
 import { ResearchProgress, CompletedResearchEntry } from './research';
-// import { AutoBattlerPhase } from './autoBattler'; // AutoBattlerPhase removed
 
 export type GameAction =
   | { type: 'PROCESS_TICK' }
@@ -27,6 +25,7 @@ export type GameAction =
         persistedHeroHp?: Record<string, number>;
         persistedHeroMana?: Record<string, number>;
         persistedHeroSpecialCooldowns?: Record<string, Record<string, number>>;
+        persistedFullHeroStatesFromPreviousWave?: Record<string, BattleHero>; 
         rewardsForPreviousWave?: Cost[];
         expFromPreviousWave?: number;
         previousWaveNumberCleared?: number;
@@ -39,6 +38,8 @@ export type GameAction =
         sourceMapNodeId?: string;
         customWaveSequence?: string[];
         currentCustomWaveIndex?: number;
+        persistedSessionTotalLoot?: Cost[]; // New
+        persistedSessionTotalExp?: number;   // New
     } }
   | { type: 'START_WAVE_BATTLE_PREPARATION'; payload: {
         waveNumber: number;
@@ -46,6 +47,7 @@ export type GameAction =
         persistedHeroHp?: Record<string, number>;
         persistedHeroMana?: Record<string, number>;
         persistedHeroSpecialCooldowns?: Record<string, Record<string, number>>;
+        persistedFullHeroStatesFromPreviousWave?: Record<string, BattleHero>; 
         rewardsForPreviousWave?: Cost[];
         expFromPreviousWave?: number;
         previousWaveNumberCleared?: number;
@@ -58,6 +60,8 @@ export type GameAction =
         sourceMapNodeId?: string;
         customWaveSequence?: string[];
         currentCustomWaveIndex?: number;
+        persistedSessionTotalLoot?: Cost[]; // New
+        persistedSessionTotalExp?: number;   // New
     } }
   | { type: 'BATTLE_ACTION' }
   | { type: 'END_BATTLE'; payload: { outcome: 'VICTORY' | 'DEFEAT'; waveClearBonus?: Cost[], collectedLoot?: Cost[], expRewardToHeroes?: number } }
@@ -126,7 +130,6 @@ export type GameAction =
   | { type: 'COLOSSEUM_WAVE_CLEARED' }
   | { type: 'COLOSSEUM_ENEMY_TAKE_DAMAGE'; payload: { enemyUniqueId: string; damage: number } }
   | { type: 'COLOSSEUM_HERO_TAKE_DAMAGE'; payload: { heroUniqueId: string; damage: number } }
-  | { type: 'TOGGLE_ACTION_BATTLE_AI_SYSTEM' }
   | { type: 'UPGRADE_SHARED_SKILL_MAJOR'; payload: { skillId: string } }
   | { type: 'UPGRADE_SHARED_SKILL_MINOR'; payload: { skillId: string } }
   | { type: 'GOLD_MINE_MINIGAME_INIT'; payload?: { depth?: number } }
@@ -137,7 +140,7 @@ export type GameAction =
   | { type: 'GOLD_MINE_MINIGAME_PURCHASE_UPGRADE'; payload: { upgradeId: string } }
   | { type: 'GOLD_MINE_MINIGAME_TICK' }
   | { type: 'SET_BATTLE_TARGET'; payload: { targetId: string | null } }
-  | { type: 'START_DEMONICON_CHALLENGE'; payload: { enemyId: string } }
+  | { type: 'START_DEMONICON_CHALLENGE'; payload: { enemyId: string; rank: number; } }
   | { type: 'PROCESS_DEMONICON_VICTORY_REWARDS'; payload: {
       enemyId: string;
       clearedRank: number;
@@ -170,5 +173,7 @@ export type GameAction =
   | { type: 'PROCESS_RESEARCH_TICK' }
   | { type: 'INITIALIZE_AUTO_BATTLER' }
   | { type: 'PLAY_AUTOBATTLER_CARD'; payload: { handIndex: number; position: { x: number; y: number } } }
-  | { type: 'AUTOBATTLER_GAME_TICK' }
-  | { type: 'AUTOBATTLER_UNIT_ATTACK'; payload: { attackerId: string; targetId: string } }; // New action type
+  | { type: 'AUTOBATTLER_GAME_TICK'; payload: { canvasWidth: number, canvasHeight: number } }
+  | { type: 'AUTOBATTLER_CAMERA_PAN'; payload: { dx: number; dy: number } } 
+  | { type: 'AUTOBATTLER_UNIT_ATTACK'; payload: { attackerId: string; targetId: string } }
+  | { type: 'CLEAR_BATTLE_SUMMARY' }; 

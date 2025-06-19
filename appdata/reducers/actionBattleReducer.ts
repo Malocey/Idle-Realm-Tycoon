@@ -1,5 +1,6 @@
 
-import { GameState, GameAction, ActionBattleState, BattleHero, BattleEnemy, HeroStats, GlobalBonuses, ColosseumWaveDefinition, Cost, ResourceType, AttackEvent, StatusEffect, ParticleEvent, Projectile, GameNotification, EnemyDefinition, PlayerHeroState, SpecialAttackDefinition, SpecialAttackTargetType, ActionBattleParticipantAIState, StatusEffectDefinition } from '../types';
+
+import { GameState, GameAction, ActionBattleState, BattleHero, BattleEnemy, HeroStats, GlobalBonuses, ColosseumWaveDefinition, Cost, ResourceType, AttackEvent, StatusEffect, ParticleEvent, Projectile, GameNotification, EnemyDefinition, PlayerHeroState, SpecialAttackDefinition, SpecialAttackTargetType, ActionBattleParticipantAIState, StatusEffectDefinition, ActiveView } from '../types';
 import { HERO_DEFINITIONS, ENEMY_DEFINITIONS, SKILL_TREES, TOWN_HALL_UPGRADE_DEFINITIONS, EQUIPMENT_DEFINITIONS, SHARD_DEFINITIONS, GUILD_HALL_UPGRADE_DEFINITIONS, RUN_BUFF_DEFINITIONS, COLOSSEUM_WAVE_DEFINITIONS, BUILDING_DEFINITIONS, SPECIAL_ATTACK_DEFINITIONS, STATUS_EFFECT_DEFINITIONS } from '../gameData/index';
 import { calculateHeroStats, calculateWaveEnemyStats, formatNumber, getExpToNextHeroLevel, calculateSpecialAttackData } from '../utils';
 import { 
@@ -80,6 +81,8 @@ export const actionBattleReducer = (
           aiRepositioningTarget: undefined,
           currentEnergyShield: calculatedStats.maxEnergyShield || 0,
           shieldRechargeDelayTicksRemaining: 0,
+          initialLevelForSummary: h.level, 
+          initialExpForSummary: h.currentExp, 
         };
       });
 
@@ -103,7 +106,7 @@ export const actionBattleReducer = (
         currentColosseumExpForPool: 0,
       };
 
-      const nextStateWithBattle = { ...state, actionBattleState: initialActionBattleState };
+      const nextStateWithBattle = { ...state, actionBattleState: initialActionBattleState, activeView: ActiveView.ACTION_BATTLE_VIEW };
       return actionBattleReducer(nextStateWithBattle, { type: 'COLOSSEUM_SPAWN_NEXT_WAVE' }, globalBonuses);
     }
     
@@ -781,7 +784,7 @@ export const actionBattleReducer = (
         const updatedHeroInstances = [...state.actionBattleState.heroInstances];
         const heroToUpdate = { ...updatedHeroInstances[heroIndex] };
         let actualDamage = damage;
-        if (state.godModeActive) { // God mode protects ALL heroes in Action Battle
+        if (state.godModeActive) { 
             actualDamage = 0;
         }
         heroToUpdate.currentHp = Math.max(0, heroToUpdate.currentHp - actualDamage);

@@ -377,7 +377,7 @@ export const calculateHeroStats = (
           if (stats[statKey] !== undefined) {
             if (buff.stat === 'maxEnergyShield' || buff.stat === 'energyShieldRechargeRate' || buff.stat === 'energyShieldRechargeDelay') if (!mageTowerBuilt) return;
             if (buff.modifierType === 'FLAT') (stats[statKey] as number) += buff.value;
-            else if (buff.modifierType === 'PERCENTAGE') (stats[statKey] as number) *= (1 + buff.value);
+            else if (buff.modifierType === 'PERCENTAGE_ADDITIVE') (stats[statKey] as number) *= (1 + buff.value); // Corrected comparison
           }
         }
       });

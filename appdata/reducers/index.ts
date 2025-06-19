@@ -32,7 +32,7 @@ import { handleMapActions } from './mapReducer';
 import { aethericResonanceReducer } from './aethericResonanceReducer';
 import { researchReducer } from './researchReducer';
 import { autoBattlerReducer } from './autoBattlerReducer'; 
-
+import { generateBattleSummary } from './combat/summaryHandler'; 
 
 const processDeferredActions = (actions: GameAction[], dispatchFn: React.Dispatch<GameAction>, getStateFn: () => GameState) => {
     actions.forEach(deferredAction => {
@@ -108,7 +108,9 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
     action.type === 'APPLY_PERMANENT_HERO_BUFF' ||
     action.type === 'TRANSFER_SHARD' ||
     action.type === 'CHEAT_MODIFY_FIRST_HERO_STATS' ||
-    action.type === 'AWARD_SHARD_TO_HERO' 
+    action.type === 'AWARD_SHARD_TO_HERO' ||
+    action.type === 'EQUIP_POTION_TO_SLOT' || // Moved from crafting to hero actions
+    action.type === 'UNEQUIP_POTION_FROM_SLOT' // Moved from crafting to hero actions
   ) {
     nextState = handleHeroActions(state, action as any, globalBonuses);
   }
@@ -122,7 +124,7 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
     nextState = demoniconReducer(state, action, globalBonuses, staticData);
   }
   else if (action.type === 'START_BATTLE_PREPARATION') { 
-    const preparationResult = startBattleReducer(state, {type: 'START_WAVE_BATTLE_PREPARATION', payload: action.payload}, globalBonuses); 
+    const preparationResult = startBattleReducer(state, {type: 'START_WAVE_BATTLE_PREPARATION', payload: action.payload}, globalBonuses, staticData); 
     nextState = preparationResult.updatedState;
     deferredActionsFromSubReducer = preparationResult.deferredActions; 
     if (action.payload.isAutoProgression && action.payload.previousBattleOutcomeForQuestProcessing) {
@@ -133,112 +135,125 @@ export const createGameReducer = (staticData: GameContextType['staticData']) =>
         nextState = questReducer(nextState, questProgressAction);
     }
   }
-  else if (action.type === 'END_WAVE_BATTLE_RESULT') { 
-    const waveBattleResult = waveBattleFlowReducer(state, action, globalBonuses);
-    nextState = waveBattleResult.updatedState;
-    deferredActionsFromSubReducer = waveBattleResult.deferredActions;
+  else if (action.type === 'END_WAVE_BATTLE_RESULT') {
+    nextState = { ...state, battleState: action.payload.battleStateFromEnd };
+    deferredActionsFromSubReducer = []; 
   }
   else if (action.type === 'END_BATTLE') {
-    if (!originalBattleState) {
-      return state; 
-    }
+    let currentNextState = { ...state }; 
+    let nextActiveViewAfterSummary = ActiveView.TOWN; // Default navigation after summary
     
-    if (originalBattleState.isDemoniconBattle) {
-        nextState = demoniconReducer(state, action as any, globalBonuses, staticData); 
-    } else if (originalBattleState.isDungeonGridBattle) {
-      nextState = dungeonBattleFlowReducer(state, { type: 'END_DUNGEON_GRID_BATTLE_RESULT', payload: { outcome: action.payload.outcome, battleStateFromEnd: originalBattleState } }, globalBonuses);
-    } else if (originalBattleState.isDungeonBattle) { 
-      nextState = handleDungeonActions(state, { type: 'END_DUNGEON_FLOOR', payload: { outcome: action.payload.outcome, collectedLoot: action.payload.collectedLoot, collectedExp: action.payload.expRewardToHeroes, buildingLevelUpEventsInBattle: originalBattleState.buildingLevelUpEventsInBattle } }, globalBonuses);
-    } else { 
-      const waveEndResult = waveBattleFlowReducer(state, { type: 'END_WAVE_BATTLE_RESULT', payload: { outcome: action.payload.outcome, battleStateFromEnd: originalBattleState } }, globalBonuses);
-      nextState = waveEndResult.updatedState;
-      deferredActionsFromSubReducer = waveEndResult.deferredActions; 
+    if (originalBattleState) {
+      const battleSummary = generateBattleSummary({ ...state, battleState: originalBattleState }, staticData);
+      currentNextState.battleSummary = battleSummary;
+      currentNextState.activeView = ActiveView.END_OF_BATTLE_SUMMARY; // Always show summary first
 
+      // Determine where to go *after* the summary modal is closed based on battle context
+      if (originalBattleState.isDemoniconBattle) {
+        // Demonicon logic will further refine view via CLEANUP_DEMONICON_STATE
+      } else if (originalBattleState.isDungeonGridBattle || originalBattleState.isDungeonBattle) {
+        // Dungeon battles will be handled by the modal's close/retry logic
+      } else if (originalBattleState.sourceMapNodeId) {
+        // Map battles will be handled by the modal's close/retry logic
+      } else { // Normal wave battle
+        // Town is the default after a normal wave battle summary
+      }
+
+      const finalBattleHeroes = originalBattleState.heroes || [];
+      const updatedPlayerHeroes = currentNextState.heroes.map(mainPlayerHero => {
+        const battleVersionOfHero = finalBattleHeroes.find(bh => bh.definitionId === mainPlayerHero.definitionId);
+        if (battleVersionOfHero) {
+          return {
+            ...mainPlayerHero,
+            level: battleVersionOfHero.level,
+            currentExp: battleVersionOfHero.currentExp,
+            expToNextLevel: battleVersionOfHero.expToNextLevel,
+            skillPoints: battleVersionOfHero.skillPoints,
+          };
+        }
+        return mainPlayerHero;
+      });
+      currentNextState = { ...currentNextState, heroes: updatedPlayerHeroes };
+
+      // Process quest progress based on the original battle state
       const lootForQuests: Cost[] = [];
-      (action.payload.collectedLoot || []).forEach(loot => {
+      (originalBattleState.battleLootCollected || []).forEach(loot => { 
           const existing = lootForQuests.find(l => l.resource === loot.resource);
           if (existing) existing.amount += loot.amount; else lootForQuests.push({...loot});
       });
-      if (action.payload.outcome === 'VICTORY') {
-        (action.payload.waveClearBonus || []).forEach(loot => { 
-            const existing = lootForQuests.find(l => l.resource === loot.resource);
-            if (existing) existing.amount += loot.amount; else lootForQuests.push({...loot});
-        });
+      if (action.payload.outcome === 'VICTORY' && originalBattleState.waveNumber) { 
+          const waveDef = WAVE_DEFINITIONS.find(w => w.waveNumber === originalBattleState.waveNumber);
+          (waveDef?.reward || []).forEach(loot => { 
+              const existing = lootForQuests.find(l => l.resource === loot.resource);
+              if (existing) existing.amount += loot.amount; else lootForQuests.push({...loot});
+          });
       }
-      const defeatedEnemyOriginalIds = Object.values(originalBattleState.defeatedEnemiesWithLoot || {})
-                                         .map(data => data.originalEnemyId)
-                                         .filter(id => !!id);
+      const defeatedEnemyOriginalIds = Object.values(originalBattleState.defeatedEnemiesWithLoot || {}).map(data => data.originalEnemyId).filter(id => !!id);
       const waveNumberReached = action.payload.outcome === 'VICTORY' ? originalBattleState.waveNumber : undefined;
-      const questProgressAction: GameAction = {
-          type: 'PROCESS_QUEST_PROGRESS_FROM_BATTLE',
-          payload: { lootCollected: lootForQuests, defeatedEnemyOriginalIds, waveNumberReached }
-      };
-      nextState = questReducer(nextState, questProgressAction);
-      
-      if (originalBattleState.sourceMapNodeId) {
-        if (action.payload.outcome === 'VICTORY') {
-            const battleNodeKey = `${originalBattleState.sourceMapNodeId}_battle_won`;
-            let poiNotifications: GameNotification[] = [];
-            let mapPoiUpdates: Record<string, boolean> = { [battleNodeKey]: true };
+      if (defeatedEnemyOriginalIds.length > 0 || waveNumberReached !== undefined || lootForQuests.length > 0) {
+          const questProgressAction: GameAction = {
+              type: 'PROCESS_QUEST_PROGRESS_FROM_BATTLE',
+              payload: { lootCollected: lootForQuests, defeatedEnemyOriginalIds, waveNumberReached }
+          };
+          currentNextState = questReducer(currentNextState, questProgressAction);
+      }
 
+      if (originalBattleState.sourceMapNodeId && action.payload.outcome === 'VICTORY') {
+        const battleNodeKey = `${originalBattleState.sourceMapNodeId}_battle_won`;
+        let poiNotificationsLocal: GameNotification[] = [];
+        let mapPoiUpdates: Record<string, boolean> = { [battleNodeKey]: true };
 
-            if (originalBattleState.sourceMapNodeId === 'ww_cleric_rescue_battle_node') {
-                const clericPoiKey = 'ww_cleric_rescue_poi_completed';
-                if (!state.mapPoiCompletionStatus[clericPoiKey]) {
-                    mapPoiUpdates[clericPoiKey] = true;
-                    const clericAlreadyUnlocked = nextState.unlockedHeroDefinitions.includes('CLERIC');
-                    if (!clericAlreadyUnlocked) {
-                       nextState.unlockedHeroDefinitions = [...nextState.unlockedHeroDefinitions, 'CLERIC'];
-                    }
-                    poiNotifications.push({
-                        id: Date.now().toString() + "-cleric-rescued",
-                        message: clericAlreadyUnlocked ? 'Cleric is safe! Their resolve is strengthened.' : 'Cleric Rescued! The Cleric can now be recruited in town.',
-                        type: 'success',
-                        iconName: ICONS.HERO ? 'HERO' : undefined,
-                        timestamp: Date.now()
-                    });
+        // ... (existing POI completion logic for cleric, blueprints, demonicon gate) ...
+        if (originalBattleState.sourceMapNodeId === 'ww_cleric_rescue_battle_node') {
+            const clericPoiKey = 'ww_cleric_rescue_poi_completed';
+            if (!currentNextState.mapPoiCompletionStatus[clericPoiKey]) {
+                mapPoiUpdates[clericPoiKey] = true;
+                const clericAlreadyUnlocked = currentNextState.unlockedHeroDefinitions.includes('CLERIC');
+                if (!clericAlreadyUnlocked) {
+                    currentNextState.unlockedHeroDefinitions = [...currentNextState.unlockedHeroDefinitions, 'CLERIC'];
                 }
-            }
-            
-            const blueprintBattles: Record<string, string> = {
-                'gmd_blueprint_battle': 'gold_mine_blueprint_obtained',
-                'sqe_blueprint_battle': 'stone_quarry_blueprint_obtained',
-                'tannery_blueprint_battle': 'tannery_blueprint_obtained'
-            };
-            const buildingNames: Record<string, string> = {
-                'gold_mine_blueprint_obtained': 'Gold Mine',
-                'stone_quarry_blueprint_obtained': 'Stone Quarry',
-                'tannery_blueprint_obtained': 'Tannery'
-            };
-
-            if (blueprintBattles[originalBattleState.sourceMapNodeId] && !state.mapPoiCompletionStatus[blueprintBattles[originalBattleState.sourceMapNodeId]]) {
-                mapPoiUpdates[blueprintBattles[originalBattleState.sourceMapNodeId]] = true;
-                const buildingName = buildingNames[blueprintBattles[originalBattleState.sourceMapNodeId]];
-                poiNotifications.push({ id: Date.now().toString() + `-${buildingName.toLowerCase().replace(' ','-')}-unlock`, message: `${buildingName} blueprints acquired! You can now build it in town.`, type: 'success', iconName: 'SETTINGS', timestamp: Date.now() });
-            }
-            
-             if (originalBattleState.customWaveSequence && originalBattleState.currentCustomWaveIndex !== undefined &&
-                originalBattleState.customWaveSequence[originalBattleState.currentCustomWaveIndex] === 'map_corrupted_shrine_wave_3' &&
-                !state.mapPoiCompletionStatus['demonicon_gate_unlocked']) {
-                mapPoiUpdates['demonicon_gate_unlocked'] = true;
-                poiNotifications.push({ id: Date.now().toString() + "-demonicon-unlock", message: 'The Corrupted Shrine has been cleansed! The Demonicon Gate can now be constructed.', type: 'success', iconName: 'ENEMY', timestamp: Date.now() });
-            }
-
-
-            nextState = {
-                ...nextState,
-                mapPoiCompletionStatus: { ...nextState.mapPoiCompletionStatus, ...mapPoiUpdates }
-            };
-            
-            if (poiNotifications.length > 0) {
-                nextState.notifications.push(...poiNotifications);
+                 poiNotificationsLocal.push({
+                    id: Date.now().toString() + "-cleric-rescued",
+                    message: clericAlreadyUnlocked ? 'Cleric is safe! Their resolve is strengthened.' : 'Cleric Rescued! The Cleric can now be recruited in town.',
+                    type: 'success', iconName: ICONS.HERO ? 'HERO' : undefined, timestamp: Date.now()
+                });
             }
         }
-        nextState = { ...nextState, activeView: ActiveView.WORLD_MAP, battleState: null };
-      } else if (action.payload.outcome === 'DEFEAT' || (originalBattleState.waveNumber && originalBattleState.waveNumber >= MAX_WAVE_NUMBER && action.payload.outcome === 'VICTORY')) {
-        nextState = { ...nextState, activeView: ActiveView.TOWN, battleState: null };
+        const blueprintBattles: Record<string, string> = {
+            'gmd_blueprint_battle': 'gold_mine_blueprint_obtained',
+            'sqe_blueprint_battle': 'stone_quarry_blueprint_obtained',
+            'tannery_blueprint_battle': 'tannery_blueprint_obtained',
+            'lms_battle_3_blueprint': 'lumber_mill_blueprint_obtained',
+            'fsr_battle_3_blueprint': 'farm_blueprint_obtained',
+        };
+        const buildingNames: Record<string, string> = {
+            'gold_mine_blueprint_obtained': 'Gold Mine',
+            'stone_quarry_blueprint_obtained': 'Stone Quarry',
+            'tannery_blueprint_obtained': 'Tannery',
+            'lumber_mill_blueprint_obtained': 'Lumber Mill',
+            'farm_blueprint_obtained': 'Farm',
+        };
+        if (blueprintBattles[originalBattleState.sourceMapNodeId] && !currentNextState.mapPoiCompletionStatus[blueprintBattles[originalBattleState.sourceMapNodeId]]) {
+            mapPoiUpdates[blueprintBattles[originalBattleState.sourceMapNodeId]] = true;
+            const buildingName = buildingNames[blueprintBattles[originalBattleState.sourceMapNodeId]];
+            poiNotificationsLocal.push({ id: Date.now().toString() + `-${buildingName.toLowerCase().replace(/ /g,'-')}-unlock`, message: `${buildingName} blueprints acquired! You can now build it in town.`, type: 'success', iconName: 'SETTINGS', timestamp: Date.now() });
+        }
+        if (originalBattleState.customWaveSequence && originalBattleState.currentCustomWaveIndex !== undefined &&
+            originalBattleState.customWaveSequence[originalBattleState.currentCustomWaveIndex] === 'map_corrupted_shrine_wave_3' &&
+            !currentNextState.mapPoiCompletionStatus['demonicon_gate_unlocked']) {
+            mapPoiUpdates['demonicon_gate_unlocked'] = true;
+            poiNotificationsLocal.push({ id: Date.now().toString() + "-demonicon-unlock", message: 'The Corrupted Shrine has been cleansed! The Demonicon Gate can now be constructed.', type: 'success', iconName: 'ENEMY', timestamp: Date.now() });
+        }
+        currentNextState = { ...currentNextState, mapPoiCompletionStatus: { ...currentNextState.mapPoiCompletionStatus, ...mapPoiUpdates }};
+        if (poiNotificationsLocal.length > 0) {
+            currentNextState.notifications.push(...poiNotificationsLocal);
+        }
       }
     }
+    nextState = { ...currentNextState, battleState: null }; // Battle state is cleared after summary is generated
+  }
+  else if (action.type === 'CLEAR_BATTLE_SUMMARY') { 
+    nextState = { ...state, battleSummary: null };
   }
   else if (action.type === 'SELECT_POTION_FOR_USAGE' || action.type === 'USE_POTION_ON_HERO') {
       if(state.battleState){

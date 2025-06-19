@@ -22,7 +22,7 @@ const DemoniconPortalView: React.FC = () => {
   if (activeView !== 'DEMONICON_PORTAL') return null; 
 
   const handleChallengeEnemy = (enemyId: string) => {
-    dispatch({ type: 'START_DEMONICON_CHALLENGE', payload: { enemyId } });
+    dispatch({ type: 'START_DEMONICON_CHALLENGE', payload: { enemyId, rank: 0 } });
   };
 
   const unlockedEnemiesForDemonicon = defeatedEnemyTypes

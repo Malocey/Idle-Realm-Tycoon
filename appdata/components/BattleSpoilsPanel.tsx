@@ -4,7 +4,7 @@ import { Cost, ResourceType, BuildingLevelUpEventInBattle } from '../types';
 import { ICONS } from './Icons';
 import { RESOURCE_COLORS } from '../constants';
 import { formatNumber } from '../utils';
-import { useGameContext } from '../context'; // Import useGameContext
+import { useGameContext } from '../context'; 
 
 interface BattleSpoilsPanelProps {
   // Props will now be implicitly derived via useGameContext
@@ -24,7 +24,7 @@ const BattleSpoilsPanel: React.FC<BattleSpoilsPanelProps> = () => {
   const { gameState } = useGameContext();
   const { battleState } = gameState;
 
-  // Use session totals from battleState
+  // Use session total collections
   const collectedLoot = battleState?.sessionTotalLoot || [];
   const collectedExp = battleState?.sessionTotalExp || 0;
   const buildingLevelUpEvents = battleState?.sessionTotalBuildingLevelUps || [];
@@ -132,13 +132,13 @@ const BattleSpoilsPanel: React.FC<BattleSpoilsPanelProps> = () => {
                             processedBuildingLevelUps.length === 0;
 
   if (!battleState || (battleState.status !== 'FIGHTING' && battleState.status !== 'VICTORY' && battleState.status !== 'DEFEAT')) {
-     return null; // Don't show if not in relevant battle state or if battleState is null
+     return null; 
   }
 
   if (noSpoilsCollected) {
     return (
         <div className="mt-2 p-3 rounded-lg glass-effect border border-slate-700 max-w-xs">
-            <h4 className="text-sm font-semibold text-amber-300 mb-1.5">Battle Spoils:</h4>
+            <h4 className="text-sm font-semibold text-amber-300 mb-1.5">Spoils This Session:</h4>
             <p className="text-xs text-slate-500 italic">Nothing collected yet in this session...</p>
         </div>
     );
@@ -146,7 +146,7 @@ const BattleSpoilsPanel: React.FC<BattleSpoilsPanelProps> = () => {
 
   return (
     <div className="mt-2 p-3 rounded-lg glass-effect border border-slate-700 max-w-xs relative overflow-visible">
-      <h4 className="text-sm font-semibold text-amber-300 mb-1.5">Battle Spoils (Session Total):</h4>
+      <h4 className="text-sm font-semibold text-amber-300 mb-1.5">Spoils This Session:</h4>
       <div className="space-y-1">
         {lootToDisplay.map(resourceType => {
           const Icon = ICONS[resourceType];

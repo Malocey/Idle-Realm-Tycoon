@@ -7,7 +7,7 @@ export interface PotionEffectDefinition {
   type: 'INSTANT_HEAL' | 'TEMPORARY_STAT_MODIFIER';
   targetType: 'SELF';
   stat?: keyof HeroStats;
-  modifierType?: 'FLAT' | 'PERCENTAGE';
+  modifierType?: 'FLAT' | 'PERCENTAGE_ADDITIVE'; // Changed 'PERCENTAGE' to 'PERCENTAGE_ADDITIVE'
   value: number;
   durationMs?: number;
 }

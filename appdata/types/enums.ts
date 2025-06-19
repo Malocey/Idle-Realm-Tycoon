@@ -1,3 +1,4 @@
+
 // This file now acts as a barrel, re-exporting from the new modular enum files.
 export * from './enums/index';
 
@@ -17,4 +18,5 @@ export enum ActiveView {
   WORLD_MAP = 'WORLD_MAP',
   ACADEMY_OF_SCHOLARS = 'ACADEMY_OF_SCHOLARS',
   AUTO_BATTLER = 'AUTO_BATTLER', // New View
+  END_OF_BATTLE_SUMMARY = 'END_OF_BATTLE_SUMMARY', // Added missing enum member
 }

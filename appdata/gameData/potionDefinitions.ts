@@ -35,7 +35,7 @@ export const POTION_DEFINITIONS: Record<string, PotionDefinition> = {
         type: 'TEMPORARY_STAT_MODIFIER',
         targetType: 'SELF',
         stat: 'damage',
-        modifierType: 'PERCENTAGE',
+        modifierType: 'PERCENTAGE_ADDITIVE', // Corrected from 'PERCENTAGE'
         value: 0.1, // +10% damage
         durationMs: 60000, // 60 seconds
       },
