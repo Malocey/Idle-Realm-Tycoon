@@ -16,7 +16,7 @@ interface FacilityAction {
   description: string;
   iconName: keyof typeof ICONS;
   buildingRequirement?: string; 
-  modalType?: 'forge' | 'library' | 'alchemist_lab' | 'altar' | 'research';
+  modalType?: 'forge' | 'library' | 'alchemist_lab' | 'altar' | 'research_modal'; // Renamed research to research_modal
   actionType?: 'dispatch';
   dispatchAction?: any; 
 }
@@ -28,16 +28,25 @@ const FacilitiesTabContent: React.FC = () => {
   const [isLibraryModalOpen, setIsLibraryModalOpen] = useState(false);
   const [isAlchemistLabModalOpen, setIsAlchemistLabModalOpen] = useState(false);
   const [isAltarModalOpen, setIsAltarModalOpen] = useState(false);
-  const [isResearchModalOpen, setIsResearchModalOpen] = useState(false);
+  const [isResearchModalOpen, setIsResearchModalOpen] = useState(false); // For existing research modal
 
   const facilities: FacilityAction[] = [
     {
-      id: 'research',
+      id: 'research_modal_opener', // Different ID from research_tree
       name: 'Research & Development',
       description: 'Unlock new technologies and improvements for your realm.',
       iconName: 'SETTINGS',
       buildingRequirement: 'ACADEMY_OF_SCHOLARS',
-      modalType: 'research',
+      modalType: 'research_modal',
+    },
+    {
+      id: 'research_tree', // New entry for the full-screen research tree
+      name: 'Research Tree',
+      description: 'Visualize and navigate the complete research tree.',
+      iconName: 'BOOK_ICON', // Or a more specific tree/network icon if available
+      buildingRequirement: 'ACADEMY_OF_SCHOLARS',
+      actionType: 'dispatch',
+      dispatchAction: () => dispatch({ type: 'SET_ACTIVE_VIEW', payload: ActiveView.RESEARCH_TREE }),
     },
     {
       id: 'forge',
@@ -102,7 +111,7 @@ const FacilitiesTabContent: React.FC = () => {
     else if (facility.modalType === 'library') setIsLibraryModalOpen(true);
     else if (facility.modalType === 'alchemist_lab') setIsAlchemistLabModalOpen(true);
     else if (facility.modalType === 'altar') setIsAltarModalOpen(true);
-    else if (facility.modalType === 'research') setIsResearchModalOpen(true);
+    else if (facility.modalType === 'research_modal') setIsResearchModalOpen(true); // Changed modalType
     else if (facility.actionType === 'dispatch' && facility.dispatchAction) {
       facility.dispatchAction();
     }

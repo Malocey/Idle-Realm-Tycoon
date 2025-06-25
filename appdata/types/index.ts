@@ -1,4 +1,3 @@
-
 // This file now acts as a barrel, re-exporting from the new modular type files.
 export * from './enums';
 export * from './common';
@@ -18,7 +17,7 @@ export * from './actionBattle';
 export * from './mapTypes';
 export * from './accountLevelTypes';
 export * from './aethericResonanceTypes';
-export * from './research';
+export * from './research'; // This already exports ResearchProgress, CompletedResearchEntry, ResearchDefinition, PlayerResearchState
 export * from './autoBattler'; // New export
 export * from './main';
 
@@ -38,3 +37,5 @@ export interface DemoniconMilestoneRewardDefinition {
   rewards: DemoniconMilestoneRewardEffect[];
 }
 export type { AethericResonanceStatConfig } from './aethericResonanceTypes';
+// ResearchNodeStatus is exported via ./enums
+// PlayerResearchState is exported via ./research

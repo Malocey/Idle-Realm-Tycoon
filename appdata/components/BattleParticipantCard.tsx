@@ -9,8 +9,7 @@ import { formatNumber } from '../utils';
 // Import new sub-components
 import ParticipantInfoHeader from './BattleParticipantCard/ParticipantInfoHeader';
 import BattleActionBar from './BattleParticipantCard/BattleActionBar';
-import BattleStatBars from '../components/BattleStatBars'; 
-// import DamageHealPopups from './BattleParticipantCard/DamageHealPopups'; // REMOVED
+import BattleStatBars from './BattleParticipantCard/BattleStatBars'; 
 
 interface BattleParticipantCardProps {
   participant: BattleHero | BattleEnemy;
@@ -22,9 +21,6 @@ interface BattleParticipantCardProps {
   displayMode?: 'card' | 'grid'; 
 }
 
-// PopupData is no longer needed here as DamageHealPopups is removed
-// export interface PopupData { ... }
-
 type DisplayModeInternal = 'ALIVE' | 'DYING' | 'SHOWING_LOOT'; 
 const STAT_BAR_ANIMATION_DURATION_MS = 300;
 const HIT_ANIMATION_DURATION_MS = 300;
@@ -33,7 +29,7 @@ const HP_VALUE_ANIMATION_DURATION_MS = 400;
 const CHANNEL_BAR_ANIMATION_DURATION_MS = 100;
 const CHANNEL_BAR_HEIGHT_CLASS = 'h-2'; 
 
-const BattleParticipantCard: React.FC<BattleParticipantCardProps> = ({ 
+const BattleParticipantCard: React.FC<BattleParticipantCardProps> = React.memo(({ 
   participant, 
   type, 
   onClick, 
@@ -49,7 +45,6 @@ const BattleParticipantCard: React.FC<BattleParticipantCardProps> = ({
   const battleEnemy = type === 'enemy' ? (participant as BattleEnemy) : null;
 
   const [isAttacking, setIsAttacking] = useState(false);
-  // popups state is removed
   const [internalDisplayMode, setInternalDisplayMode] = useState<DisplayModeInternal>('ALIVE');
   const [isCastingSpecial, setIsCastingSpecial] = useState(false);
   const [isTakingHit, setIsTakingHit] = useState(false);
@@ -82,8 +77,6 @@ const BattleParticipantCard: React.FC<BattleParticipantCardProps> = ({
   const xpBarAnimationRef = useRef<number | null>(null);
   const channelBarAnimationRef = useRef<number | null>(null);
   const attackAnimationTimeoutRef = useRef<number | null>(null);
-  // popupTimeoutsRef is removed
-  // animationFrameRef for popups is removed
   const specialCastTimeoutRef = useRef<number | null>(null);
   const hitReactionTimeoutRef = useRef<number | null>(null);
 
@@ -227,9 +220,6 @@ const BattleParticipantCard: React.FC<BattleParticipantCardProps> = ({
     }
   }, [participant.currentHp, (participant as BattleEnemy).isDying, (participant as BattleEnemy).dyingTicksRemaining, internalDisplayMode, type]);
 
-  // REMOVED: Effect for handling AttackEvents to create DOM-based popups
-  // The new system uses gameState.battleState.damagePopups passed to BattleEffectsCanvas
-
   useEffect(() => {
     setIsVisuallyStunned(participant.statusEffects?.some(effect => effect.type === StatusEffectType.STUN && effect.remainingDurationMs > 0) || false);
   }, [participant.statusEffects]);
@@ -237,8 +227,6 @@ const BattleParticipantCard: React.FC<BattleParticipantCardProps> = ({
   useEffect(() => {
     return () => {
       if (attackAnimationTimeoutRef.current) clearTimeout(attackAnimationTimeoutRef.current);
-      // Object.values(popupTimeoutsRef.current).forEach(clearTimeout); // REMOVED
-      // if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current); // REMOVED
       if (specialCastTimeoutRef.current) clearTimeout(specialCastTimeoutRef.current);
       if (hitReactionTimeoutRef.current) clearTimeout(hitReactionTimeoutRef.current);
       if (hpBarAnimationRef.current) cancelAnimationFrame(hpBarAnimationRef.current);
@@ -310,7 +298,7 @@ const BattleParticipantCard: React.FC<BattleParticipantCardProps> = ({
       : "p-3 rounded-lg shadow-md glass-effect border-2 border-slate-700/50 bg-slate-800/70 h-full flex flex-col justify-center items-center opacity-80 hover:opacity-100 transition-opacity"; 
 
     return (
-      <div id={`participant-card-${participant.uniqueBattleId}`} className={lootDisplayStyle}> {/* Added ID here for consistency */}
+      <div id={`participant-card-${participant.uniqueBattleId}`} className={lootDisplayStyle}> 
         {Icon && <Icon className={`mb-0.5 ${displayMode === 'grid' ? 'w-7 h-7 text-slate-500' : 'w-10 h-10 text-slate-500'}`} />}
         {lootInfo && lootInfo.loot.length > 0 ? (
           lootInfo.loot.map((item, index) => {
@@ -330,7 +318,7 @@ const BattleParticipantCard: React.FC<BattleParticipantCardProps> = ({
   }
   if (type === 'enemy' && internalDisplayMode === 'DYING') {
      return (
-        <div id={`participant-card-${participant.uniqueBattleId}`} className={cardClasses} style={{pointerEvents: 'none'}}> {/* Added ID here */}
+        <div id={`participant-card-${participant.uniqueBattleId}`} className={cardClasses} style={{pointerEvents: 'none'}}> 
           {displayMode === 'grid' && ICONS[participant.iconName] && React.createElement(ICONS[participant.iconName], { className: "w-12 h-12 text-red-700 opacity-50"})}
         </div>
     );
@@ -359,7 +347,7 @@ const BattleParticipantCard: React.FC<BattleParticipantCardProps> = ({
 
   return (
     <div
-      id={`participant-card-${participant.uniqueBattleId}`} // ID for canvas positioning
+      id={`participant-card-${participant.uniqueBattleId}`} 
       className={cardClasses}
       onClick={handleCardClick}
       role="button"
@@ -368,8 +356,6 @@ const BattleParticipantCard: React.FC<BattleParticipantCardProps> = ({
       aria-label={onClick ? `Use selected potion on ${participant.name}` : (type === 'enemy' && onSetTarget ? `Target ${participant.name}` : `${participant.name} card`)}
       aria-pressed={type === 'enemy' && isSelectedTarget ? true : undefined}
     >
-      {/* DamageHealPopups component removed */}
-
       <div className={`${internalDisplayMode === 'DYING' ? 'opacity-0 transition-opacity duration-300 delay-200' : 'opacity-100'} w-full flex flex-col`}>
         {displayMode === 'grid' && ParticipantIcon && (
           <div className="mb-px"> 
@@ -424,11 +410,9 @@ const BattleParticipantCard: React.FC<BattleParticipantCardProps> = ({
             currentAnimatedShield={currentAnimatedShield}
             maxShield={participant.calculatedStats.maxEnergyShield}
         />
-        {/* Stats Display and Buff Badges are conditionally rendered or handled by sub-components */}
-        {/* ... */}
       </div>
     </div>
   );
-};
+});
 
 export default BattleParticipantCard;

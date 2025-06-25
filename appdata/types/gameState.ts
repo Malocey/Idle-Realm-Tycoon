@@ -1,3 +1,4 @@
+
 import { ResourceType, ActiveView } from './enums'; // Added ActiveView
 import { GameNotification, Cost } from './common';
 import { PlayerBuildingState } from './building';
@@ -130,7 +131,12 @@ export interface GameState {
   researchSlots: number;
   researchQueue: Array<{ researchId: string; levelToResearch: number }>;
   autoBattler: AutoBattlerState | null;
-  battleSummary: BattleSummary | null; // New: For end of battle summary
+  battleSummary: BattleSummary | null; 
+
+  // Timestamps for per-second updates
+  lastProductionUpdateTime: number;
+  lastPotionCraftUpdateTime: number;
+  lastResearchUpdateTime: number;
 
   _battleCombatTickResult?: { newlyAddedToFirstTimeDefeatsForAccXp?: string[] };
   _deferredCombatActions?: GameAction[];

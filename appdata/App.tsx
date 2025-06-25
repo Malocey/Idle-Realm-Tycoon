@@ -21,6 +21,7 @@ import AcademyModal from './components/AcademyModal';
 import AutoBattlerView from './views/AutoBattlerView';
 import EndOfBattleModal from './components/EndOfBattleModal'; 
 import { GameState, ActiveView, BattleSummary, ResourceType } from './types'; 
+import { ResearchTreeView } from './views/ResearchTreeView'; // Added import
 
 const VIEW_TRANSITION_DURATION = 400; // ms, should match CSS animation duration
 
@@ -107,6 +108,7 @@ const AppContentInternal: React.FC = () => {
       case ActiveView.GOLD_MINE_MINIGAME: viewComponent = <GoldMineMinigameView />; break;
       case ActiveView.DEMONICON_PORTAL: viewComponent = <DemoniconPortalView />; break;
       case ActiveView.WORLD_MAP: viewComponent = <WorldMapView />; break;
+      case ActiveView.RESEARCH_TREE: viewComponent = <ResearchTreeView />; break; // Added case
       case ActiveView.ACADEMY_OF_SCHOLARS: 
         viewComponent = (
           <AcademyModal 

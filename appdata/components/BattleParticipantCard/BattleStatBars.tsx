@@ -1,34 +1,17 @@
 
 
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BattleHero, BattleEnemy } from '../../types';
-import { formatNumber } from '../../utils'; // formatNumber is used for text display
-import { interpolateColor } from '../../utils/uiHelpers'; // Importierte Farb-Utility
-
-// Helper functions for color interpolation (if needed for non-animated version)
-// const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => { // Removed
-//   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-//   return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null;
-// };
-// const componentToHex = (c: number): string => { const hex = c.toString(16); return hex.length === 1 ? "0" + hex : hex; }; // Removed
-// const rgbToHex = (r: number, g: number, b: number): string => "#" + componentToHex(r) + componentToHex(g) + componentToHex(b); // Removed
-// const interpolateColor = (color1Hex: string, color2Hex: string, ratio: number): string => { // Removed
-//   const rgb1 = hexToRgb(color1Hex);
-//   const rgb2 = hexToRgb(color2Hex);
-//   if (!rgb1 || !rgb2) return color1Hex; 
-//   const r = Math.round(rgb1.r * (1 - ratio) + rgb2.r * ratio);
-//   const g = Math.round(rgb1.g * (1 - ratio) + rgb2.g * ratio);
-//   const b = Math.round(rgb1.b * (1 - ratio) + rgb2.b * ratio);
-//   return rgbToHex(r, g, b);
-// };
-
+import { formatNumber } from '../../utils'; 
+import { interpolateColor } from '../../utils/uiHelpers'; 
+import { usePrevious } from '../../hooks/usePrevious'; 
 
 interface BattleStatBarsProps {
   participantType: 'hero' | 'enemy';
   currentAnimatedHp: number; 
   maxHp: number;
   hpValueAnimationClass: string; 
-  battleHero: BattleHero | null; // Only if participantType is 'hero'
+  battleHero: BattleHero | null; 
   currentAnimatedMana: number; 
   maxMana: number;
   animatedExpState: { current: number; toNextLevel: number };
@@ -39,73 +22,112 @@ interface BattleStatBarsProps {
   maxShield?: number; 
 }
 
-const BattleStatBars: React.FC<BattleStatBarsProps> = ({
+const BattleStatBars: React.FC<BattleStatBarsProps> = React.memo(({
   participantType, currentAnimatedHp, maxHp, hpValueAnimationClass,
   battleHero, currentAnimatedMana, maxMana,
   animatedExpState, displayMode, formatNumber, participant,
   currentAnimatedShield, maxShield
 }) => {
+  const prevHpProp = usePrevious(currentAnimatedHp); // Tracks the prop value
 
-  const percentageHP = maxHp > 0 ? (currentAnimatedHp / maxHp) * 100 : 0;
-  let barFillColor = participantType === 'hero' ? '#0ea5e9' : '#ef4444'; 
+  const targetHpPercentage = maxHp > 0 ? (currentAnimatedHp / maxHp) * 100 : 0;
+  
+  // For the "after-image" effect (damage drain visualization)
+  // We want the red bar to show where the health *was* before dropping.
+  const [afterImageDisplayPercent, setAfterImageDisplayPercent] = useState(targetHpPercentage);
+  const afterImageTimeoutRef = useRef<number | null>(null);
 
+  useEffect(() => {
+    if (prevHpProp !== undefined && currentAnimatedHp < prevHpProp) {
+      // HP Dropped: Set after-image to previous HP percentage immediately
+      setAfterImageDisplayPercent((prevHpProp / maxHp) * 100);
+      // Schedule after-image to shrink to current HP percentage after a delay
+      if (afterImageTimeoutRef.current) clearTimeout(afterImageTimeoutRef.current);
+      afterImageTimeoutRef.current = window.setTimeout(() => {
+        setAfterImageDisplayPercent(targetHpPercentage);
+      }, 250); // Delay before red bar starts shrinking, adjust as needed
+    } else {
+      // HP Increased or no change: after-image matches current HP percentage
+      setAfterImageDisplayPercent(targetHpPercentage);
+    }
+    return () => {
+      if (afterImageTimeoutRef.current) clearTimeout(afterImageTimeoutRef.current);
+    };
+  }, [currentAnimatedHp, prevHpProp, maxHp, targetHpPercentage]);
+
+
+  let mainHpBarFillColor = participantType === 'hero' ? '#0ea5e9' : '#ef4444'; 
   if (participantType === 'hero') {
     const blueHex = '#0ea5e9'; const greenHex = '#22c55e'; const redHex = '#ef4444';
-    if (percentageHP < 20) barFillColor = redHex;
-    else if (percentageHP < 40) barFillColor = interpolateColor(redHex, greenHex, (percentageHP - 20) / 20);
-    else barFillColor = interpolateColor(greenHex, blueHex, Math.min(1, (percentageHP - 40) / 60));
+    const hpRatioForColor = targetHpPercentage / 100; 
+    if (hpRatioForColor < 0.2) mainHpBarFillColor = redHex;
+    else if (hpRatioForColor < 0.4) mainHpBarFillColor = interpolateColor(redHex, greenHex, (hpRatioForColor - 0.2) / 0.2);
+    else mainHpBarFillColor = interpolateColor(greenHex, blueHex, Math.min(1, (hpRatioForColor - 0.4) / 0.6));
   }
   
   const percentageMana = battleHero && maxMana > 0 ? (currentAnimatedMana / maxMana) * 100 : 0;
   const percentageXP = battleHero && animatedExpState.toNextLevel > 0 ? (animatedExpState.current / animatedExpState.toNextLevel) * 100 : 0;
   const percentageShield = maxShield && maxShield > 0 && currentAnimatedShield !== undefined ? (currentAnimatedShield / maxShield) * 100 : 0;
 
-  // Condition to show shield bar: maxShield must be greater than 0.
   const showShieldBar = maxShield !== undefined && maxShield > 0 && currentAnimatedShield !== undefined;
+  
+  const textOnBarStyle: React.CSSProperties = {
+    fontSize: '9px', 
+    textShadow: '0px 0px 2px rgba(0,0,0,0.8), 0.5px 0.5px 0.5px rgba(0,0,0,0.6)', 
+    lineHeight: '1', 
+    color: 'white',
+    fontWeight: '500',
+  };
 
   return (
     <>
       {showShieldBar && (
         <div 
-            className="w-full bg-slate-600 rounded-full h-4 mb-1.5 relative flex items-center justify-center" // Height h-4, margin mb-1.5
+            className="w-full bg-slate-700/80 rounded-full h-2.5 mb-0.5 relative flex items-center justify-center"
             role="progressbar" aria-label={`${participant.name} Energy Shield`}
             aria-valuenow={currentAnimatedShield || 0} aria-valuemin={0} aria-valuemax={maxShield || 0}
           >
              <div 
-                className="absolute top-0 left-0 bg-cyan-400 h-full rounded-full" 
+                className="absolute top-0 left-0 bg-cyan-400 h-full rounded-full health-bar-shield-fill"
                 style={{ width: `${percentageShield}%` }}
             />
-            <span className="relative text-on-bar">
+            <span className="relative" style={textOnBarStyle}>
               {formatNumber(currentAnimatedShield || 0)}/{formatNumber(maxShield || 0)} SP
             </span>
           </div>
       )}
 
       <div 
-        className="w-full bg-slate-600 rounded-full h-4 mb-1.5 relative flex items-center justify-center" // Height h-4, margin mb-1.5
+        className="w-full bg-slate-700/80 rounded-full h-2.5 mb-0.5 relative flex items-center justify-center"
         role="progressbar" aria-label={`${participant.name} HP`}
         aria-valuenow={currentAnimatedHp} aria-valuemin={0} aria-valuemax={maxHp}
       >
-        <div 
-            className="absolute top-0 left-0 h-full rounded-full transition-all duration-200 ease-out" 
-            style={{ width: `${percentageHP}%`, backgroundColor: barFillColor }}
+        {/* After-Image Bar (Damage Drain Effect) - Represents health before drop */}
+        <div
+          className="absolute top-0 left-0 h-full rounded-full bg-red-700/60" 
+          style={{ width: `${afterImageDisplayPercent}%`, transition: 'width 0.4s ease-out 0.1s' }} // Slower transition for after-image
         />
-         <span className="relative text-on-bar">
+        {/* Main Health Bar */}
+        <div 
+            className="absolute top-0 left-0 h-full rounded-full health-bar-main-fill" 
+            style={{ width: `${targetHpPercentage}%`, backgroundColor: mainHpBarFillColor }}
+        />
+         <span className="relative" style={textOnBarStyle}>
             <span className={hpValueAnimationClass}>{formatNumber(currentAnimatedHp)}</span>/{formatNumber(maxHp)} HP
         </span>
       </div>
 
       {participantType === 'hero' && battleHero && (battleHero.calculatedStats.maxMana || 0) > 0 && (
         <div 
-            className="w-full bg-slate-600 rounded-full h-4 mb-1.5 relative flex items-center justify-center" // Height h-4, margin mb-1.5
+            className="w-full bg-slate-700/80 rounded-full h-2.5 mb-0.5 relative flex items-center justify-center"
             role="progressbar" aria-label={`${battleHero.name} Mana`}
             aria-valuenow={currentAnimatedMana} aria-valuemin={0} aria-valuemax={maxMana}
           >
              <div 
-                className="absolute top-0 left-0 bg-blue-500 h-full rounded-full transition-all duration-200 ease-out" 
+                className="absolute top-0 left-0 bg-blue-500 h-full rounded-full health-bar-mana-fill"
                 style={{ width: `${percentageMana}%` }}
             />
-            <span className="relative text-on-bar">
+            <span className="relative" style={textOnBarStyle}>
               {formatNumber(currentAnimatedMana)}/{formatNumber(maxMana)} MP
             </span>
           </div>
@@ -113,21 +135,21 @@ const BattleStatBars: React.FC<BattleStatBarsProps> = ({
 
       {participantType === 'hero' && battleHero && (
         <div 
-            className="w-full bg-slate-700 rounded-full h-4 mb-1 relative flex items-center justify-center" // Height h-4, margin mb-1 (XP bar is last)
+            className="w-full bg-slate-800/80 rounded-full h-2.5 mb-0.5 relative flex items-center justify-center"
             role="progressbar" aria-label={`${participant.name} XP`}
             aria-valuenow={animatedExpState.current} aria-valuemin={0} aria-valuemax={animatedExpState.toNextLevel}
         >
              <div 
-                className="absolute top-0 left-0 bg-violet-500 h-full rounded-full transition-all duration-200 ease-out" 
+                className="absolute top-0 left-0 bg-violet-500 h-full rounded-full health-bar-xp-fill"
                 style={{ width: `${percentageXP}%` }}
             />
-            <span className="relative text-on-bar">
+            <span className="relative" style={textOnBarStyle}>
               {formatNumber(animatedExpState.current)}/{formatNumber(animatedExpState.toNextLevel)} XP
             </span>
         </div>
       )}
     </>
   );
-};
+});
 
 export default BattleStatBars;

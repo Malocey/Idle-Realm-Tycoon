@@ -15,36 +15,48 @@ const generateUniqueIdForParticle = () => `${Date.now()}-${Math.random().toStrin
 export const handleProcessTick = (state: GameState, action: Extract<GameAction, { type: 'PROCESS_TICK' }>, globalBonuses: GlobalBonuses): GameState => {
   let newState = { ...state };
   const currentTime = Date.now();
-  // Ensure at least GAME_TICK_MS passes, scaled by gameSpeed for actual time progression
-  const timeSinceLastTick = Math.max(GAME_TICK_MS, currentTime - newState.lastTickTimestamp);
+  const timeSinceLastGeneralTick = Math.max(GAME_TICK_MS / state.gameSpeed, currentTime - newState.lastTickTimestamp); // Wall-clock time since last general tick
+
+  const TARGET_UPDATE_INTERVAL_MS = 1000; // Target wall-clock milliseconds for these updates
 
   // 1. Process Building Production
-  newState = processBuildingProduction(newState, globalBonuses, timeSinceLastTick, state.gameSpeed);
+  if (currentTime - newState.lastProductionUpdateTime >= TARGET_UPDATE_INTERVAL_MS) {
+    const elapsedWallClockForProduction = currentTime - newState.lastProductionUpdateTime;
+    newState = processBuildingProduction(newState, globalBonuses, elapsedWallClockForProduction, state.gameSpeed);
+    newState.lastProductionUpdateTime = currentTime;
+  }
 
   // 2. Process Potion Crafting
-  newState = processPotionCrafting(newState, globalBonuses, timeSinceLastTick, state.gameSpeed);
+  if (currentTime - newState.lastPotionCraftUpdateTime >= TARGET_UPDATE_INTERVAL_MS) {
+    const elapsedWallClockForPotions = currentTime - newState.lastPotionCraftUpdateTime;
+    newState = processPotionCrafting(newState, globalBonuses, elapsedWallClockForPotions, state.gameSpeed);
+    newState.lastPotionCraftUpdateTime = currentTime;
+  }
 
   // 3. Process Research
-  newState = processResearchProgress(newState, globalBonuses, timeSinceLastTick, state.gameSpeed);
+  if (currentTime - newState.lastResearchUpdateTime >= TARGET_UPDATE_INTERVAL_MS) {
+    const elapsedWallClockForResearch = currentTime - newState.lastResearchUpdateTime;
+    newState = processResearchProgress(newState, globalBonuses, elapsedWallClockForResearch, state.gameSpeed);
+    newState.lastResearchUpdateTime = currentTime;
+  }
+
 
   // 4. Process Auto-Battler Minigame Tick if active (Passive elements only)
-  // newState = processAutoBattlerTick(newState, timeSinceLastTick, state.gameSpeed);
+  // newState = processAutoBattlerTick(newState, timeSinceLastGeneralTick, state.gameSpeed); // Still uses general tick if needed
 
-  // 5. Fusion Anchor & Feeder Particle Management
+  // 5. Fusion Anchor & Feeder Particle Management (runs every general tick for smoothness)
   if (newState.battleState) {
     const now = Date.now();
     let updatedBattleState = { 
         ...newState.battleState,
-        // Ensure arrays exist before operating on them
         fusionAnchors: [...(newState.battleState.fusionAnchors || [])],
         feederParticles: [...(newState.battleState.feederParticles || [])]
     };
 
-    // Feeder Particle Spawner from Queues
     let newFeederParticlesThisTick: FeederParticle[] = [];
     updatedBattleState.fusionAnchors = updatedBattleState.fusionAnchors.map(anchor => {
       let updatedAnchor = { ...anchor };
-      if (!updatedAnchor.feederQueue) updatedAnchor.feederQueue = []; // Ensure queue exists
+      if (!updatedAnchor.feederQueue) updatedAnchor.feederQueue = [];
       if (updatedAnchor.feederQueue.length > 0 && (now - (updatedAnchor.lastFeederSpawnTime || 0) > FEEDER_SPAWN_INTERVAL_MS)) {
         const itemToSpawn = updatedAnchor.feederQueue.shift();
         if (itemToSpawn) {
@@ -65,12 +77,10 @@ export const handleProcessTick = (state: GameState, action: Extract<GameAction, 
       updatedBattleState.feederParticles = [...updatedBattleState.feederParticles, ...newFeederParticlesThisTick];
     }
     
-    // Fusion Anchor Fade-out Cleanup
     updatedBattleState.fusionAnchors = updatedBattleState.fusionAnchors.filter(
-      anchor => (now - anchor.lastUpdateTime) <= FUSION_ANCHOR_FADE_OUT_DURATION_MS || anchor.feederQueue.length > 0
+      anchor => (now - anchor.lastUpdateTime) <= FUSION_ANCHOR_FADE_OUT_DURATION_MS || (anchor.feederQueue && anchor.feederQueue.length > 0)
     );
     
-    // Feeder Particle Lifetime Cleanup
     updatedBattleState.feederParticles = updatedBattleState.feederParticles.filter(
       particle => (now - particle.timestamp) <= FEEDER_PARTICLE_DURATION_MS 
     );
@@ -78,7 +88,7 @@ export const handleProcessTick = (state: GameState, action: Extract<GameAction, 
     newState.battleState = updatedBattleState;
   }
 
-  // 6. Cleanup old building level up events
+  // 6. Cleanup old building level up events (runs every general tick)
   const nowForCleanup = Date.now();
   const LEVEL_UP_EVENT_DURATION_MS = 10000;
   const activeLevelUpEvents: Record<string, { timestamp: number }> = {};
@@ -95,9 +105,6 @@ export const handleProcessTick = (state: GameState, action: Extract<GameAction, 
     newState.buildingLevelUpEvents = activeLevelUpEvents;
   }
 
-
-  // Update last tick timestamp
   newState.lastTickTimestamp = currentTime;
-
   return newState;
 };

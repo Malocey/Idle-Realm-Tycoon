@@ -1,4 +1,3 @@
-
 import { ResourceType, GlobalEffectTarget, HeroStats, TownHallUpgradeEffectType } from './index'; // Corrected import
 import { Cost } from './common';
 import { TownHallUpgradeEffectParams } from './upgrades'; // Re-use for consistency
@@ -21,12 +20,12 @@ export interface ResearchDefinition {
   description: string; // General description of the research
   category: ResearchCategory;
   iconName: string;
-  costPerLevel: (level: number) => Cost[]; 
+  costPerLevel: (level: number) => Cost[];
   researchTimeTicks: number; // Time in game ticks
   prerequisites: Array<{ researchId: string; level: number }>; // Other research needed
   effects: ResearchEffectDefinition[];
   maxLevel: number; // -1 for infinite, or a specific max level
-  position?: { x: number; y: number }; 
+  position?: { x: number; y: number };
 }
 
 export interface ResearchProgress {
@@ -41,4 +40,9 @@ export interface ResearchProgress {
 export interface CompletedResearchEntry {
     level: number;
     // Potentially store other info like completion date if needed
+}
+
+export interface PlayerResearchState {
+  completedResearch: Record<string, CompletedResearchEntry>;
+  researchProgress: Record<string, ResearchProgress>;
 }

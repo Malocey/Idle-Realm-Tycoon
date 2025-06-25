@@ -175,6 +175,9 @@ export const calculateAStarPath = (
             }
         }
     }
+    if (iterations === MAX_ASTAR_ITERATIONS) {
+        console.warn(`A* pathfinding hit MAX_ASTAR_ITERATIONS for ${ownId} to (${targetX.toFixed(0)}, ${targetY.toFixed(0)}). Pathfinding may be slow or incomplete.`);
+    }
     return null; 
 };
 

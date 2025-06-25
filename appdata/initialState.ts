@@ -1,3 +1,4 @@
+
 import { GameState, ResourceType, PlayerHeroState, StoneQuarryMinigameState, ActionBattleState, PlayerSharedSkillProgress, GoldMineMinigameState, ActiveDemoniconChallenge, PerMapState, WorldMapDefinition, RunBuffDefinition, ActiveView, AutoBattlerState } from './types'; // Added ActiveView, AutoBattlerState
 import { INITIAL_RESOURCES, INITIAL_HEROES as INITIAL_UNLOCKED_HEROES, SQMG_GRID_SIZE, SQMG_DIRT_CLICK_YIELD, SQMG_INITIAL_GOLEM_CLICK_POWER, SQMG_INITIAL_GOLEM_CLICK_SPEED_MS, SQMG_INITIAL_GOLEM_MOVE_SPEED_MS, SQMG_ESSENCE_DROP_CHANCE, SQMG_PLAYER_MULTI_CLICK_CHANCE_BASE, SQMG_GOLEM_ESSENCE_AFFINITY_BASE, SQMG_PLAYER_CRYSTAL_FIND_CHANCE_BASE, SQMG_GOLEM_CRYSTAL_SIFTERS_BASE, SQMG_PLAYER_ADVANCED_EXCAVATION_BASE_CHANCE, BASE_GOLD_MINE_GRID_ROWS, BASE_GOLD_MINE_GRID_COLS, INITIAL_GOLD_MINE_PLAYER_STATS } from './constants';
 import * as constants from './constants'; // Import all for autoBattler
@@ -200,13 +201,13 @@ export const initialGameState: GameState = {
     currentStamina: INITIAL_GOLD_MINE_PLAYER_STATS.maxStamina,
     playerStats: calculateGoldMinePlayerStats(INITIAL_GOLD_MINE_PLAYER_STATS, {}),
     currentDepth: 1,
-    maxUnlockedDepth: 1,
+    maxUnlockedDepth: 1, // Initialized to 1 directly
     resourcesCollectedThisRun: {},
     permanentUpgradeLevels: {},
     popupEvents: [],
     runStartTime: null,
     totalTimeInMineSeconds: 0,
-    mineshaftExitPos: undefined, // Changed to undefined
+    mineshaftExitPos: undefined, 
   },
   playerSharedSkillPoints: 5,
   playerSharedSkills: {
@@ -245,6 +246,10 @@ export const initialGameState: GameState = {
   researchSlots: 1,
   researchQueue: [],
   autoBattler: null,
+
+  lastProductionUpdateTime: Date.now(),
+  lastPotionCraftUpdateTime: Date.now(),
+  lastResearchUpdateTime: Date.now(),
 
   _battleCombatTickResult: undefined,
   _deferredCombatActions: undefined,

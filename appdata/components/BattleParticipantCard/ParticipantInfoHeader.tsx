@@ -9,19 +9,15 @@ interface ParticipantInfoHeaderProps {
   isVisuallyStunned: boolean;
 }
 
-const ParticipantInfoHeader: React.FC<ParticipantInfoHeaderProps> = ({ participant, type, isVisuallyStunned }) => {
+const ParticipantInfoHeader: React.FC<ParticipantInfoHeaderProps> = React.memo(({ participant, type, isVisuallyStunned }) => {
   const Icon = ICONS[participant.iconName];
   const isHero = type === 'hero';
   const levelDisplay = isHero ? ` Lvl ${(participant as BattleHero).level}` : '';
   const nameColor = isHero ? 'text-sky-300' : 'text-red-300';
   
-  // Note: Icon display for grid mode is handled in BattleParticipantCard itself.
-  // This component is now primarily for the text part in grid mode.
-  
   return (
-    <div className="flex flex-col items-center text-center"> {/* Removed mb-0.5 */}
-      {/* Icon display for 'card' mode would go here, or conditionally render based on a prop if needed */}
-      <h4 className={`text-[0.65rem] font-semibold truncate max-w-full px-1 ${nameColor} leading-tight`}> {/* Reduced font, added leading-tight */}
+    <div className="flex flex-col items-center text-center"> 
+      <h4 className={`text-[0.65rem] font-semibold truncate max-w-full px-1 ${nameColor} leading-tight`}> 
         {participant.name}{levelDisplay}
       </h4>
       {isVisuallyStunned && (
@@ -31,6 +27,6 @@ const ParticipantInfoHeader: React.FC<ParticipantInfoHeaderProps> = ({ participa
       )}
     </div>
   );
-};
+});
 
 export default ParticipantInfoHeader;

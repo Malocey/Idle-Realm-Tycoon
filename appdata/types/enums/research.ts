@@ -1,0 +1,6 @@
+export enum ResearchNodeStatus {
+  LOCKED = 'LOCKED',
+  AVAILABLE = 'AVAILABLE',
+  RESEARCHING = 'RESEARCHING',
+  COMPLETED = 'COMPLETED',
+}

@@ -6,4 +6,5 @@ export * from './dungeon';
 export * from './shard';
 export * from './quest';
 export * from './minigame';
+export * from './research'; // Added export for research enums
 // Note: ActionBattleParticipantAIState is in battle.ts

@@ -4,7 +4,7 @@ import { BUILDING_DEFINITIONS, BUILDING_SPECIFIC_UPGRADE_DEFINITIONS } from '../
 import { calculateBuildingProduction, getTownHallUpgradeEffectValue } from '../../utils';
 import { GAME_TICK_MS } from '../../constants';
 
-export const processBuildingProduction = (state: GameState, globalBonuses: GlobalBonuses, timeSinceLastTick: number, gameSpeed: number): GameState => {
+export const processBuildingProduction = (state: GameState, globalBonuses: GlobalBonuses, elapsedWallClockMs: number, gameSpeed: number): GameState => {
   let newResources = { ...state.resources };
   let newTotalTownXp = state.totalTownXp;
 
@@ -14,14 +14,16 @@ export const processBuildingProduction = (state: GameState, globalBonuses: Globa
     if (def && def.isProducer) {
       const production = calculateBuildingProduction(def, b.level);
       production.forEach(p => {
-        // Amount per game tick interval, then scale by how many actual intervals have passed
-        let amount = p.amountPerTick * (timeSinceLastTick / (GAME_TICK_MS / gameSpeed));
+        // p.amountPerTick is the amount produced per base GAME_TICK_MS interval at 1x speed.
+        // We need to find how many such base intervals occurred in the elapsedWallClockMs, considering gameSpeed.
+        const numberOfBaseTicksSimulated = elapsedWallClockMs / (GAME_TICK_MS / gameSpeed);
+        let amount = p.amountPerTick * numberOfBaseTicksSimulated;
         
         if (p.resource !== ResourceType.TOWN_XP &&
             p.resource !== ResourceType.HEROIC_POINTS &&
             p.resource !== ResourceType.CATACOMB_BLUEPRINT &&
             p.resource !== ResourceType.AETHERIUM &&
-            p.resource !== ResourceType.RESEARCH_POINTS) {
+            p.resource !== ResourceType.RESEARCH_POINTS) { // Exclude RESEARCH_POINTS from allResourceProductionBonus
              amount *= (1 + globalBonuses.allResourceProductionBonus);
         }
 
@@ -56,12 +58,9 @@ export const processBuildingProduction = (state: GameState, globalBonuses: Globa
         if (herbCultivationUpgradeDef && herbCultivationLevel > 0) {
             herbCultivationUpgradeDef.effects.forEach(effect => {
                 if (effect.passiveHerbProduction) {
-                    // getTownHallUpgradeEffectValue assumes 'level' is the direct input for calculation
-                    // For passive production, effect.passiveHerbProduction.amountPerTick is the base per-tick rate at level 1 of the *upgrade*
-                    // We need to scale this by the upgrade's effect calculation.
-                    // Assuming getTownHallUpgradeEffectValue correctly interprets the `additiveStep` to give total flat bonus per tick for the upgrade level.
-                    const effectValuePerTick = getTownHallUpgradeEffectValue(effect as any, herbCultivationLevel);
-                    const amount = effectValuePerTick * (timeSinceLastTick / (GAME_TICK_MS / gameSpeed));
+                    const effectValuePerBaseTick = getTownHallUpgradeEffectValue(effect as any, herbCultivationLevel);
+                    const numberOfBaseTicksSimulated = elapsedWallClockMs / (GAME_TICK_MS / gameSpeed);
+                    const amount = effectValuePerBaseTick * numberOfBaseTicksSimulated;
                     newResources[effect.passiveHerbProduction.herbType] = (newResources[effect.passiveHerbProduction.herbType] || 0) + amount;
                 }
             });

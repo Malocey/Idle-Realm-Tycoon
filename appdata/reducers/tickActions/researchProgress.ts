@@ -4,7 +4,7 @@ import { RESEARCH_DEFINITIONS } from '../../gameData';
 import { NOTIFICATION_ICONS, GAME_TICK_MS } from '../../constants';
 import { ICONS } from '../../components/Icons'; // Corrected import path
 
-export const processResearchProgress = (state: GameState, globalBonuses: GlobalBonuses, timeSinceLastTick: number, gameSpeed: number): GameState => {
+export const processResearchProgress = (state: GameState, globalBonuses: GlobalBonuses, elapsedWallClockMs: number, gameSpeed: number): GameState => {
   if (Object.keys(state.researchProgress).length === 0 && state.researchQueue.length === 0) {
     return state;
   }
@@ -17,18 +17,16 @@ export const processResearchProgress = (state: GameState, globalBonuses: GlobalB
   const researchSlotIdsInUse = new Set<number>();
   Object.values(newResearchProgress).forEach(p => researchSlotIdsInUse.add(p.researchSlotId));
 
-  // Calculate how many base game ticks effectively passed
-  const effectiveTicksPassed = Math.floor(timeSinceLastTick / (GAME_TICK_MS / gameSpeed));
+  // Calculate how many base game ticks effectively passed in the elapsedWallClockMs, considering gameSpeed
+  const effectiveGameTicksPassed = Math.floor(elapsedWallClockMs / (GAME_TICK_MS / gameSpeed));
 
   Object.keys(newResearchProgress).forEach(instanceId => {
     const researchingItem = { ...newResearchProgress[instanceId] }; 
     const researchDef = RESEARCH_DEFINITIONS[researchingItem.researchId];
     if (!researchDef) return;
 
-    // researchTimeReductionBonus is a percentage (e.g., 0.1 for 10% reduction)
     const researchTimeReductionBonus = globalBonuses.researchTimeReduction || 0;
-    // Calculate effective progress: more ticks pass if reduction is active
-    const progressThisInterval = effectiveTicksPassed * (1 + researchTimeReductionBonus);
+    const progressThisInterval = effectiveGameTicksPassed * (1 + researchTimeReductionBonus);
     
     researchingItem.currentProgressTicks += progressThisInterval;
 
@@ -51,7 +49,6 @@ export const processResearchProgress = (state: GameState, globalBonuses: GlobalB
     }
   });
   
-  // Check queue if slots are free
   if (newResearchQueue.length > 0 && researchSlotIdsInUse.size < state.researchSlots) {
       for (let i = 0; i < state.researchSlots; i++) {
           if (!researchSlotIdsInUse.has(i) && newResearchQueue.length > 0) {
